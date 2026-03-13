@@ -1,0 +1,24 @@
+---
+name: zigrix-task-status
+version: 0.1.0
+description: Inspect Zigrix task records and state transitions.
+metadata:
+  openclaw:
+    requires:
+      bins: ["zigrix"]
+    cliHelp: "zigrix task status --help"
+---
+
+# zigrix task status
+
+Use this to inspect one task or list tasks.
+
+```bash
+zigrix task list --json
+zigrix task status TASK-20260313-001 --json
+zigrix task start TASK-20260313-001
+zigrix task finalize TASK-20260313-001
+zigrix task report TASK-20260313-001
+```
+
+Treat status transitions as explicit lifecycle events.
