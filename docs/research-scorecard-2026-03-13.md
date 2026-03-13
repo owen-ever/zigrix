@@ -133,10 +133,29 @@
 ## 최종 점수 요약
 
 - **현황 진단 정확도:** 9.3 / 10
-- **아키텍처 방향성:** 9.0 / 10
+- **아키텍처 방향성(초기 Python안):** 9.0 / 10
 - **조사 품질 총점:** 8.2 / 10
 - **실행 가능한 설계안 성숙도:** 6.8 / 10
 - **실제 오픈소스 공개 준비도:** 4.0 / 10
+
+---
+
+## 2026-03-13 저녁 재정의 메모
+
+이 문서의 초기 아키텍처 방향은 **Python 유지 + 공개 CLI 제품화**를 전제로 했다.
+하지만 이후 요구사항이 더 분명해졌다.
+
+새 요구사항:
+- Zigrix 최종 구현은 **Node/TypeScript 기반**
+- 산출물 경로는 **초기 setup/config에서 변경 가능**해야 함
+- agent는 registry와 orchestration 참여 여부를 **동적으로 관리 가능**해야 함
+- rule은 정책뿐 아니라 **`orchestration/rules/*.md` 성격의 프롬프트 템플릿 수정**까지 포함해야 함
+
+즉, Zigrix는 단순 CLI가 아니라 **설정 가능한 orchestration platform**으로 재정의됐다.
+
+이 재정의 기준 점수는 별도 문서 참조:
+- `docs/plan-scorecard-2026-03-13-node-reframe.md`
+- `docs/node-configurable-platform-plan-2026-03-13.md`
 
 ---
 
