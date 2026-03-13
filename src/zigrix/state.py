@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -126,6 +127,91 @@ def update_task_status(paths: ZigrixPaths, task_id: str, status: str) -> dict[st
 
 
 
+def record_task_progress(
+    paths: ZigrixPaths,
+    *,
+    task_id: str,
+    actor: str,
+    message: str,
+    unit_id: str | None = None,
+    work_package: str | None = None,
+) -> dict[str, Any] | None:
+    task = load_task(paths, task_id)
+    if not task:
+        return None
+    save_task(paths, task)
+    event = append_event(
+        paths.events_file,
+        {
+            "event": "progress_report",
+            "taskId": task_id,
+            "phase": "execution",
+            "actor": actor,
+            "payload": {
+                "message": message,
+                "unitId": unit_id,
+                "workPackage": work_package,
+            },
+        },
+    )
+    rebuild_index(paths)
+    return event
+
+
+
+def find_stale_tasks(paths: ZigrixPaths, *, hours: float = 24.0) -> list[dict[str, Any]]:
+    cutoff = _now_dt() - timedelta(hours=hours)
+    stale: list[dict[str, Any]] = []
+    for task in list_tasks(paths):
+        status = str(task.get("status", "UNKNOWN"))
+        if status != "IN_PROGRESS":
+            continue
+        updated = _parse_dt(str(task.get("updatedAt", "")))
+        if updated and updated < cutoff:
+            stale.append(task)
+    return stale
+
+
+
+def apply_stale_policy(
+    paths: ZigrixPaths,
+    *,
+    hours: float = 24.0,
+    reason: str = "stale_timeout",
+) -> dict[str, Any]:
+    stale_tasks = find_stale_tasks(paths, hours=hours)
+    changed: list[dict[str, Any]] = []
+    for task in stale_tasks:
+        task_id = str(task.get("taskId"))
+        task["status"] = "BLOCKED"
+        save_task(paths, task)
+        event = append_event(
+            paths.events_file,
+            {
+                "event": "task_blocked",
+                "taskId": task_id,
+                "phase": "recovery",
+                "actor": "zigrix",
+                "status": "BLOCKED",
+                "payload": {
+                    "reason": reason,
+                    "previousStatus": "IN_PROGRESS",
+                    "hoursThreshold": hours,
+                },
+            },
+        )
+        changed.append({"taskId": task_id, "event": event})
+    rebuild_index(paths)
+    return {
+        "ok": True,
+        "hours": hours,
+        "reason": reason,
+        "count": len(changed),
+        "changed": changed,
+    }
+
+
+
 def rebuild_index(paths: ZigrixPaths) -> dict[str, Any]:
     ensure_project_state(paths)
     tasks = list_tasks(paths)
@@ -162,3 +248,16 @@ def rebuild_index(paths: ZigrixPaths) -> dict[str, Any]:
     index["taskSummaries"] = task_summaries
     paths.index_file.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return index
+
+
+
+def _parse_dt(value: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+
+def _now_dt() -> datetime:
+    return datetime.fromisoformat(now_iso())

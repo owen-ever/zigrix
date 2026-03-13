@@ -11,9 +11,11 @@ All notable changes to Zigrix will be documented in this file.
   - `zigrix version`
   - `zigrix doctor`
   - `zigrix init`
-  - `zigrix task create/list/status/events/start/finalize/report`
+  - `zigrix task create/list/status/events/progress/stale/start/finalize/report`
   - `zigrix worker prepare/register/complete`
   - `zigrix evidence collect/merge`
+  - `zigrix report render`
+  - `zigrix pipeline run`
   - `zigrix index-rebuild`
 - Project-local runtime state layout under `.zigrix/`
 - Source-checkout installer `install.sh`

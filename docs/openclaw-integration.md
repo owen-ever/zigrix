@@ -34,9 +34,10 @@ This means OpenClaw can mark the skill ready only when the Zigrix binary exists 
 ```
 
 ## Current integrated surface
-- `zigrix task create/status/events`
+- `zigrix task create/status/events/progress/stale`
 - `zigrix worker prepare/register/complete`
 - `zigrix evidence collect/merge`
+- `zigrix report render`
 - `zigrix doctor`
 - `zigrix init`
 

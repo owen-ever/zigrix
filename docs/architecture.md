@@ -10,8 +10,10 @@
 ### 2. Core state layer
 - resolves portable paths
 - manages `.zigrix/` project runtime state
-- persists tasks and index files
+- persists tasks, prompts, evidence, and index files
 - appends events
+- renders user-facing reports from merged evidence
+- detects stale in-progress tasks for recovery
 
 ### 3. Integration layer
 - OpenClaw-aware but optional

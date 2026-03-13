@@ -10,7 +10,19 @@ from zigrix import __version__
 from zigrix.doctor import gather_doctor, render_doctor_text
 from zigrix.evidence import collect_evidence, merge_evidence
 from zigrix.paths import ensure_project_state, resolve_paths
-from zigrix.state import create_task, list_task_events, list_tasks, load_task, rebuild_index, update_task_status
+from zigrix.pipeline import run_pipeline
+from zigrix.report import render_report
+from zigrix.state import (
+    apply_stale_policy,
+    create_task,
+    find_stale_tasks,
+    list_task_events,
+    list_tasks,
+    load_task,
+    rebuild_index,
+    record_task_progress,
+    update_task_status,
+)
 from zigrix.worker import complete_worker, prepare_worker, register_worker
 
 
@@ -61,6 +73,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     events = task_sub.add_parser("events", help="Show task events")
     events.add_argument("task_id", nargs="?")
+
+    progress = task_sub.add_parser("progress", help="Append a progress report event")
+    progress.add_argument("--task-id", required=True)
+    progress.add_argument("--actor", required=True)
+    progress.add_argument("--message", required=True)
+    progress.add_argument("--unit-id", default=None)
+    progress.add_argument("--work-package", default=None)
+
+    stale = task_sub.add_parser("stale", help="Find or mark stale IN_PROGRESS tasks")
+    stale.add_argument("--hours", type=float, default=24.0)
+    stale.add_argument("--apply", action="store_true")
+    stale.add_argument("--reason", default="stale_timeout")
 
     for name in ("start", "finalize", "report"):
         cmd = task_sub.add_parser(name, help=f"Mark task as {STATUS_MAP[name]}")
@@ -118,6 +142,24 @@ def build_parser() -> argparse.ArgumentParser:
     merge.add_argument("--task-id", required=True)
     merge.add_argument("--required-agent", action="append", default=[], dest="required_agents")
     merge.add_argument("--require-qa", action="store_true")
+
+    report = sub.add_parser("report", help="User-facing reporting helpers")
+    report_sub = report.add_subparsers(dest="report_command")
+    render = report_sub.add_parser("render", help="Render a user-facing completion report")
+    render.add_argument("--task-id", required=True)
+    render.add_argument("--record-events", action="store_true")
+
+    pipeline = sub.add_parser("pipeline", help="High-level orchestration helpers")
+    pipeline_sub = pipeline.add_subparsers(dest="pipeline_command")
+    run = pipeline_sub.add_parser("run", help="Create, collect, merge, and optionally report in one command")
+    run.add_argument("--title", required=True)
+    run.add_argument("--description", required=True)
+    run.add_argument("--scale", default="normal", choices=["simple", "normal", "risky", "large"])
+    run.add_argument("--required-agent", action="append", default=[], dest="required_agents")
+    run.add_argument("--evidence-summary", action="append", default=[], dest="evidence_summaries")
+    run.add_argument("--require-qa", action="store_true")
+    run.add_argument("--auto-report", action="store_true")
+    run.add_argument("--record-feedback", action="store_true")
 
     sub.add_parser("index-rebuild", help="Rebuild .zigrix/index.json from task files")
     return parser
@@ -216,6 +258,33 @@ def main(argv: list[str] | None = None) -> int:
             payload = list_task_events(paths, args.task_id)
             _print(payload, True if args.json else False)
             return 0
+        if args.task_command == "progress":
+            payload = record_task_progress(
+                paths,
+                task_id=args.task_id,
+                actor=args.actor,
+                message=args.message,
+                unit_id=args.unit_id,
+                work_package=args.work_package,
+            )
+            if not payload:
+                _print({"error": "task_not_found", "taskId": args.task_id}, args.json)
+                return 4
+            _print(payload, True if args.json else False)
+            return 0
+        if args.task_command == "stale":
+            if args.apply:
+                payload = apply_stale_policy(paths, hours=args.hours, reason=args.reason)
+            else:
+                tasks = find_stale_tasks(paths, hours=args.hours)
+                payload = {
+                    "ok": True,
+                    "hours": args.hours,
+                    "count": len(tasks),
+                    "tasks": tasks,
+                }
+            _print(payload, True if args.json else False)
+            return 0
         if args.task_command in STATUS_MAP:
             task = update_task_status(paths, args.task_id, STATUS_MAP[args.task_command])
             if not task:
@@ -307,6 +376,31 @@ def main(argv: list[str] | None = None) -> int:
             if not payload:
                 _print({"error": "task_not_found", "taskId": args.task_id}, args.json)
                 return 4
+            _print(payload, True if args.json else False)
+            return 0
+
+    if args.command == "report":
+        if args.report_command == "render":
+            payload = render_report(paths, task_id=args.task_id, record_events=args.record_events)
+            if not payload:
+                _print({"error": "task_not_found", "taskId": args.task_id}, args.json)
+                return 4
+            _print(payload if args.json else payload["report"], args.json)
+            return 0
+
+    if args.command == "pipeline":
+        if args.pipeline_command == "run":
+            payload = run_pipeline(
+                paths,
+                title=args.title,
+                description=args.description,
+                scale=args.scale,
+                required_agents=args.required_agents,
+                evidence_summaries=args.evidence_summaries,
+                require_qa=args.require_qa,
+                auto_report=args.auto_report,
+                record_feedback=args.record_feedback,
+            )
             _print(payload, True if args.json else False)
             return 0
 

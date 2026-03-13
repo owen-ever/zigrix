@@ -25,6 +25,8 @@ zigrix
 │  ├─ list
 │  ├─ status <task_id>
 │  ├─ events [task_id]
+│  ├─ progress --task-id --actor --message [--unit-id] [--work-package]
+│  ├─ stale [--hours] [--apply] [--reason]
 │  ├─ start <task_id>
 │  ├─ finalize <task_id>
 │  └─ report <task_id>
@@ -32,9 +34,13 @@ zigrix
 │  ├─ prepare --task-id --agent-id --description [--constraints] [--unit-id] [--work-package] [--dod]
 │  ├─ register --task-id --agent-id --session-key [--run-id] [--session-id] [--unit-id] [--work-package] [--reason]
 │  └─ complete --task-id --agent-id --session-key --run-id [--result] [--session-id] [--unit-id] [--work-package]
-└─ evidence
-   ├─ collect --task-id --agent-id [--run-id] [--transcript] [--summary] [--tool-result] [--notes]
-   └─ merge --task-id [--required-agent] [--require-qa]
+├─ evidence
+│  ├─ collect --task-id --agent-id [--run-id] [--transcript] [--summary] [--tool-result] [--notes]
+│  └─ merge --task-id [--required-agent] [--require-qa]
+├─ report
+│  └─ render --task-id [--record-events]
+└─ pipeline
+   └─ run --title --description [--scale] [--required-agent] [--evidence-summary] [--require-qa] [--auto-report] [--record-feedback]
 ```
 
 ## Implemented foundation commands
@@ -81,6 +87,12 @@ Prints one task.
 ### `zigrix task events [task_id]`
 Prints append-only ledger events, optionally filtered to one task.
 
+### `zigrix task progress`
+Appends a `progress_report` event and refreshes the task `updatedAt` timestamp.
+
+### `zigrix task stale`
+Finds stale `IN_PROGRESS` tasks by `updatedAt`. With `--apply`, marks them `BLOCKED` and records `task_blocked` events.
+
 ### `zigrix task start|finalize|report <task_id>`
 Applies a status transition.
 
@@ -100,10 +112,16 @@ Supports transcript JSONL extraction or explicit summary/tool results.
 ### `zigrix evidence merge`
 Builds `_merged.json` for a task and reports completeness against required agents.
 
+### `zigrix report render`
+Renders a user-facing completion summary from merged evidence. With `--record-events`, appends `user_report_prepared` and `feedback_requested`.
+
+### `zigrix pipeline run`
+Creates a task, collects evidence, merges, and optionally renders a report in a single command.
+
 ## Planned next-wave commands
-- `zigrix task stale`
 - `zigrix release doctor`
 - `zigrix skill install`
+- `zigrix pipeline dispatch` (with live agent spawning)
 
 These are intentionally deferred until the current orchestration surface is hardened.
 
