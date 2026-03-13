@@ -1,0 +1,52 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.python-version
+
+# Virtual environments
+.venv/
+venv/
+.env
+.env.*
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+pip-wheel-metadata/
+
+# IDE
+.vscode/
+.idea/
+
+# Project runtime state
+.zigrix/
+logs/
+.tmp/
+.scratch/
+
+# Release / local packaging artifacts
+artifacts/
+release/
+checksums.txt
+
+# OpenClaw local integration scratch
+.openclaw/
