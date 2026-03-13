@@ -18,14 +18,23 @@
 zigrix
 ├─ init
 ├─ doctor
+├─ version
 ├─ index-rebuild
-└─ task
-   ├─ create --title --description [--scale]
-   ├─ list
-   ├─ status <task_id>
-   ├─ start <task_id>
-   ├─ finalize <task_id>
-   └─ report <task_id>
+├─ task
+│  ├─ create --title --description [--scale] [--required-agent]
+│  ├─ list
+│  ├─ status <task_id>
+│  ├─ events [task_id]
+│  ├─ start <task_id>
+│  ├─ finalize <task_id>
+│  └─ report <task_id>
+├─ worker
+│  ├─ prepare --task-id --agent-id --description [--constraints] [--unit-id] [--work-package] [--dod]
+│  ├─ register --task-id --agent-id --session-key [--run-id] [--session-id] [--unit-id] [--work-package] [--reason]
+│  └─ complete --task-id --agent-id --session-key --run-id [--result] [--session-id] [--unit-id] [--work-package]
+└─ evidence
+   ├─ collect --task-id --agent-id [--run-id] [--transcript] [--summary] [--tool-result] [--notes]
+   └─ merge --task-id [--required-agent] [--require-qa]
 ```
 
 ## Implemented foundation commands
@@ -61,6 +70,7 @@ Required flags:
 
 Optional flags:
 - `--scale simple|normal|risky|large`
+- `--required-agent <agent>` (repeatable)
 
 ### `zigrix task list`
 Lists task records from `.zigrix/tasks/`.
@@ -68,18 +78,34 @@ Lists task records from `.zigrix/tasks/`.
 ### `zigrix task status <task_id>`
 Prints one task.
 
+### `zigrix task events [task_id]`
+Prints append-only ledger events, optionally filtered to one task.
+
 ### `zigrix task start|finalize|report <task_id>`
 Applies a status transition.
 
-## Planned next-wave commands
-- `zigrix worker prepare`
-- `zigrix worker register`
-- `zigrix worker complete`
-- `zigrix evidence collect`
-- `zigrix evidence merge`
-- `zigrix task stale`
+### `zigrix worker prepare`
+Generates a worker prompt and stores it under `.zigrix/prompts/`.
 
-These are intentionally excluded from the first scaffold until path/state abstractions are stable.
+### `zigrix worker register`
+Persists worker dispatch/session metadata into the task record.
+
+### `zigrix worker complete`
+Marks worker result and reports whether evidence is still missing.
+
+### `zigrix evidence collect`
+Stores one agent's evidence under `.zigrix/evidence/<taskId>/`.
+Supports transcript JSONL extraction or explicit summary/tool results.
+
+### `zigrix evidence merge`
+Builds `_merged.json` for a task and reports completeness against required agents.
+
+## Planned next-wave commands
+- `zigrix task stale`
+- `zigrix release doctor`
+- `zigrix skill install`
+
+These are intentionally deferred until the current orchestration surface is hardened.
 
 ## Output rules
 - human mode: concise, outcome-first

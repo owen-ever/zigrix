@@ -33,6 +33,13 @@ This means OpenClaw can mark the skill ready only when the Zigrix binary exists 
 ./install.sh --with-openclaw-skills
 ```
 
+## Current integrated surface
+- `zigrix task create/status/events`
+- `zigrix worker prepare/register/complete`
+- `zigrix evidence collect/merge`
+- `zigrix doctor`
+- `zigrix init`
+
 ## Planned future integration
 - richer skill set
 - optional companion plugin

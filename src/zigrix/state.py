@@ -34,6 +34,7 @@ def task_path(paths: ZigrixPaths, task_id: str) -> Path:
 def save_task(paths: ZigrixPaths, task: dict[str, Any]) -> Path:
     ensure_project_state(paths)
     path = task_path(paths, str(task["taskId"]))
+    task["updatedAt"] = now_iso()
     path.write_text(json.dumps(task, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     rebuild_index(paths)
     return path
@@ -66,7 +67,22 @@ def list_tasks(paths: ZigrixPaths) -> list[dict[str, Any]]:
 
 
 
-def create_task(paths: ZigrixPaths, *, title: str, description: str, scale: str = "normal") -> dict[str, Any]:
+def list_task_events(paths: ZigrixPaths, task_id: str | None = None) -> list[dict[str, Any]]:
+    rows = load_events(paths.events_file)
+    if not task_id:
+        return rows
+    return [row for row in rows if str(row.get("taskId", "")) == task_id]
+
+
+
+def create_task(
+    paths: ZigrixPaths,
+    *,
+    title: str,
+    description: str,
+    scale: str = "normal",
+    required_agents: list[str] | None = None,
+) -> dict[str, Any]:
     task_id = next_task_id(paths)
     task = {
         "taskId": task_id,
@@ -76,9 +92,23 @@ def create_task(paths: ZigrixPaths, *, title: str, description: str, scale: str 
         "status": "OPEN",
         "createdAt": now_iso(),
         "updatedAt": now_iso(),
+        "requiredAgents": list(required_agents or []),
+        "workerSessions": {},
     }
     save_task(paths, task)
-    append_event(paths.events_file, {"event": "task_created", "taskId": task_id, "status": "OPEN", "title": title, "scale": scale})
+    append_event(
+        paths.events_file,
+        {
+            "event": "task_created",
+            "taskId": task_id,
+            "status": "OPEN",
+            "title": title,
+            "scale": scale,
+            "payload": {
+                "requiredAgents": list(required_agents or []),
+            },
+        },
+    )
     rebuild_index(paths)
     return task
 
@@ -89,7 +119,6 @@ def update_task_status(paths: ZigrixPaths, task_id: str, status: str) -> dict[st
     if not task:
         return None
     task["status"] = status
-    task["updatedAt"] = now_iso()
     save_task(paths, task)
     append_event(paths.events_file, {"event": "task_status_changed", "taskId": task_id, "status": status})
     rebuild_index(paths)
@@ -101,6 +130,7 @@ def rebuild_index(paths: ZigrixPaths) -> dict[str, Any]:
     ensure_project_state(paths)
     tasks = list_tasks(paths)
     events = load_events(paths.events_file)
+    active_statuses = {"OPEN", "IN_PROGRESS", "BLOCKED", "DONE_PENDING_REPORT"}
     index = {
         "version": "0.1",
         "updatedAt": now_iso(),
@@ -109,11 +139,26 @@ def rebuild_index(paths: ZigrixPaths) -> dict[str, Any]:
             "events": len(events),
         },
         "statusBuckets": {},
+        "activeTasks": {},
+        "taskSummaries": {},
     }
     buckets: dict[str, list[str]] = {}
+    task_summaries: dict[str, dict[str, Any]] = {}
     for task in tasks:
+        task_id = str(task.get("taskId"))
         status = str(task.get("status", "UNKNOWN"))
-        buckets.setdefault(status, []).append(str(task.get("taskId")))
+        buckets.setdefault(status, []).append(task_id)
+        summary = {
+            "title": task.get("title"),
+            "status": status,
+            "scale": task.get("scale"),
+            "requiredAgents": task.get("requiredAgents", []),
+            "updatedAt": task.get("updatedAt"),
+        }
+        task_summaries[task_id] = summary
+        if status in active_statuses:
+            index["activeTasks"][task_id] = summary
     index["statusBuckets"] = dict(sorted(buckets.items()))
+    index["taskSummaries"] = task_summaries
     paths.index_file.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return index

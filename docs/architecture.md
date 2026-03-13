@@ -16,7 +16,8 @@
 ### 3. Integration layer
 - OpenClaw-aware but optional
 - skill-pack installation and usage guidance
-- future adapter point for session-aware commands
+- worker/evidence lifecycle bridging without hard dependency on OpenClaw internals
+- future adapter point for richer session-aware commands
 
 ## Runtime state model
 

@@ -40,10 +40,12 @@ To also install OpenClaw skills from this checkout:
 zigrix version
 zigrix doctor --json
 zigrix init
-zigrix task create --title "Implement installer" --description "Define install flow" --scale normal
-zigrix task start TASK-20260313-001
-zigrix task status TASK-20260313-001 --json
-zigrix task finalize TASK-20260313-001
+zigrix task create --title "Implement installer" --description "Define install flow" --scale normal --required-agent pro-zig --required-agent qa-zig
+zigrix worker prepare --task-id TASK-20260313-001 --agent-id qa-zig --description "Run QA checks" --json
+zigrix worker register --task-id TASK-20260313-001 --agent-id qa-zig --session-key agent:test:qa --run-id run-001 --json
+zigrix evidence collect --task-id TASK-20260313-001 --agent-id qa-zig --summary "QA passed" --json
+zigrix evidence merge --task-id TASK-20260313-001 --require-qa --json
+zigrix task events TASK-20260313-001 --json
 zigrix index-rebuild
 ```
 
@@ -51,12 +53,19 @@ zigrix index-rebuild
 
 - `zigrix init`
 - `zigrix doctor`
+- `zigrix version`
 - `zigrix task create`
 - `zigrix task list`
 - `zigrix task status`
+- `zigrix task events`
 - `zigrix task start`
 - `zigrix task finalize`
 - `zigrix task report`
+- `zigrix worker prepare`
+- `zigrix worker register`
+- `zigrix worker complete`
+- `zigrix evidence collect`
+- `zigrix evidence merge`
 - `zigrix index-rebuild`
 
 See:
