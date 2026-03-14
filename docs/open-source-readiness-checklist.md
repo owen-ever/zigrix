@@ -26,4 +26,4 @@
 - [x] release process documented
 - [x] release assets defined
 - [x] versioning policy documented
-- [x] npm publish postponed/documented for next step
+- [x] manual npm publish runbook exists for next step

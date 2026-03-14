@@ -16,6 +16,7 @@ It turns ad-hoc delegation into a file-backed, inspectable flow with:
 - Legacy reference: **Python prototype under `legacy-python/`**
 - Supported first: **macOS, Linux**
 - Packaging path: **GitHub Releases + install.sh**, npm publish prepared for manual follow-up
+- Publish gate: `npm run publish:check`
 
 ## Quick start
 ```bash
@@ -63,6 +64,8 @@ zigrix reset state --yes
 - `docs/release-process.md`
 - `docs/versioning.md`
 - `docs/known-limitations.md`
+- `docs/npm-publish-manual.md`
+- `docs/release-notes-template.md`
 - `docs/cli-spec.md`
 
 ## Repository layout
@@ -94,6 +97,9 @@ zigrix/
 
 ## Contributing
 See `CONTRIBUTING.md`.
+
+## Support
+See `SUPPORT.md`.
 
 ## Security
 See `SECURITY.md`.

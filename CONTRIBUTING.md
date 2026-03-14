@@ -21,6 +21,7 @@ npm run smoke
 For packaging/runtime changes, also run:
 ```bash
 bash scripts/release-smoke.sh
+npm run publish:check
 ```
 
 ## Local verification checklist

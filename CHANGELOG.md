@@ -29,6 +29,7 @@ All notable changes to Zigrix will be documented in this file.
 - Doctor diagnostics plus safe reset flows for config/template/state recovery
 - Config/rule/template mutation surface (`set` / `diff` / `reset`) for Node CLI
 - Runtime consistency verification via `zigrix state check`
+- Manual npm publish runbook, SUPPORT doc, and one-command `publish:check` gate
 
 ## [0.1.0a0] - 2026-03-13
 
