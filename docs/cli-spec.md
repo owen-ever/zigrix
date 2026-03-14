@@ -66,7 +66,7 @@ zigrix
 ## Implemented foundation commands
 
 ### `zigrix init`
-Creates `.zigrix/` runtime directories in the target project.
+Creates `.zigrix/` runtime directories in the target project and writes default config when needed.
 
 Text output:
 - `Initialized Zigrix state at <path>`

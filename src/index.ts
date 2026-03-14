@@ -11,10 +11,33 @@ import {
   setAgentRole,
 } from './agents/registry.js';
 import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
+import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
-import { listRules, renderTemplate, validateRules } from './rules/templates.js';
+import { collectEvidence, mergeEvidence } from './orchestration/evidence.js';
+import { runPipeline } from './orchestration/pipeline.js';
+import { renderReport } from './orchestration/report.js';
+import { completeWorker, prepareWorker, registerWorker } from './orchestration/worker.js';
+import { listRules, renderTemplate, validateRules, type TemplateKind } from './rules/templates.js';
 import { runWorkflow, summarizeRun } from './runner/run.js';
 import { loadRunRecord } from './runner/store.js';
+import { resolvePaths } from './state/paths.js';
+import {
+  applyStalePolicy,
+  createTask,
+  findStaleTasks,
+  listTaskEvents,
+  listTasks,
+  loadTask,
+  rebuildIndex,
+  recordTaskProgress,
+  updateTaskStatus,
+} from './state/tasks.js';
+
+const STATUS_MAP: Record<string, string> = {
+  start: 'IN_PROGRESS',
+  finalize: 'DONE_PENDING_REPORT',
+  report: 'REPORTED',
+};
 
 function printValue(value: unknown, json = false): void {
   if (json || typeof value !== 'string') {
@@ -34,7 +57,7 @@ function requireConfigPath(configPath: string | null, projectRoot: string): stri
 function persistAndPrintMutation(params: {
   configPath: string | null;
   projectRoot: string;
-  nextConfig: Parameters<typeof writeConfigFile>[1];
+  nextConfig: ZigrixConfig;
   json?: boolean;
   action: string;
   agentId: string;
@@ -44,6 +67,11 @@ function persistAndPrintMutation(params: {
   printValue({ ok: true, action: params.action, agentId: params.agentId, configPath: targetPath }, params.json);
 }
 
+function loadRuntime(options: { projectRoot?: string; config?: string }) {
+  const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+  return { ...loaded, paths: resolvePaths(loaded.projectRoot, loaded.config) };
+}
+
 const program = new Command();
 program
   .name('zigrix')
@@ -51,6 +79,13 @@ program
   .version('0.1.0-alpha.0');
 
 const config = program.command('config').description('Inspect Zigrix config');
+const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
+const rule = program.command('rule').description('Inspect and validate rule/template assets');
+const task = program.command('task').description('Task operations');
+const worker = program.command('worker').description('Worker lifecycle operations');
+const evidence = program.command('evidence').description('Evidence collection and merge operations');
+const report = program.command('report').description('User-facing reporting helpers');
+const pipeline = program.command('pipeline').description('High-level orchestration helpers');
 
 config
   .command('validate')
@@ -69,8 +104,7 @@ config
   .option('--json', 'JSON output')
   .action((dottedPath, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    const value = getConfigValue(loaded.config, dottedPath);
-    printValue(value ?? null, options.json);
+    printValue(getConfigValue(loaded.config, dottedPath) ?? null, true);
   });
 
 config
@@ -96,233 +130,365 @@ program
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .action((options) => {
-    if (!options.yes) {
-      throw new Error('interactive init not implemented yet; use --yes for bootstrap mode');
-    }
+    if (!options.yes) throw new Error('interactive init not implemented yet; use --yes for bootstrap mode');
     const targetPath = writeDefaultConfig(options.projectRoot, Boolean(options.force));
-    printValue({ ok: true, path: targetPath }, options.json);
+    const loaded = loadRuntime({ projectRoot: options.projectRoot, config: targetPath });
+    rebuildIndex(loaded.paths);
+    printValue({ ok: true, path: targetPath, projectState: loaded.paths.projectState }, options.json);
   });
-
-const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
-const rule = program.command('rule').description('Inspect and validate rule/template assets');
 
 agent
   .command('list')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
-  .action((options) => {
-    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    const agents = listAgents(loaded.config);
-    printValue(agents, true);
-  });
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => printValue(listAgents(loadConfig({ projectRoot: options.projectRoot, configPath: options.config }).config), true));
 
 agent
   .command('add')
-  .requiredOption('--id <agentId>', 'agent id / registry key')
-  .requiredOption('--role <role>', 'agent role')
-  .requiredOption('--runtime <runtime>', 'agent runtime type')
-  .option('--label <label>', 'display label')
-  .option('--include', 'also add agent to active participants')
-  .option('--disabled', 'create the agent in disabled state')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .requiredOption('--id <agentId>')
+  .requiredOption('--role <role>')
+  .requiredOption('--runtime <runtime>')
+  .option('--label <label>')
+  .option('--include')
+  .option('--disabled')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    const result = addAgent(loaded.config, {
-      id: options.id,
-      role: options.role,
-      runtime: options.runtime,
-      label: options.label,
-      enabled: !options.disabled,
-      include: Boolean(options.include),
-    });
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.add',
-      agentId: result.agentId,
-    });
+    const result = addAgent(loaded.config, { id: options.id, role: options.role, runtime: options.runtime, label: options.label, enabled: !options.disabled, include: Boolean(options.include) });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.add', agentId: result.agentId });
   });
 
 agent
-  .command('remove')
-  .argument('<agentId>', 'agent id')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .command('remove <agentId>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((agentId, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const result = removeAgent(loaded.config, agentId);
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.remove',
-      agentId: result.agentId,
-    });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.remove', agentId: result.agentId });
   });
 
 agent
-  .command('include')
-  .argument('<agentId>', 'agent id')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .command('include <agentId>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((agentId, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const result = includeAgent(loaded.config, agentId);
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.include',
-      agentId: result.agentId,
-    });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.include', agentId: result.agentId });
   });
 
 agent
-  .command('exclude')
-  .argument('<agentId>', 'agent id')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .command('exclude <agentId>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((agentId, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const result = excludeAgent(loaded.config, agentId);
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.exclude',
-      agentId: result.agentId,
-    });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.exclude', agentId: result.agentId });
   });
 
 agent
-  .command('enable')
-  .argument('<agentId>', 'agent id')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .command('enable <agentId>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((agentId, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const result = setAgentEnabled(loaded.config, agentId, true);
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.enable',
-      agentId: result.agentId,
-    });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.enable', agentId: result.agentId });
   });
 
 agent
-  .command('disable')
-  .argument('<agentId>', 'agent id')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .command('disable <agentId>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((agentId, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const result = setAgentEnabled(loaded.config, agentId, false);
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.disable',
-      agentId: result.agentId,
-    });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.disable', agentId: result.agentId });
   });
 
 agent
-  .command('set-role')
-  .argument('<agentId>', 'agent id')
-  .requiredOption('--role <role>', 'new role')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .command('set-role <agentId>')
+  .requiredOption('--role <role>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((agentId, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const result = setAgentRole(loaded.config, agentId, options.role);
-    persistAndPrintMutation({
-      configPath: loaded.configPath,
-      projectRoot: loaded.projectRoot,
-      nextConfig: result.config,
-      json: options.json,
-      action: 'agent.set-role',
-      agentId: result.agentId,
-    });
+    persistAndPrintMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig: result.config, json: options.json, action: 'agent.set-role', agentId: result.agentId });
   });
 
 rule
   .command('list')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
-  .action((options) => {
-    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    printValue(listRules(loaded.config), true);
-  });
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => printValue(listRules(loadConfig({ projectRoot: options.projectRoot, configPath: options.config }).config), true));
 
 rule
   .command('get <path>')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
-  .action((dottedPath, options) => {
-    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    printValue(getConfigValue(loaded.config, dottedPath) ?? null, true);
-  });
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((dottedPath, options) => printValue(getConfigValue(loadConfig({ projectRoot: options.projectRoot, configPath: options.config }).config, dottedPath) ?? null, true));
 
 rule
   .command('validate')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
-  .action((options) => {
-    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    printValue(validateRules(loaded.config), true);
-  });
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => printValue(validateRules(loadConfig({ projectRoot: options.projectRoot, configPath: options.config }).config), true));
 
 rule
   .command('render <templateKind>')
-  .requiredOption('--context <json>', 'inline JSON context object')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
-  .action((templateKind, options) => {
+  .requiredOption('--context <json>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((templateKind: string, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
     const template = getConfigValue(loaded.config, `templates.${templateKind}`) as { body?: string } | undefined;
-    if (!template?.body) {
-      throw new Error(`template not found: ${templateKind}`);
-    }
-    const context = JSON.parse(options.context) as Record<string, unknown>;
-    const rendered = renderTemplate(templateKind, template.body, context);
+    if (!template?.body) throw new Error(`template not found: ${templateKind}`);
+    const rendered = renderTemplate(templateKind as TemplateKind, template.body, JSON.parse(options.context) as Record<string, unknown>);
     printValue({ ok: true, templateKind, rendered }, true);
+  });
+
+program
+  .command('index-rebuild')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const loaded = loadRuntime({ projectRoot: options.projectRoot, config: options.config });
+    printValue(rebuildIndex(loaded.paths), true);
+  });
+
+task
+  .command('create')
+  .requiredOption('--title <title>')
+  .requiredOption('--description <description>')
+  .option('--scale <scale>', 'simple|normal|risky|large', 'normal')
+  .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const loaded = loadRuntime({ projectRoot: options.projectRoot, config: options.config });
+    const created = createTask(loaded.paths, { title: options.title, description: options.description, scale: options.scale, requiredAgents: options.requiredAgent });
+    printValue(created, true);
+  });
+
+task
+  .command('list')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => printValue(listTasks(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths), true));
+
+task
+  .command('status <taskId>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((taskId, options) => {
+    const payload = loadTask(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, taskId);
+    if (!payload) throw new Error(`task not found: ${taskId}`);
+    printValue(payload, true);
+  });
+
+task
+  .command('events [taskId]')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((taskId, options) => printValue(listTaskEvents(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, taskId), true));
+
+task
+  .command('progress')
+  .requiredOption('--task-id <taskId>')
+  .requiredOption('--actor <actor>')
+  .requiredOption('--message <message>')
+  .option('--unit-id <unitId>')
+  .option('--work-package <workPackage>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = recordTaskProgress(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, actor: options.actor, message: options.message, unitId: options.unitId, workPackage: options.workPackage });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+task
+  .command('stale')
+  .option('--hours <hours>', 'stale threshold hours', '24')
+  .option('--apply')
+  .option('--reason <reason>', 'block reason', 'stale_timeout')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const paths = loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths;
+    const hours = Number(options.hours);
+    const payload = options.apply ? applyStalePolicy(paths, hours, options.reason) : { ok: true, hours, count: findStaleTasks(paths, hours).length, tasks: findStaleTasks(paths, hours) };
+    printValue(payload, true);
+  });
+
+for (const [name, status] of Object.entries(STATUS_MAP)) {
+  task
+    .command(`${name} <taskId>`)
+    .option('--config <path>')
+    .option('--project-root <path>')
+    .option('--json')
+    .action((taskId, options) => {
+      const payload = updateTaskStatus(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, taskId, status);
+      if (!payload) throw new Error(`task not found: ${taskId}`);
+      printValue(payload, true);
+    });
+}
+
+worker
+  .command('prepare')
+  .requiredOption('--task-id <taskId>')
+  .requiredOption('--agent-id <agentId>')
+  .requiredOption('--description <description>')
+  .option('--constraints <constraints>')
+  .option('--unit-id <unitId>')
+  .option('--work-package <workPackage>')
+  .option('--dod <dod>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = prepareWorker(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, agentId: options.agentId, description: options.description, constraints: options.constraints, unitId: options.unitId, workPackage: options.workPackage, dod: options.dod });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+worker
+  .command('register')
+  .requiredOption('--task-id <taskId>')
+  .requiredOption('--agent-id <agentId>')
+  .requiredOption('--session-key <sessionKey>')
+  .option('--run-id <runId>')
+  .option('--session-id <sessionId>')
+  .option('--unit-id <unitId>')
+  .option('--work-package <workPackage>')
+  .option('--reason <reason>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = registerWorker(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, agentId: options.agentId, sessionKey: options.sessionKey, runId: options.runId, sessionId: options.sessionId, unitId: options.unitId, workPackage: options.workPackage, reason: options.reason });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+worker
+  .command('complete')
+  .requiredOption('--task-id <taskId>')
+  .requiredOption('--agent-id <agentId>')
+  .requiredOption('--session-key <sessionKey>')
+  .requiredOption('--run-id <runId>')
+  .option('--session-id <sessionId>')
+  .option('--result <result>', 'done|blocked|skipped', 'done')
+  .option('--unit-id <unitId>')
+  .option('--work-package <workPackage>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = completeWorker(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, agentId: options.agentId, sessionKey: options.sessionKey, runId: options.runId, sessionId: options.sessionId, result: options.result, unitId: options.unitId, workPackage: options.workPackage });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+evidence
+  .command('collect')
+  .requiredOption('--task-id <taskId>')
+  .requiredOption('--agent-id <agentId>')
+  .option('--run-id <runId>')
+  .option('--unit-id <unitId>')
+  .option('--session-key <sessionKey>')
+  .option('--session-id <sessionId>')
+  .option('--transcript <transcript>')
+  .option('--summary <summary>')
+  .option('--tool-result <toolResult>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--notes <notes>')
+  .option('--limit <limit>', 'transcript line limit', '40')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = collectEvidence(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, agentId: options.agentId, runId: options.runId, unitId: options.unitId, sessionKey: options.sessionKey, sessionId: options.sessionId, transcript: options.transcript, summary: options.summary, toolResults: options.toolResult, notes: options.notes, limit: Number(options.limit) });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+evidence
+  .command('merge')
+  .requiredOption('--task-id <taskId>')
+  .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--require-qa')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = mergeEvidence(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, requiredAgents: options.requiredAgent, requireQa: Boolean(options.requireQa) });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+report
+  .command('render')
+  .requiredOption('--task-id <taskId>')
+  .option('--record-events')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = renderReport(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { taskId: options.taskId, recordEvents: Boolean(options.recordEvents) });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+pipeline
+  .command('run')
+  .requiredOption('--title <title>')
+  .requiredOption('--description <description>')
+  .option('--scale <scale>', 'simple|normal|risky|large', 'normal')
+  .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--evidence-summary <agentEqSummary>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--require-qa')
+  .option('--auto-report')
+  .option('--record-feedback')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const payload = runPipeline(loadRuntime({ projectRoot: options.projectRoot, config: options.config }).paths, { title: options.title, description: options.description, scale: options.scale, requiredAgents: options.requiredAgent, evidenceSummaries: options.evidenceSummary, requireQa: Boolean(options.requireQa), autoReport: Boolean(options.autoReport), recordFeedback: Boolean(options.recordFeedback) });
+    printValue(payload, true);
   });
 
 program
   .command('run <workflowPath>')
   .description('Run a minimal sequential workflow file')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action(async (workflowPath, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    const result = await runWorkflow({
-      projectRoot: loaded.projectRoot,
-      config: loaded.config,
-      workflowPath,
-    });
+    const result = await runWorkflow({ projectRoot: loaded.projectRoot, config: loaded.config, workflowPath });
     if (options.json) {
       printValue({ ...result.record, savedPath: result.savedPath }, true);
       return;
@@ -334,13 +500,12 @@ program
 program
   .command('inspect <runIdOrPath>')
   .description('Inspect a saved run record')
-  .option('--config <path>', 'explicit config path')
-  .option('--project-root <path>', 'project root override')
-  .option('--json', 'JSON output')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
   .action((runIdOrPath, options) => {
     const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
-    const record = loadRunRecord(loaded.projectRoot, loaded.config, runIdOrPath);
-    printValue(record, true);
+    printValue(loadRunRecord(loaded.projectRoot, loaded.config, runIdOrPath), true);
   });
 
 program.parseAsync(process.argv).catch((error) => {

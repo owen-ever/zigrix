@@ -53,6 +53,12 @@ To also install OpenClaw skills from this checkout:
 - `zigrix rule get <path>`
 - `zigrix rule validate`
 - `zigrix rule render <templateKind> --context <json>`
+- `zigrix index-rebuild`
+- `zigrix task create/list/status/events/progress/stale/start/finalize/report`
+- `zigrix worker prepare/register/complete`
+- `zigrix evidence collect/merge`
+- `zigrix report render`
+- `zigrix pipeline run`
 - `zigrix run <workflowPath>`
 - `zigrix inspect <runIdOrPath>`
 

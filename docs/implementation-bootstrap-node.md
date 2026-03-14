@@ -60,10 +60,9 @@ It is a **Phase 1 bootstrap** that proves:
 - interactive `zigrix init`
 - user config + project config layered discovery beyond simple local file lookup
 - env/CLI source-map explain support
-- agent registry management commands
-- rule/template editing commands
-- runtime parity for task/worker/evidence/report/stale/pipeline
-- packaging / GitHub Release flow
+- rule/template editing commands beyond validate/render
+- doctor command parity
+- packaging / GitHub Release flow final polish
 
 ## Recommended next step
 

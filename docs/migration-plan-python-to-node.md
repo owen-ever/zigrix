@@ -21,16 +21,16 @@
 - 본체 배포 artefact 역할
 
 ## parity milestone
-1. config get/schema/validate
-2. init with path setup
-3. agent add/include/exclude
-4. rule get/set/edit/validate/render
-5. task create/list/status
-6. worker prepare/register/complete
-7. evidence collect/merge
-8. report render
-9. stale handling
-10. pipeline run
+1. config get/schema/validate ✅
+2. init with path setup ✅
+3. agent add/include/exclude ✅
+4. rule get/validate/render ✅ (`set/edit/diff` pending)
+5. task create/list/status ✅
+6. worker prepare/register/complete ✅
+7. evidence collect/merge ✅
+8. report render ✅
+9. stale handling ✅
+10. pipeline run ✅
 
 ## 삭제 기준
 아래가 충족되면 Python prototype 삭제 검토 가능:
