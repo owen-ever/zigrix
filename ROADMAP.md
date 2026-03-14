@@ -41,3 +41,4 @@ Zigrix는 아래 조건을 만족할 때 `10/10 open-source CLI`로 본다.
 - `docs/config-schema.md`
 - `docs/agent-model.md`
 - `docs/rule-model.md`
+- `docs/implementation-bootstrap-node.md`

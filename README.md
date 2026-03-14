@@ -17,6 +17,7 @@ It aims to turn ad-hoc agent delegation into a repeatable workflow with:
 - Python: **3.10+**
 - Primary distribution target: **GitHub Releases + install.sh**
 - Secondary distribution target: **PyPI / pipx / uv** (later)
+- Node bootstrap: **`node/` directory now exists for the config-first migration track**
 
 ## Quick start (source checkout)
 

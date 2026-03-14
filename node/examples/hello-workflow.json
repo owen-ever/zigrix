@@ -1,0 +1,13 @@
+{
+  "name": "hello-workflow",
+  "steps": [
+    {
+      "id": "say-hello",
+      "run": "echo hello from zigrix-node"
+    },
+    {
+      "id": "print-state-dir",
+      "run": "pwd"
+    }
+  ]
+}

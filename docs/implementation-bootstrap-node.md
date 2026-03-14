@@ -1,21 +1,68 @@
-# Node Bootstrap Implementation Tasks
+# Zigrix Node Bootstrap Implementation Status
 
-## First 10 tasks
-1. create `package.json` with `bin`, `type`, scripts
-2. create `tsconfig.json`
-3. create `src/cli/main.ts`
-4. create `src/config/schema.ts` (zod)
-5. create `src/config/load.ts` (defaults/user/project/env/flags merge)
-6. create `src/cli/config.ts` (`get`, `schema`, `validate`)
-7. create `src/cli/init.ts` (interactive path setup)
-8. create `src/agents/registry.ts` + `src/cli/agent.ts`
-9. create `src/rules/templates.ts` + `src/cli/rule.ts`
-10. create `vitest` smoke tests for config/agent/rule commands
+_Last updated: 2026-03-14_
 
-## First shippable milestone
-- `zigrix config schema`
-- `zigrix config get`
-- `zigrix config validate`
-- `zigrix init`
-- `zigrix agent list/add/include/exclude`
-- `zigrix rule list/get/render/validate`
+## What landed
+
+A first working Node/TypeScript bootstrap now exists under `node/`.
+
+Included in this bootstrap:
+- `config validate`
+- `config get [path]`
+- `config schema [path]`
+- `init --yes`
+- minimal sequential `run <workflowPath>`
+- `inspect <runIdOrPath>`
+- local JSON run persistence to `.zigrix/runs/`
+- vitest coverage for config validation + minimal workflow execution
+
+## Directory
+
+```text
+node/
+├─ package.json
+├─ tsconfig.json
+├─ README.md
+├─ examples/
+│  └─ hello-workflow.json
+├─ src/
+│  ├─ index.ts
+│  ├─ config/
+│  │  ├─ defaults.ts
+│  │  ├─ load.ts
+│  │  └─ schema.ts
+│  └─ runner/
+│     ├─ run.ts
+│     ├─ schema.ts
+│     └─ store.ts
+└─ tests/
+   ├─ config.test.ts
+   └─ run.test.ts
+```
+
+## Why this matters
+
+This is not full parity with the Python prototype.
+It is a **Phase 1 bootstrap** that proves:
+- Node CLI packaging is viable
+- config-first loading/validation works
+- local run persistence contract can exist independently of Python
+- a future runtime migration can proceed incrementally
+
+## Not done yet
+
+- interactive `zigrix init`
+- user config + project config layered discovery beyond simple local file lookup
+- env/CLI source-map explain support
+- agent registry management commands
+- rule/template editing commands
+- runtime parity for task/worker/evidence/report/stale/pipeline
+- packaging / GitHub Release flow
+
+## Recommended next step
+
+1. Promote `node/` bootstrap into the canonical migration track.
+2. Add `config explain` + richer config layering.
+3. Implement `agent list/add/include/exclude`.
+4. Add template placeholder validation/render preview.
+5. Start parity migration for task/evidence/report commands.
