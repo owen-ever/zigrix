@@ -33,7 +33,7 @@
 - version missing 금지
 
 ## operations needed
-- preview
+- preview/render ✅
 - diff against built-in
 - rollback to built-in
 - export/import

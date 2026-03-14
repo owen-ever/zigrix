@@ -17,6 +17,12 @@ All notable changes to Zigrix will be documented in this file.
   - `zigrix agent enable/disable`
   - `zigrix agent set-role`
 - Registry validation that blocks unknown participants/excluded members
+- Rule/template commands:
+  - `zigrix rule list`
+  - `zigrix rule get <path>`
+  - `zigrix rule validate`
+  - `zigrix rule render <templateKind> --context <json>`
+- Template placeholder validation and render support for built-in templates
 
 ## [0.1.0a0] - 2026-03-13
 

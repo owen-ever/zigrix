@@ -14,6 +14,8 @@ const agentSchema = z.object({
 
 const templateSchema = z.object({
   format: z.enum(['markdown', 'text']).default('markdown'),
+  version: z.number().int().positive(),
+  placeholders: z.array(z.string().min(1)).min(1),
   body: z.string().min(1),
 });
 

@@ -33,11 +33,15 @@ export const defaultConfig = {
   templates: {
     workerPrompt: {
       format: 'markdown',
-      body: '## Worker Assignment: {{taskId}}\n- scale: {{scale}}\n- description: {{description}}',
+      version: 1,
+      placeholders: ['taskId', 'title', 'scale', 'agentId', 'description'],
+      body: '## Worker Assignment: {{taskId}}\n- title: {{title}}\n- scale: {{scale}}\n- agent: {{agentId}}\n- description: {{description}}',
     },
     finalReport: {
       format: 'markdown',
-      body: '## Final Report: {{taskId}}\n- status: {{status}}',
+      version: 1,
+      placeholders: ['taskId', 'title', 'status', 'summary'],
+      body: '## Final Report: {{taskId}}\n- title: {{title}}\n- status: {{status}}\n- summary: {{summary}}',
     },
   },
   runtime: {

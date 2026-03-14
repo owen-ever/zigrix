@@ -45,13 +45,15 @@
 - `{{workPackage}}`
 - `{{unitId}}`
 
-## 예상 명령
+## 구현된 명령 (현재)
 - `zigrix rule list`
 - `zigrix rule get <path>`
+- `zigrix rule validate`
+- `zigrix rule render <templateKind> --context <json>`
+
+## 후속 명령 (예정)
 - `zigrix rule set <path> <json>`
 - `zigrix rule edit template.workerPrompt`
-- `zigrix rule validate`
-- `zigrix rule render template.workerPrompt --context context.json`
 - `zigrix rule diff`
 
 ## validation

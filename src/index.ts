@@ -12,6 +12,7 @@ import {
 } from './agents/registry.js';
 import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
+import { listRules, renderTemplate, validateRules } from './rules/templates.js';
 import { runWorkflow, summarizeRun } from './runner/run.js';
 import { loadRunRecord } from './runner/store.js';
 
@@ -103,6 +104,7 @@ program
   });
 
 const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
+const rule = program.command('rule').description('Inspect and validate rule/template assets');
 
 agent
   .command('list')
@@ -259,6 +261,53 @@ agent
       action: 'agent.set-role',
       agentId: result.agentId,
     });
+  });
+
+rule
+  .command('list')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(listRules(loaded.config), true);
+  });
+
+rule
+  .command('get <path>')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((dottedPath, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(getConfigValue(loaded.config, dottedPath) ?? null, true);
+  });
+
+rule
+  .command('validate')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(validateRules(loaded.config), true);
+  });
+
+rule
+  .command('render <templateKind>')
+  .requiredOption('--context <json>', 'inline JSON context object')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((templateKind, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const template = getConfigValue(loaded.config, `templates.${templateKind}`) as { body?: string } | undefined;
+    if (!template?.body) {
+      throw new Error(`template not found: ${templateKind}`);
+    }
+    const context = JSON.parse(options.context) as Record<string, unknown>;
+    const rendered = renderTemplate(templateKind, template.body, context);
+    printValue({ ok: true, templateKind, rendered }, true);
   });
 
 program

@@ -49,6 +49,10 @@ To also install OpenClaw skills from this checkout:
 - `zigrix agent enable`
 - `zigrix agent disable`
 - `zigrix agent set-role`
+- `zigrix rule list`
+- `zigrix rule get <path>`
+- `zigrix rule validate`
+- `zigrix rule render <templateKind> --context <json>`
 - `zigrix run <workflowPath>`
 - `zigrix inspect <runIdOrPath>`
 

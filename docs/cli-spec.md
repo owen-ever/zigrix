@@ -34,6 +34,11 @@ zigrix
 │  ├─ enable <agentId>
 │  ├─ disable <agentId>
 │  └─ set-role <agentId> --role <role>
+├─ rule
+│  ├─ list
+│  ├─ get <path>
+│  ├─ validate
+│  └─ render <templateKind> --context <json>
 ├─ index-rebuild
 ├─ task
 │  ├─ create --title --description [--scale] [--required-agent]
