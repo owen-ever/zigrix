@@ -12,6 +12,7 @@ Included in the current Node bootstrap:
 - `config get [path]`
 - `config schema [path]`
 - `init --yes`
+- `agent list/add/remove/include/exclude/enable/disable/set-role`
 - minimal sequential `run <workflowPath>`
 - `inspect <runIdOrPath>`
 - local JSON run persistence to `.zigrix/runs/`

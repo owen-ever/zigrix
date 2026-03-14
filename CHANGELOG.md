@@ -9,6 +9,15 @@ All notable changes to Zigrix will be documented in this file.
 - Moved the previous Python CLI into `legacy-python/` as a reference prototype
 - Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
 
+### Added
+- Agent registry and orchestration membership commands:
+  - `zigrix agent list`
+  - `zigrix agent add/remove`
+  - `zigrix agent include/exclude`
+  - `zigrix agent enable/disable`
+  - `zigrix agent set-role`
+- Registry validation that blocks unknown participants/excluded members
+
 ## [0.1.0a0] - 2026-03-13
 
 ### Added

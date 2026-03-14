@@ -32,16 +32,36 @@ export const zigrixConfigSchema = z.object({
     orchestration: z.object({
       participants: z.array(z.string()),
       excluded: z.array(z.string()),
-    }).superRefine((value, ctx) => {
-      const overlap = value.participants.filter((item) => value.excluded.includes(item));
-      for (const agentId of overlap) {
+    }),
+  }).superRefine((value, ctx) => {
+    const overlap = value.orchestration.participants.filter((item) => value.orchestration.excluded.includes(item));
+    for (const agentId of overlap) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `agent '${agentId}' cannot be both participant and excluded`,
+        path: ['orchestration', 'excluded'],
+      });
+    }
+
+    const knownAgents = new Set(Object.keys(value.registry));
+    for (const agentId of value.orchestration.participants) {
+      if (!knownAgents.has(agentId)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `agent '${agentId}' cannot be both participant and excluded`,
-          path: ['excluded'],
+          message: `participant '${agentId}' must exist in registry`,
+          path: ['orchestration', 'participants'],
         });
       }
-    }),
+    }
+    for (const agentId of value.orchestration.excluded) {
+      if (!knownAgents.has(agentId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `excluded agent '${agentId}' must exist in registry`,
+          path: ['orchestration', 'excluded'],
+        });
+      }
+    }
   }),
   rules: z.object({
     scales: z.record(z.string(), z.object({

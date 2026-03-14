@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 
-import { getConfigValue, loadConfig, writeDefaultConfig } from './config/load.js';
+import {
+  addAgent,
+  excludeAgent,
+  includeAgent,
+  listAgents,
+  removeAgent,
+  setAgentEnabled,
+  setAgentRole,
+} from './agents/registry.js';
+import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
 import { runWorkflow, summarizeRun } from './runner/run.js';
 import { loadRunRecord } from './runner/store.js';
@@ -12,6 +21,26 @@ function printValue(value: unknown, json = false): void {
     return;
   }
   console.log(value);
+}
+
+function requireConfigPath(configPath: string | null, projectRoot: string): string {
+  if (!configPath) {
+    throw new Error(`zigrix config not found under ${projectRoot}; run 'zigrix init --yes' first`);
+  }
+  return configPath;
+}
+
+function persistAndPrintMutation(params: {
+  configPath: string | null;
+  projectRoot: string;
+  nextConfig: Parameters<typeof writeConfigFile>[1];
+  json?: boolean;
+  action: string;
+  agentId: string;
+}): void {
+  const targetPath = requireConfigPath(params.configPath, params.projectRoot);
+  writeConfigFile(targetPath, params.nextConfig);
+  printValue({ ok: true, action: params.action, agentId: params.agentId, configPath: targetPath }, params.json);
 }
 
 const program = new Command();
@@ -71,6 +100,165 @@ program
     }
     const targetPath = writeDefaultConfig(options.projectRoot, Boolean(options.force));
     printValue({ ok: true, path: targetPath }, options.json);
+  });
+
+const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
+
+agent
+  .command('list')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const agents = listAgents(loaded.config);
+    printValue(agents, true);
+  });
+
+agent
+  .command('add')
+  .requiredOption('--id <agentId>', 'agent id / registry key')
+  .requiredOption('--role <role>', 'agent role')
+  .requiredOption('--runtime <runtime>', 'agent runtime type')
+  .option('--label <label>', 'display label')
+  .option('--include', 'also add agent to active participants')
+  .option('--disabled', 'create the agent in disabled state')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = addAgent(loaded.config, {
+      id: options.id,
+      role: options.role,
+      runtime: options.runtime,
+      label: options.label,
+      enabled: !options.disabled,
+      include: Boolean(options.include),
+    });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.add',
+      agentId: result.agentId,
+    });
+  });
+
+agent
+  .command('remove')
+  .argument('<agentId>', 'agent id')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((agentId, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = removeAgent(loaded.config, agentId);
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.remove',
+      agentId: result.agentId,
+    });
+  });
+
+agent
+  .command('include')
+  .argument('<agentId>', 'agent id')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((agentId, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = includeAgent(loaded.config, agentId);
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.include',
+      agentId: result.agentId,
+    });
+  });
+
+agent
+  .command('exclude')
+  .argument('<agentId>', 'agent id')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((agentId, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = excludeAgent(loaded.config, agentId);
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.exclude',
+      agentId: result.agentId,
+    });
+  });
+
+agent
+  .command('enable')
+  .argument('<agentId>', 'agent id')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((agentId, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = setAgentEnabled(loaded.config, agentId, true);
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.enable',
+      agentId: result.agentId,
+    });
+  });
+
+agent
+  .command('disable')
+  .argument('<agentId>', 'agent id')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((agentId, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = setAgentEnabled(loaded.config, agentId, false);
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.disable',
+      agentId: result.agentId,
+    });
+  });
+
+agent
+  .command('set-role')
+  .argument('<agentId>', 'agent id')
+  .requiredOption('--role <role>', 'new role')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((agentId, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const result = setAgentRole(loaded.config, agentId, options.role);
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.set-role',
+      agentId: result.agentId,
+    });
   });
 
 program

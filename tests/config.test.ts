@@ -24,6 +24,19 @@ describe('zigrix config schema', () => {
     })).toThrow(/cannot be both participant and excluded/);
   });
 
+  it('rejects unknown orchestration members', () => {
+    expect(() => zigrixConfigSchema.parse({
+      ...defaultConfig,
+      agents: {
+        registry: {},
+        orchestration: {
+          participants: ['ghost-agent'],
+          excluded: [],
+        },
+      },
+    })).toThrow(/must exist in registry/);
+  });
+
   it('reads nested dotted paths', () => {
     expect(getConfigValue(zigrixConfigSchema.parse(defaultConfig), 'rules.completion.requireQa')).toBe(true);
     expect(getConfigValue(zigrixConfigSchema.parse(defaultConfig), 'missing.path')).toBeUndefined();

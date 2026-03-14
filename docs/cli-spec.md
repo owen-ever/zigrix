@@ -21,6 +21,19 @@ zigrix
 ├─ init
 ├─ doctor
 ├─ version
+├─ config
+│  ├─ validate
+│  ├─ get [path]
+│  └─ schema [path]
+├─ agent
+│  ├─ list
+│  ├─ add --id --role --runtime [--label] [--include] [--disabled]
+│  ├─ remove <agentId>
+│  ├─ include <agentId>
+│  ├─ exclude <agentId>
+│  ├─ enable <agentId>
+│  ├─ disable <agentId>
+│  └─ set-role <agentId> --role <role>
 ├─ index-rebuild
 ├─ task
 │  ├─ create --title --description [--scale] [--required-agent]

@@ -24,15 +24,15 @@ registry에는 있지만 orchestration에서 제외한 agent 목록.
 - 필요 시 secondary roles 확장 가능
 - orchestration rule은 agent label이 아니라 role 중심으로 정의하는 것이 안전함
 
-## 예상 명령
+## 구현된 명령 (현재)
 - `zigrix agent list`
-- `zigrix agent add`
-- `zigrix agent remove`
-- `zigrix agent include`
-- `zigrix agent exclude`
-- `zigrix agent enable`
-- `zigrix agent disable`
-- `zigrix agent set-role`
+- `zigrix agent add --id --role --runtime [--label] [--include] [--disabled]`
+- `zigrix agent remove <agentId>`
+- `zigrix agent include <agentId>`
+- `zigrix agent exclude <agentId>`
+- `zigrix agent enable <agentId>`
+- `zigrix agent disable <agentId>`
+- `zigrix agent set-role <agentId> --role <role>`
 
 ## selection policy
 - scale rule은 required/optional roles를 정의

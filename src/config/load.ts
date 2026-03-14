@@ -94,6 +94,13 @@ export function loadConfig(options?: { projectRoot?: string; configPath?: string
   return { config: result, configPath, projectRoot };
 }
 
+export function writeConfigFile(targetPath: string, config: ZigrixConfig): string {
+  const resolvedPath = path.resolve(targetPath);
+  fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  fs.writeFileSync(resolvedPath, `${JSON.stringify(zigrixConfigSchema.parse(config), null, 2)}\n`, 'utf8');
+  return resolvedPath;
+}
+
 export function writeDefaultConfig(targetDir: string, force = false): string {
   const projectRoot = path.resolve(targetDir);
   const targetPath = path.join(projectRoot, 'zigrix.config.json');
@@ -101,8 +108,7 @@ export function writeDefaultConfig(targetDir: string, force = false): string {
     throw new Error(`config already exists: ${targetPath}`);
   }
   fs.mkdirSync(projectRoot, { recursive: true });
-  fs.writeFileSync(targetPath, `${JSON.stringify(defaultConfig, null, 2)}\n`, 'utf8');
-  return targetPath;
+  return writeConfigFile(targetPath, structuredClone(defaultConfig) as unknown as ZigrixConfig);
 }
 
 export function getConfigValue(config: ZigrixConfig, dottedPath?: string): unknown {
