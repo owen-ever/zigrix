@@ -2,6 +2,13 @@
 
 All notable changes to Zigrix will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Promoted the Node/TypeScript implementation to the repository root
+- Moved the previous Python CLI into `legacy-python/` as a reference prototype
+- Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
+
 ## [0.1.0a0] - 2026-03-13
 
 ### Added

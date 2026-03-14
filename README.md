@@ -9,24 +9,24 @@ It aims to turn ad-hoc agent delegation into a repeatable workflow with:
 - machine-readable JSON output
 - installable CLI UX
 - OpenClaw skill-pack integration
+- config-first orchestration runtime
 
 ## Current status
 
 - Stage: **alpha foundations**
+- Main implementation: **Node/TypeScript at repository root**
+- Legacy reference: **Python prototype under `legacy-python/`**
 - Supported first: **macOS, Linux**
-- Python: **3.10+**
 - Primary distribution target: **GitHub Releases + install.sh**
-- Secondary distribution target: **PyPI / pipx / uv** (later)
-- Node bootstrap: **`node/` directory now exists for the config-first migration track**
+- Secondary distribution target: **npm publish / standalone release assets**
 
 ## Quick start (source checkout)
 
 ```bash
 ./install.sh
-zigrix doctor
-zigrix init
-zigrix task create --title "First task" --description "Boot Zigrix project state"
-zigrix task list
+zigrix config validate --json
+zigrix init --yes
+zigrix run examples/hello-workflow.json --json
 ```
 
 To also install OpenClaw skills from this checkout:
@@ -35,64 +35,52 @@ To also install OpenClaw skills from this checkout:
 ./install.sh --with-openclaw-skills
 ```
 
-## Command examples
+## Current implemented Node surface
 
-```bash
-zigrix version
-zigrix doctor --json
-zigrix init
-zigrix task create --title "Implement installer" --description "Define install flow" --scale normal --required-agent pro-zig --required-agent qa-zig
-zigrix task progress --task-id TASK-20260313-001 --actor pro-zig --message "Kickoff complete" --json
-zigrix worker prepare --task-id TASK-20260313-001 --agent-id qa-zig --description "Run QA checks" --json
-zigrix worker register --task-id TASK-20260313-001 --agent-id qa-zig --session-key agent:test:qa --run-id run-001 --json
-zigrix evidence collect --task-id TASK-20260313-001 --agent-id qa-zig --summary "QA passed" --json
-zigrix evidence merge --task-id TASK-20260313-001 --require-qa --json
-zigrix report render --task-id TASK-20260313-001 --record-events --json
-zigrix task stale --hours 24 --json
-zigrix task events TASK-20260313-001 --json
-zigrix index-rebuild
-```
+- `zigrix config validate`
+- `zigrix config get [path]`
+- `zigrix config schema [path]`
+- `zigrix init --yes`
+- `zigrix run <workflowPath>`
+- `zigrix inspect <runIdOrPath>`
 
-## Current command surface
+## Legacy Python surface
 
-- `zigrix init`
-- `zigrix doctor`
-- `zigrix version`
-- `zigrix task create`
-- `zigrix task list`
-- `zigrix task status`
-- `zigrix task events`
-- `zigrix task progress`
-- `zigrix task stale`
-- `zigrix task start`
-- `zigrix task finalize`
-- `zigrix task report`
-- `zigrix worker prepare`
-- `zigrix worker register`
-- `zigrix worker complete`
-- `zigrix evidence collect`
-- `zigrix evidence merge`
-- `zigrix report render`
-- `zigrix pipeline run`
-- `zigrix index-rebuild`
-
-See:
-- `docs/cli-spec.md`
-- `docs/architecture.md`
-- `docs/openclaw-integration.md`
-- `ROADMAP.md`
+The previous Python CLI remains under `legacy-python/` for reference and parity migration.
+It is **not** the primary implementation anymore.
 
 ## Repository layout
 
 ```text
 zigrix/
-├─ src/zigrix/          # CLI package
-├─ skills/              # OpenClaw skill pack
-├─ tests/               # smoke / unit tests
-├─ docs/                # product and architecture docs
-├─ install.sh           # local/release bootstrap installer
-└─ .github/workflows/   # CI / release workflows
+├─ src/                # Node/TS main implementation
+├─ tests/              # Node tests
+├─ examples/           # example workflows
+├─ legacy-python/      # Python reference prototype
+├─ skills/             # OpenClaw skill pack
+├─ docs/               # product / architecture / migration docs
+├─ package.json        # Node package metadata
+├─ tsconfig.json       # TypeScript build config
+├─ install.sh          # source-checkout installer
+└─ .github/workflows/  # CI / release workflows
 ```
+
+## Migration note
+
+The repository has been intentionally flipped so that:
+- **Node is the product path**
+- **Python is the legacy/reference path**
+
+This keeps packaging, CI, docs, and contributor expectations aligned with the actual target architecture.
+
+## Key docs
+
+- `ROADMAP.md`
+- `docs/node-configurable-platform-plan-2026-03-13.md`
+- `docs/node-architecture.md`
+- `docs/config-schema.md`
+- `docs/implementation-bootstrap-node.md`
+- `docs/migration-plan-python-to-node.md`
 
 ## Goals
 

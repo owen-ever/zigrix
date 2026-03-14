@@ -7,9 +7,9 @@
 ```
 
 This will:
-- create a dedicated virtual environment under `~/.local/share/zigrix/venv`
-- install Zigrix into that environment
-- expose `zigrix` at `~/.local/bin/zigrix`
+- run `npm install`
+- build the Node/TypeScript CLI
+- expose `zigrix` via `npm link`
 
 ## With OpenClaw skill install
 
@@ -23,10 +23,16 @@ This additionally symlinks implemented Zigrix skills into `~/.openclaw/skills/` 
 
 ```bash
 zigrix --version
-zigrix doctor
-zigrix init
+zigrix config validate --json
+zigrix init --yes
+zigrix run examples/hello-workflow.json --json
 ```
+
+## Legacy Python note
+
+The previous Python implementation remains under `legacy-python/` for migration reference only.
+It is no longer the default install path.
 
 ## Future release install path
 
-Primary release target is GitHub Releases. The final installer contract will support tagged release assets and version pinning.
+Primary release target is GitHub Releases. The release path will center on Node-built assets plus `install.sh`, with optional skill bundle support.

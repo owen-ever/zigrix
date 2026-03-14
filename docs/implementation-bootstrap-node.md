@@ -4,9 +4,10 @@ _Last updated: 2026-03-14_
 
 ## What landed
 
-A first working Node/TypeScript bootstrap now exists under `node/`.
+A first working Node/TypeScript bootstrap now exists at the **repository root**.
+The previous Python implementation has been moved under `legacy-python/` as a reference prototype.
 
-Included in this bootstrap:
+Included in the current Node bootstrap:
 - `config validate`
 - `config get [path]`
 - `config schema [path]`
@@ -19,12 +20,7 @@ Included in this bootstrap:
 ## Directory
 
 ```text
-node/
-├─ package.json
-├─ tsconfig.json
-├─ README.md
-├─ examples/
-│  └─ hello-workflow.json
+zigrix/
 ├─ src/
 │  ├─ index.ts
 │  ├─ config/
@@ -35,9 +31,17 @@ node/
 │     ├─ run.ts
 │     ├─ schema.ts
 │     └─ store.ts
-└─ tests/
-   ├─ config.test.ts
-   └─ run.test.ts
+├─ tests/
+│  ├─ config.test.ts
+│  └─ run.test.ts
+├─ examples/
+│  └─ hello-workflow.json
+├─ package.json
+├─ tsconfig.json
+└─ legacy-python/
+   ├─ src/
+   ├─ tests/
+   └─ pyproject.toml
 ```
 
 ## Why this matters
@@ -47,7 +51,8 @@ It is a **Phase 1 bootstrap** that proves:
 - Node CLI packaging is viable
 - config-first loading/validation works
 - local run persistence contract can exist independently of Python
-- a future runtime migration can proceed incrementally
+- the repository can now treat Node as the default product path
+- runtime migration can proceed incrementally with Python kept as a reference
 
 ## Not done yet
 
@@ -61,8 +66,8 @@ It is a **Phase 1 bootstrap** that proves:
 
 ## Recommended next step
 
-1. Promote `node/` bootstrap into the canonical migration track.
-2. Add `config explain` + richer config layering.
-3. Implement `agent list/add/include/exclude`.
-4. Add template placeholder validation/render preview.
-5. Start parity migration for task/evidence/report commands.
+1. Add `config explain` + richer config layering.
+2. Implement `agent list/add/include/exclude`.
+3. Add template placeholder validation/render preview.
+4. Start parity migration for task/evidence/report commands.
+5. Replace remaining Python-first docs/workflows with Node-first ones.

@@ -3,7 +3,7 @@
   "steps": [
     {
       "id": "say-hello",
-      "run": "echo hello from zigrix-node"
+      "run": "echo hello from zigrix"
     },
     {
       "id": "print-state-dir",

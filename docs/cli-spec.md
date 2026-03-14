@@ -1,5 +1,7 @@
 # CLI Specification
 
+> Note: repository root is now the Node/TypeScript implementation path. The previous Python CLI lives under `legacy-python/` for reference/parity migration only.
+
 ## Design goals
 - predictable command groups
 - low surprise text UX

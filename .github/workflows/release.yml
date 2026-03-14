@@ -15,21 +15,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: '22'
+          cache: npm
 
       - name: Build distributions
         run: |
-          python -m pip install --upgrade pip build
-          python -m build
-          sha256sum dist/* install.sh > checksums.txt
+          npm ci
+          npm run build
+          tar -czf zigrix-dist.tgz dist package.json package-lock.json README.md LICENSE examples src tests docs install.sh skills legacy-python
+          sha256sum zigrix-dist.tgz install.sh > checksums.txt
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*
+            zigrix-dist.tgz
             install.sh
             checksums.txt

@@ -1,11 +1,11 @@
 {
-  "name": "@zigrix/cli-node",
+  "name": "zigrix",
   "version": "0.1.0-alpha.0",
   "private": true,
   "type": "module",
-  "description": "Node/TypeScript bootstrap for Zigrix config-first orchestration CLI",
+  "description": "Node/TypeScript config-first orchestration CLI for Zigrix",
   "bin": {
-    "zigrix-node": "./dist/index.js"
+    "zigrix": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

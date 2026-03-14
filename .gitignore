@@ -28,10 +28,7 @@ htmlcov/
 # Build artifacts
 build/
 dist/
-node/dist/
-node/node_modules/
-node/tests/**/*.js
-node/tests/**/*.d.ts
+node_modules/
 coverage/
 *.egg-info/
 .eggs/

@@ -2,9 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_BASE="${ZIGRIX_INSTALL_BASE:-$HOME/.local/share/zigrix}"
 BIN_DIR="${ZIGRIX_BIN_DIR:-$HOME/.local/bin}"
-VENV_DIR="$INSTALL_BASE/venv"
 OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 WITH_OPENCLAW_SKILLS=0
 
@@ -12,8 +10,8 @@ usage() {
   cat <<'EOF'
 Usage: ./install.sh [--with-openclaw-skills]
 
-Installs Zigrix into an app-owned virtual environment and exposes the `zigrix`
-command at ~/.local/bin/zigrix by default.
+Builds the Node/TypeScript Zigrix CLI from this checkout and exposes the
+`zigrix` command via `npm link`.
 EOF
 }
 
@@ -34,40 +32,26 @@ for arg in "$@"; do
   esac
 done
 
-PYTHON=""
-for candidate in python3.13 python3.12 python3.11 python3.10; do
-  if command -v "$candidate" >/dev/null 2>&1; then
-    PYTHON="$(command -v "$candidate")"
-    break
-  fi
-done
-if [[ -z "$PYTHON" ]]; then
-  if command -v python3 >/dev/null 2>&1; then
-    PY_VER="$(python3 -c 'import sys; print(sys.version_info[:2])')"
-    if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)' 2>/dev/null; then
-      PYTHON="$(command -v python3)"
-    fi
-  fi
-fi
-if [[ -z "$PYTHON" ]]; then
-  echo "Error: Python 3.10+ is required but not found on PATH." >&2
-  echo "Searched: python3.13, python3.12, python3.11, python3.10, python3" >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: Node.js 22+ is required but not found on PATH." >&2
   exit 1
 fi
-echo "Using Python: $PYTHON ($($PYTHON --version 2>&1))"
-
-mkdir -p "$INSTALL_BASE" "$BIN_DIR"
-"$PYTHON" -m venv "$VENV_DIR"
-"$VENV_DIR/bin/python" -m pip install --upgrade pip >/dev/null
-
-if ls "$REPO_ROOT"/dist/zigrix-*.whl >/dev/null 2>&1; then
-  WHEEL="$(ls -1 "$REPO_ROOT"/dist/zigrix-*.whl | head -n 1)"
-  "$VENV_DIR/bin/pip" install --force-reinstall "$WHEEL"
-else
-  "$VENV_DIR/bin/pip" install --force-reinstall "$REPO_ROOT"
+if ! command -v npm >/dev/null 2>&1; then
+  echo "Error: npm is required but not found on PATH." >&2
+  exit 1
 fi
 
-ln -sfn "$VENV_DIR/bin/zigrix" "$BIN_DIR/zigrix"
+NODE_MAJOR="$(node -p "process.versions.node.split('.')[0]")"
+if [[ "$NODE_MAJOR" -lt 22 ]]; then
+  echo "Error: Node.js 22+ is required. Found: $(node -v)" >&2
+  exit 1
+fi
+
+mkdir -p "$BIN_DIR"
+cd "$REPO_ROOT"
+npm install
+npm run build
+npm link
 
 if [[ "$WITH_OPENCLAW_SKILLS" == "1" ]]; then
   mkdir -p "$OPENCLAW_HOME/skills"
@@ -80,10 +64,11 @@ fi
 
 cat <<EOF
 Zigrix install complete.
-- executable: $BIN_DIR/zigrix
-- venv: $VENV_DIR
+- executable: $(command -v zigrix)
+- node: $(node -v)
 
 Next steps:
-  zigrix doctor
-  zigrix init
+  zigrix config validate --json
+  zigrix init --yes
+  zigrix run examples/hello-workflow.json --json
 EOF

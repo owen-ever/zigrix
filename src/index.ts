@@ -16,8 +16,8 @@ function printValue(value: unknown, json = false): void {
 
 const program = new Command();
 program
-  .name('zigrix-node')
-  .description('Zigrix Node/TypeScript bootstrap CLI')
+  .name('zigrix')
+  .description('Zigrix Node/TypeScript orchestration CLI')
   .version('0.1.0-alpha.0');
 
 const config = program.command('config').description('Inspect Zigrix config');
