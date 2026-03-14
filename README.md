@@ -41,6 +41,9 @@ To also install OpenClaw skills from this checkout:
 - `zigrix config get [path]`
 - `zigrix config schema [path]`
 - `zigrix init --yes`
+- `zigrix doctor`
+- `zigrix reset config --path <path> --yes`
+- `zigrix reset state --yes`
 - `zigrix agent list`
 - `zigrix agent add`
 - `zigrix agent remove`
@@ -49,10 +52,8 @@ To also install OpenClaw skills from this checkout:
 - `zigrix agent enable`
 - `zigrix agent disable`
 - `zigrix agent set-role`
-- `zigrix rule list`
-- `zigrix rule get <path>`
-- `zigrix rule validate`
-- `zigrix rule render <templateKind> --context <json>`
+- `zigrix rule list/get/validate/render/set/diff/reset`
+- `zigrix template list/get/set/diff/reset/render`
 - `zigrix index-rebuild`
 - `zigrix task create/list/status/events/progress/stale/start/finalize/report`
 - `zigrix worker prepare/register/complete`
@@ -94,6 +95,9 @@ This keeps packaging, CI, docs, and contributor expectations aligned with the ac
 ## Key docs
 
 - `ROADMAP.md`
+- `docs/v1-scope.md`
+- `docs/non-goals.md`
+- `docs/open-source-readiness-checklist.md`
 - `docs/node-configurable-platform-plan-2026-03-13.md`
 - `docs/node-architecture.md`
 - `docs/config-schema.md`

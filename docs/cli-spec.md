@@ -7,6 +7,7 @@
 - low surprise text UX
 - strict `--json` support for automation
 - project-local state by default
+- recoverable mutation flows
 
 ## Global flags
 
@@ -24,7 +25,13 @@ zigrix
 ├─ config
 │  ├─ validate
 │  ├─ get [path]
-│  └─ schema [path]
+│  ├─ schema [path]
+│  ├─ set <path> --value <jsonOrString>
+│  ├─ diff <path>
+│  └─ reset --path <path> --yes
+├─ reset
+│  ├─ config [--path <path>] --yes
+│  └─ state --yes
 ├─ agent
 │  ├─ list
 │  ├─ add --id --role --runtime [--label] [--include] [--disabled]
@@ -38,7 +45,17 @@ zigrix
 │  ├─ list
 │  ├─ get <path>
 │  ├─ validate
-│  └─ render <templateKind> --context <json>
+│  ├─ render <templateKind> --context <json>
+│  ├─ set <path> --value <jsonOrString>
+│  ├─ diff <path>
+│  └─ reset --path <path> --yes
+├─ template
+│  ├─ list
+│  ├─ get <name>
+│  ├─ set <name> --body <body> [--format] [--version] [--placeholders]
+│  ├─ diff <name>
+│  ├─ reset <name> --yes
+│  └─ render <name> --context <json>
 ├─ index-rebuild
 ├─ task
 │  ├─ create --title --description [--scale] [--required-agent]
@@ -63,87 +80,31 @@ zigrix
    └─ run --title --description [--scale] [--required-agent] [--evidence-summary] [--require-qa] [--auto-report] [--record-feedback]
 ```
 
-## Implemented foundation commands
+## Implemented commands
 
 ### `zigrix init`
 Creates `.zigrix/` runtime directories in the target project and writes default config when needed.
 
-Text output:
-- `Initialized Zigrix state at <path>`
-
-JSON output shape:
-```json
-{
-  "ok": true,
-  "projectRoot": "/path/to/project",
-  "projectState": "/path/to/project/.zigrix"
-}
-```
-
 ### `zigrix doctor`
-Inspects Python, paths, OpenClaw presence, and basic readiness.
+Inspects Node version, config presence, write access, state directory, and OpenClaw readiness.
 
-Exit codes:
-- `0` ready
-- `1` warnings/blockers present
+### `zigrix config set/diff/reset`
+Allows safe config mutation and default-based recovery. Reset requires `--yes`.
 
-### `zigrix task create`
-Creates a task JSON file under `.zigrix/tasks/` and appends a ledger event.
+### `zigrix reset config`
+Restores a config subtree from `defaultConfig`. Useful when rules/templates are accidentally removed or corrupted.
 
-Required flags:
-- `--title`
-- `--description`
+### `zigrix reset state`
+Deletes and recreates `.zigrix/` runtime state, then rebuilds the index. This is a recoverability tool, not a config mutation tool.
 
-Optional flags:
-- `--scale simple|normal|risky|large`
-- `--required-agent <agent>` (repeatable)
+### `zigrix rule set/diff/reset`
+Edits policy paths under `rules.*`, shows drift from defaults, and can restore defaults.
 
-### `zigrix task list`
-Lists task records from `.zigrix/tasks/`.
+### `zigrix template set/diff/reset/render`
+Allows direct editing and recovery of built-in templates while keeping schema validation on write.
 
-### `zigrix task status <task_id>`
-Prints one task.
-
-### `zigrix task events [task_id]`
-Prints append-only ledger events, optionally filtered to one task.
-
-### `zigrix task progress`
-Appends a `progress_report` event and refreshes the task `updatedAt` timestamp.
-
-### `zigrix task stale`
-Finds stale `IN_PROGRESS` tasks by `updatedAt`. With `--apply`, marks them `BLOCKED` and records `task_blocked` events.
-
-### `zigrix task start|finalize|report <task_id>`
-Applies a status transition.
-
-### `zigrix worker prepare`
-Generates a worker prompt and stores it under `.zigrix/prompts/`.
-
-### `zigrix worker register`
-Persists worker dispatch/session metadata into the task record.
-
-### `zigrix worker complete`
-Marks worker result and reports whether evidence is still missing.
-
-### `zigrix evidence collect`
-Stores one agent's evidence under `.zigrix/evidence/<taskId>/`.
-Supports transcript JSONL extraction or explicit summary/tool results.
-
-### `zigrix evidence merge`
-Builds `_merged.json` for a task and reports completeness against required agents.
-
-### `zigrix report render`
-Renders a user-facing completion summary from merged evidence. With `--record-events`, appends `user_report_prepared` and `feedback_requested`.
-
-### `zigrix pipeline run`
-Creates a task, collects evidence, merges, and optionally renders a report in a single command.
-
-## Planned next-wave commands
-- `zigrix release doctor`
-- `zigrix skill install`
-- `zigrix pipeline dispatch` (with live agent spawning)
-
-These are intentionally deferred until the current orchestration surface is hardened.
+### Task / worker / evidence / report / pipeline
+These commands now cover the current local orchestration parity surface used by the Python prototype.
 
 ## Output rules
 - human mode: concise, outcome-first

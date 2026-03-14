@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+
 import { Command } from 'commander';
 
 import {
@@ -10,9 +12,12 @@ import {
   setAgentEnabled,
   setAgentRole,
 } from './agents/registry.js';
+import { diffValues, getValueAtPath, parseConfigInput, resetValueAtPath, setValueAtPath } from './config/mutate.js';
+import { defaultConfig } from './config/defaults.js';
 import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
+import { gatherDoctor, renderDoctorText } from './doctor.js';
 import { collectEvidence, mergeEvidence } from './orchestration/evidence.js';
 import { runPipeline } from './orchestration/pipeline.js';
 import { renderReport } from './orchestration/report.js';
@@ -20,7 +25,7 @@ import { completeWorker, prepareWorker, registerWorker } from './orchestration/w
 import { listRules, renderTemplate, validateRules, type TemplateKind } from './rules/templates.js';
 import { runWorkflow, summarizeRun } from './runner/run.js';
 import { loadRunRecord } from './runner/store.js';
-import { resolvePaths } from './state/paths.js';
+import { ensureProjectState, resolvePaths } from './state/paths.js';
 import {
   applyStalePolicy,
   createTask,
@@ -67,6 +72,25 @@ function persistAndPrintMutation(params: {
   printValue({ ok: true, action: params.action, agentId: params.agentId, configPath: targetPath }, params.json);
 }
 
+function persistConfigMutation(params: {
+  configPath: string | null;
+  projectRoot: string;
+  nextConfig: ZigrixConfig;
+  json?: boolean;
+  action: string;
+  path?: string;
+}): void {
+  const targetPath = requireConfigPath(params.configPath, params.projectRoot);
+  writeConfigFile(targetPath, params.nextConfig);
+  printValue({ ok: true, action: params.action, path: params.path ?? null, configPath: targetPath }, params.json);
+}
+
+function requireYes(yes?: boolean, action = 'perform this action'): void {
+  if (!yes) {
+    throw new Error(`refusing to ${action} without --yes`);
+  }
+}
+
 function loadRuntime(options: { projectRoot?: string; config?: string }) {
   const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
   return { ...loaded, paths: resolvePaths(loaded.projectRoot, loaded.config) };
@@ -80,7 +104,9 @@ program
 
 const config = program.command('config').description('Inspect Zigrix config');
 const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
-const rule = program.command('rule').description('Inspect and validate rule/template assets');
+const rule = program.command('rule').description('Inspect and validate rule assets');
+const template = program.command('template').description('Inspect and modify prompt templates');
+const reset = program.command('reset').description('Restore default config sections or clean runtime state');
 const task = program.command('task').description('Task operations');
 const worker = program.command('worker').description('Worker lifecycle operations');
 const evidence = program.command('evidence').description('Evidence collection and merge operations');
@@ -122,6 +148,56 @@ config
     printValue(value, options.json ?? true);
   });
 
+config
+  .command('set <path>')
+  .requiredOption('--value <jsonOrString>')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((dottedPath, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const nextConfig = setValueAtPath(loaded.config as unknown as Record<string, unknown>, dottedPath, parseConfigInput(options.value)) as unknown as ZigrixConfig;
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig,
+      json: options.json,
+      action: 'config.set',
+      path: dottedPath,
+    });
+  });
+
+config
+  .command('diff <path>')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--json', 'JSON output')
+  .action((dottedPath, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(diffValues(getValueAtPath(loaded.config, dottedPath), getValueAtPath(defaultConfig, dottedPath)), true);
+  });
+
+config
+  .command('reset')
+  .option('--path <path>', 'dotted config path to restore from defaults', 'all')
+  .option('--config <path>', 'explicit config path')
+  .option('--project-root <path>', 'project root override')
+  .option('--yes', 'confirm destructive reset')
+  .option('--json', 'JSON output')
+  .action((options) => {
+    requireYes(options.yes, 'reset config');
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const nextConfig = resetValueAtPath(loaded.config, options.path);
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      projectRoot: loaded.projectRoot,
+      nextConfig,
+      json: options.json,
+      action: 'config.reset',
+      path: options.path,
+    });
+  });
+
 program
   .command('init')
   .description('Write default zigrix.config.json')
@@ -130,11 +206,27 @@ program
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .action((options) => {
-    if (!options.yes) throw new Error('interactive init not implemented yet; use --yes for bootstrap mode');
+    requireYes(options.yes, 'initialize Zigrix');
     const targetPath = writeDefaultConfig(options.projectRoot, Boolean(options.force));
     const loaded = loadRuntime({ projectRoot: options.projectRoot, config: targetPath });
     rebuildIndex(loaded.paths);
     printValue({ ok: true, path: targetPath, projectState: loaded.paths.projectState }, options.json);
+  });
+
+program
+  .command('doctor')
+  .description('Inspect environment, config, and runtime readiness')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const loaded = loadRuntime({ projectRoot: options.projectRoot, config: options.config });
+    const payload = gatherDoctor(loaded, loaded.paths);
+    if (options.json) {
+      printValue(payload, true);
+      return;
+    }
+    console.log(renderDoctorText(payload));
   });
 
 agent
@@ -261,6 +353,154 @@ rule
     if (!template?.body) throw new Error(`template not found: ${templateKind}`);
     const rendered = renderTemplate(templateKind as TemplateKind, template.body, JSON.parse(options.context) as Record<string, unknown>);
     printValue({ ok: true, templateKind, rendered }, true);
+  });
+
+rule
+  .command('set <path>')
+  .requiredOption('--value <jsonOrString>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((dottedPath, options) => {
+    if (!dottedPath.startsWith('rules.')) throw new Error('rule path must start with rules.');
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const nextConfig = setValueAtPath(loaded.config as unknown as Record<string, unknown>, dottedPath, parseConfigInput(options.value)) as unknown as ZigrixConfig;
+    persistConfigMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig, json: options.json, action: 'rule.set', path: dottedPath });
+  });
+
+rule
+  .command('diff <path>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((dottedPath, options) => {
+    if (!dottedPath.startsWith('rules.')) throw new Error('rule path must start with rules.');
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(diffValues(getValueAtPath(loaded.config, dottedPath), getValueAtPath(defaultConfig, dottedPath)), true);
+  });
+
+rule
+  .command('reset')
+  .requiredOption('--path <path>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--yes')
+  .option('--json')
+  .action((options) => {
+    if (!options.path.startsWith('rules.')) throw new Error('rule path must start with rules.');
+    requireYes(options.yes, 'reset rule config');
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const nextConfig = resetValueAtPath(loaded.config, options.path);
+    persistConfigMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig, json: options.json, action: 'rule.reset', path: options.path });
+  });
+
+template
+  .command('list')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(Object.keys(loaded.config.templates).map((name) => ({ name, path: `templates.${name}` })), true);
+  });
+
+template
+  .command('get <name>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((name, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(getValueAtPath(loaded.config, `templates.${name}`) ?? null, true);
+  });
+
+template
+  .command('set <name>')
+  .requiredOption('--body <body>')
+  .option('--format <format>', 'markdown|text')
+  .option('--version <version>')
+  .option('--placeholders <jsonArray>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((name, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const current = getValueAtPath(loaded.config, `templates.${name}`) as Record<string, unknown> | undefined;
+    if (!current) throw new Error(`template not found: ${name}`);
+    const nextTemplate = {
+      ...current,
+      body: options.body,
+      ...(options.format ? { format: options.format } : {}),
+      ...(options.version ? { version: Number(options.version) } : {}),
+      ...(options.placeholders ? { placeholders: parseConfigInput(options.placeholders) } : {}),
+    };
+    const nextConfig = setValueAtPath(loaded.config as unknown as Record<string, unknown>, `templates.${name}`, nextTemplate) as unknown as ZigrixConfig;
+    persistConfigMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig, json: options.json, action: 'template.set', path: `templates.${name}` });
+  });
+
+template
+  .command('diff <name>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((name, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    printValue(diffValues(getValueAtPath(loaded.config, `templates.${name}`), getValueAtPath(defaultConfig, `templates.${name}`)), true);
+  });
+
+template
+  .command('reset <name>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--yes')
+  .option('--json')
+  .action((name, options) => {
+    requireYes(options.yes, 'reset template config');
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const nextConfig = resetValueAtPath(loaded.config, `templates.${name}`);
+    persistConfigMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig, json: options.json, action: 'template.reset', path: `templates.${name}` });
+  });
+
+template
+  .command('render <name>')
+  .requiredOption('--context <json>')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--json')
+  .action((name, options) => {
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const item = getValueAtPath(loaded.config, `templates.${name}`) as { body?: string } | undefined;
+    if (!item?.body) throw new Error(`template not found: ${name}`);
+    printValue({ ok: true, name, rendered: renderTemplate(name as TemplateKind, item.body, JSON.parse(options.context) as Record<string, unknown>) }, true);
+  });
+
+reset
+  .command('config')
+  .option('--path <path>', 'dotted config path to restore from defaults', 'all')
+  .option('--config <path>')
+  .option('--project-root <path>')
+  .option('--yes')
+  .option('--json')
+  .action((options) => {
+    requireYes(options.yes, 'reset config');
+    const loaded = loadConfig({ projectRoot: options.projectRoot, configPath: options.config });
+    const nextConfig = resetValueAtPath(loaded.config, options.path);
+    persistConfigMutation({ configPath: loaded.configPath, projectRoot: loaded.projectRoot, nextConfig, json: options.json, action: 'reset.config', path: options.path });
+  });
+
+reset
+  .command('state')
+  .option('--project-root <path>')
+  .option('--config <path>')
+  .option('--yes')
+  .option('--json')
+  .action((options) => {
+    requireYes(options.yes, 'reset runtime state');
+    const loaded = loadRuntime({ projectRoot: options.projectRoot, config: options.config });
+    fs.rmSync(loaded.paths.projectState, { recursive: true, force: true });
+    ensureProjectState(loaded.paths);
+    const index = rebuildIndex(loaded.paths);
+    printValue({ ok: true, action: 'reset.state', projectState: loaded.paths.projectState, index }, true);
   });
 
 program

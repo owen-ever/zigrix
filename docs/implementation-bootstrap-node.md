@@ -8,11 +8,14 @@ A first working Node/TypeScript bootstrap now exists at the **repository root**.
 The previous Python implementation has been moved under `legacy-python/` as a reference prototype.
 
 Included in the current Node bootstrap:
-- `config validate`
-- `config get [path]`
-- `config schema [path]`
+- `config validate/get/schema/set/diff/reset`
 - `init --yes`
+- `doctor`
+- `reset config/state`
 - `agent list/add/remove/include/exclude/enable/disable/set-role`
+- `rule list/get/validate/render/set/diff/reset`
+- `template list/get/set/diff/reset/render`
+- task/worker/evidence/report/pipeline/index-rebuild parity surface
 - minimal sequential `run <workflowPath>`
 - `inspect <runIdOrPath>`
 - local JSON run persistence to `.zigrix/runs/`
@@ -60,9 +63,8 @@ It is a **Phase 1 bootstrap** that proves:
 - interactive `zigrix init`
 - user config + project config layered discovery beyond simple local file lookup
 - env/CLI source-map explain support
-- rule/template editing commands beyond validate/render
-- doctor command parity
-- npm publish (currently private; needs registry decision)
+- richer config explain/source tracing
+- npm publish (deliberately deferred to manual next step)
 
 ## Recommended next step
 
