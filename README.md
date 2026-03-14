@@ -31,7 +31,7 @@ zigrix run examples/hello-workflow.json --json
 - validate, render, edit, diff, and reset rules/templates
 - create and track tasks with append-only event history
 - manage worker/evidence/report lifecycle
-- detect stale tasks and recover state
+- detect stale tasks, verify state consistency, and recover state
 - run smokeable local orchestration flows
 
 ## Recovery-first operations

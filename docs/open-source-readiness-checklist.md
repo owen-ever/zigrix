@@ -12,6 +12,7 @@
 - [x] smoke script passes
 - [x] release dry-run pack passes
 - [x] doctor output is actionable
+- [x] runtime consistency check exists (`zigrix state check`)
 
 ## OSS Experience
 - [x] README quickstart works on clean machine assumptions

@@ -28,6 +28,7 @@ All notable changes to Zigrix will be documented in this file.
 - Release hardening: `npm pack`, smoke script, CI dry-run pack, `files` boundary, `prebuild` clean
 - Doctor diagnostics plus safe reset flows for config/template/state recovery
 - Config/rule/template mutation surface (`set` / `diff` / `reset`) for Node CLI
+- Runtime consistency verification via `zigrix state check`
 
 ## [0.1.0a0] - 2026-03-13
 

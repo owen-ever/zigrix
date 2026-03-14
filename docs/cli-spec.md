@@ -32,6 +32,8 @@ zigrix
 ├─ reset
 │  ├─ config [--path <path>] --yes
 │  └─ state --yes
+├─ state
+│  └─ check
 ├─ agent
 │  ├─ list
 │  ├─ add --id --role --runtime [--label] [--include] [--disabled]
@@ -96,6 +98,9 @@ Restores a config subtree from `defaultConfig`. Useful when rules/templates are 
 
 ### `zigrix reset state`
 Deletes and recreates `.zigrix/` runtime state, then rebuilds the index. This is a recoverability tool, not a config mutation tool.
+
+### `zigrix state check`
+Verifies task/evidence/merged-state consistency so release smoke and operators can detect drift before it becomes a user-facing problem.
 
 ### `zigrix rule set/diff/reset`
 Edits policy paths under `rules.*`, shows drift from defaults, and can restore defaults.

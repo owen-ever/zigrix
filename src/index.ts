@@ -37,6 +37,7 @@ import {
   recordTaskProgress,
   updateTaskStatus,
 } from './state/tasks.js';
+import { verifyState } from './state/verify.js';
 
 const STATUS_MAP: Record<string, string> = {
   start: 'IN_PROGRESS',
@@ -107,6 +108,7 @@ const agent = program.command('agent').description('Manage Zigrix agent registry
 const rule = program.command('rule').description('Inspect and validate rule assets');
 const template = program.command('template').description('Inspect and modify prompt templates');
 const reset = program.command('reset').description('Restore default config sections or clean runtime state');
+const state = program.command('state').description('Inspect and verify local runtime state');
 const task = program.command('task').description('Task operations');
 const worker = program.command('worker').description('Worker lifecycle operations');
 const evidence = program.command('evidence').description('Evidence collection and merge operations');
@@ -501,6 +503,16 @@ reset
     ensureProjectState(loaded.paths);
     const index = rebuildIndex(loaded.paths);
     printValue({ ok: true, action: 'reset.state', projectState: loaded.paths.projectState, index }, true);
+  });
+
+state
+  .command('check')
+  .option('--project-root <path>')
+  .option('--config <path>')
+  .option('--json')
+  .action((options) => {
+    const loaded = loadRuntime({ projectRoot: options.projectRoot, config: options.config });
+    printValue(verifyState(loaded.paths), true);
   });
 
 program
