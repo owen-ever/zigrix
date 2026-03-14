@@ -7,9 +7,19 @@
   "bin": {
     "zigrix": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist .zigrix",
     "dev": "tsx src/index.ts",
+    "prebuild": "npm run clean",
+    "prepack": "npm run build",
+    "smoke": "node dist/index.js --version && node dist/index.js config validate --json",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

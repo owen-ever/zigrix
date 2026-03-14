@@ -31,3 +31,9 @@ jobs:
 
       - name: Build CLI
         run: npm run build
+
+      - name: Smoke test
+        run: npm run smoke
+
+      - name: Dry-run pack
+        run: npm pack --dry-run

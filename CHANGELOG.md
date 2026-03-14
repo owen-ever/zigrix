@@ -25,6 +25,7 @@ All notable changes to Zigrix will be documented in this file.
 - Template placeholder validation and render support for built-in templates
 - Node parity migration for task/worker/evidence/report/pipeline/index-rebuild commands
 - Node state/event/task persistence modules aligned with the legacy Python flow
+- Release hardening: `npm pack`, smoke script, CI dry-run pack, `files` boundary, `prebuild` clean
 
 ## [0.1.0a0] - 2026-03-13
 

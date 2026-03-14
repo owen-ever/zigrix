@@ -62,7 +62,7 @@ It is a **Phase 1 bootstrap** that proves:
 - env/CLI source-map explain support
 - rule/template editing commands beyond validate/render
 - doctor command parity
-- packaging / GitHub Release flow final polish
+- npm publish (currently private; needs registry decision)
 
 ## Recommended next step
 

@@ -21,17 +21,25 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Build distributions
+      - name: Install, build, test
         run: |
           npm ci
+          npm run test
           npm run build
-          tar -czf zigrix-dist.tgz dist package.json package-lock.json README.md LICENSE examples src tests docs install.sh skills legacy-python
-          sha256sum zigrix-dist.tgz install.sh > checksums.txt
+          npm run smoke
+
+      - name: Package
+        run: |
+          npm pack
+          mv zigrix-*.tgz zigrix-release.tgz
+          tar -czf zigrix-dist.tgz dist package.json package-lock.json README.md LICENSE examples install.sh skills
+          sha256sum zigrix-release.tgz zigrix-dist.tgz install.sh > checksums.txt
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            zigrix-release.tgz
             zigrix-dist.tgz
             install.sh
             checksums.txt
