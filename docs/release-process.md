@@ -7,7 +7,8 @@
 - no silent latest drift in installer behavior
 
 ## Planned release assets
-- Node build archive (`zigrix-dist.tgz` or equivalent)
+- npm package tarball (`zigrix-release.tgz`)
+- Node build archive (`zigrix-dist.tgz`)
 - `install.sh`
 - optional skill bundle archive
 - checksums

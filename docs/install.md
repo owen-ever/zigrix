@@ -23,6 +23,7 @@ This additionally symlinks implemented Zigrix skills into `~/.openclaw/skills/` 
 
 ```bash
 zigrix --version
+zigrix doctor
 zigrix config validate --json
 zigrix init --yes
 zigrix run examples/hello-workflow.json --json

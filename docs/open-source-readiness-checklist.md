@@ -2,27 +2,27 @@
 
 ## Product Surface
 - [x] command tree matches docs
-- [ ] config schema and defaults documented
-- [ ] state layout documented
+- [x] config schema and defaults documented
+- [x] state layout documented
 - [x] recovery/reset flow documented
-- [ ] known limitations documented
+- [x] known limitations documented
 
 ## Reliability
-- [ ] tests cover config/task/template/reset flows
-- [ ] smoke script passes
-- [ ] release dry-run pack passes
-- [ ] doctor output is actionable
+- [x] tests cover config/task/template/reset flows
+- [x] smoke script passes
+- [x] release dry-run pack passes
+- [x] doctor output is actionable
 
 ## OSS Experience
-- [ ] README quickstart works on clean machine assumptions
-- [ ] CONTRIBUTING is current
-- [ ] SECURITY/SUPPORT guidance exists
-- [ ] examples provide first success path
-- [ ] issue/pr templates exist
+- [x] README quickstart works on clean machine assumptions
+- [x] CONTRIBUTING is current
+- [x] SECURITY/SUPPORT guidance exists
+- [x] examples provide first success path
+- [x] issue/pr templates exist
 
 ## Release
-- [ ] changelog updated
-- [ ] release process documented
-- [ ] release assets defined
-- [ ] versioning policy documented
-- [ ] npm publish postponed/documented for next step
+- [x] changelog updated
+- [x] release process documented
+- [x] release assets defined
+- [x] versioning policy documented
+- [x] npm publish postponed/documented for next step

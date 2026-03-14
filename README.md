@@ -1,123 +1,102 @@
 # Zigrix
 
-Zigrix is an **OpenClaw agent-oriented development orchestration CLI**.
+Zigrix is a **local-first orchestration CLI** for repeatable agent-assisted development workflows.
 
-It aims to turn ad-hoc agent delegation into a repeatable workflow with:
-
+It turns ad-hoc delegation into a file-backed, inspectable flow with:
 - project-local runtime state (`.zigrix/`)
-- task/event tracking
-- machine-readable JSON output
-- installable CLI UX
-- OpenClaw skill-pack integration
-- config-first orchestration runtime
+- task and event tracking
+- agent registry + participation control
+- rule/template validation and recovery
+- evidence merge + final report rendering
+- release-friendly Node/TypeScript packaging
 
 ## Current status
-
-- Stage: **alpha foundations**
+- Stage: **alpha, productization in progress**
 - Main implementation: **Node/TypeScript at repository root**
 - Legacy reference: **Python prototype under `legacy-python/`**
 - Supported first: **macOS, Linux**
-- Primary distribution target: **GitHub Releases + install.sh**
-- Secondary distribution target: **npm publish / standalone release assets**
+- Packaging path: **GitHub Releases + install.sh**, npm publish prepared for manual follow-up
 
-## Quick start (source checkout)
-
+## Quick start
 ```bash
 ./install.sh
-zigrix config validate --json
+zigrix doctor
 zigrix init --yes
 zigrix run examples/hello-workflow.json --json
 ```
 
-To also install OpenClaw skills from this checkout:
+## What Zigrix can do today
+- validate, inspect, change, diff, and reset config
+- manage agent registry and orchestration membership
+- validate, render, edit, diff, and reset rules/templates
+- create and track tasks with append-only event history
+- manage worker/evidence/report lifecycle
+- detect stale tasks and recover state
+- run smokeable local orchestration flows
 
+## Recovery-first operations
+Reset one broken template:
 ```bash
-./install.sh --with-openclaw-skills
+zigrix template reset workerPrompt --yes
 ```
 
-## Current implemented Node surface
-
-- `zigrix config validate`
-- `zigrix config get [path]`
-- `zigrix config schema [path]`
-- `zigrix init --yes`
-- `zigrix doctor`
-- `zigrix reset config --path <path> --yes`
-- `zigrix reset state --yes`
-- `zigrix agent list`
-- `zigrix agent add`
-- `zigrix agent remove`
-- `zigrix agent include`
-- `zigrix agent exclude`
-- `zigrix agent enable`
-- `zigrix agent disable`
-- `zigrix agent set-role`
-- `zigrix rule list/get/validate/render/set/diff/reset`
-- `zigrix template list/get/set/diff/reset/render`
-- `zigrix index-rebuild`
-- `zigrix task create/list/status/events/progress/stale/start/finalize/report`
-- `zigrix worker prepare/register/complete`
-- `zigrix evidence collect/merge`
-- `zigrix report render`
-- `zigrix pipeline run`
-- `zigrix run <workflowPath>`
-- `zigrix inspect <runIdOrPath>`
-
-## Legacy Python surface
-
-The previous Python CLI remains under `legacy-python/` for reference and parity migration.
-It is **not** the primary implementation anymore.
-
-## Repository layout
-
-```text
-zigrix/
-├─ src/                # Node/TS main implementation
-├─ tests/              # Node tests
-├─ examples/           # example workflows
-├─ legacy-python/      # Python reference prototype
-├─ skills/             # OpenClaw skill pack
-├─ docs/               # product / architecture / migration docs
-├─ package.json        # Node package metadata
-├─ tsconfig.json       # TypeScript build config
-├─ install.sh          # source-checkout installer
-└─ .github/workflows/  # CI / release workflows
+Reset all config back to defaults:
+```bash
+zigrix reset config --yes
 ```
 
-## Migration note
+Reset runtime state only:
+```bash
+zigrix reset state --yes
+```
 
-The repository has been intentionally flipped so that:
-- **Node is the product path**
-- **Python is the legacy/reference path**
-
-This keeps packaging, CI, docs, and contributor expectations aligned with the actual target architecture.
-
-## Key docs
-
-- `ROADMAP.md`
+## Documentation map
+- `docs/quickstart.md`
+- `docs/concepts.md`
+- `docs/runtime-flow.md`
+- `docs/state-layout.md`
+- `docs/troubleshooting.md`
 - `docs/v1-scope.md`
 - `docs/non-goals.md`
 - `docs/open-source-readiness-checklist.md`
-- `docs/node-configurable-platform-plan-2026-03-13.md`
-- `docs/node-architecture.md`
-- `docs/config-schema.md`
-- `docs/implementation-bootstrap-node.md`
-- `docs/migration-plan-python-to-node.md`
+- `docs/install.md`
+- `docs/release-process.md`
+- `docs/versioning.md`
+- `docs/known-limitations.md`
+- `docs/cli-spec.md`
 
-## Goals
+## Repository layout
+```text
+zigrix/
+├─ src/                # Node/TS main implementation
+├─ tests/              # test coverage
+├─ examples/           # example workflows
+├─ scripts/            # smoke / release helpers
+├─ docs/               # product + architecture docs
+├─ legacy-python/      # reference prototype only
+├─ skills/             # OpenClaw skill pack
+└─ .github/            # CI + issue/PR templates
+```
 
-1. Install in minutes
-2. Work consistently across macOS/Linux
-3. Keep human UX and agent UX both first-class
-4. Be OpenClaw-friendly without becoming OpenClaw-internal
-5. Ship a real release process, not a pile of scripts
+## Product stance
+- local-first
+- config-first
+- recoverable by default
+- OpenClaw-friendly, not OpenClaw-dependent in the core
+- stability before speculative expansion
 
-## Non-goals (for now)
-
+## Non-goals right now
+- hosted control plane
+- GUI/TUI product surface
+- generalized plugin SDK
+- automatic npm publish execution
 - Windows-first support
-- GUI/dashboard-first workflow
-- OpenClaw plugin implementation as the primary product
+
+## Contributing
+See `CONTRIBUTING.md`.
+
+## Security
+See `SECURITY.md`.
 
 ## License
-
 Apache-2.0
