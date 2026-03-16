@@ -5,6 +5,37 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+/**
+ * Normalize a legacy event to the standard envelope.
+ * - `timestamp` → `ts`
+ * - top-level `agentId`/`reason` → payload
+ */
+function normalizeEvent(raw: Record<string, unknown>): Record<string, unknown> {
+  const event = { ...raw };
+
+  // timestamp → ts
+  if ('timestamp' in event && !('ts' in event)) {
+    event.ts = event.timestamp;
+    delete event.timestamp;
+  }
+
+  // Ensure payload exists
+  if (!event.payload || typeof event.payload !== 'object') {
+    event.payload = {};
+  }
+  const payload = event.payload as Record<string, unknown>;
+
+  // Move top-level agentId/reason into payload if not already there
+  if ('agentId' in event && event.agentId !== undefined && !('agentId' in payload)) {
+    payload.agentId = event.agentId;
+  }
+  if ('reason' in event && event.reason !== undefined && !('reason' in payload)) {
+    payload.reason = event.reason;
+  }
+
+  return event;
+}
+
 export function appendEvent(eventsFile: string, event: Record<string, unknown>): Record<string, unknown> {
   const payload = { ...event, ts: event.ts ?? nowIso() };
   fs.mkdirSync(path.dirname(eventsFile), { recursive: true });
@@ -20,7 +51,7 @@ export function loadEvents(eventsFile: string): Array<Record<string, unknown>> {
     .flatMap((line) => {
       try {
         const parsed = JSON.parse(line) as Record<string, unknown>;
-        return [parsed];
+        return [normalizeEvent(parsed)];
       } catch {
         return [];
       }

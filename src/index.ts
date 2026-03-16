@@ -18,7 +18,9 @@ import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from 
 import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
 import { gatherDoctor, renderDoctorText } from './doctor.js';
+import { dispatchTask } from './orchestration/dispatch.js';
 import { collectEvidence, mergeEvidence } from './orchestration/evidence.js';
+import { finalizeTask } from './orchestration/finalize.js';
 import { runPipeline } from './orchestration/pipeline.js';
 import { renderReport } from './orchestration/report.js';
 import { completeWorker, prepareWorker, registerWorker } from './orchestration/worker.js';
@@ -41,7 +43,6 @@ import { verifyState } from './state/verify.js';
 
 const STATUS_MAP: Record<string, string> = {
   start: 'IN_PROGRESS',
-  finalize: 'DONE_PENDING_REPORT',
   report: 'REPORTED',
 };
 
@@ -575,18 +576,45 @@ program
 // ─── task ───────────────────────────────────────────────────────────────────
 
 task
+  .command('dispatch')
+  .description('Create a task with full orchestration metadata and boot prompt (replaces dev_dispatch.py)')
+  .requiredOption('--title <title>')
+  .requiredOption('--description <description>')
+  .requiredOption('--scale <scale>', 'simple|normal|risky|large')
+  .option('--project-dir <path>', 'target project directory')
+  .option('--requested-by <name>', 'who requested this task')
+  .option('--constraints <constraints>', 'task constraints')
+  .option('--config <path>')
+  .option('--base-dir <path>')
+  .option('--json')
+  .action((options) => {
+    const loaded = loadRuntime({ baseDir: options.baseDir, config: options.config });
+    const result = dispatchTask(loaded.paths, {
+      title: options.title,
+      description: options.description,
+      scale: options.scale,
+      projectDir: options.projectDir,
+      requestedBy: options.requestedBy,
+      constraints: options.constraints,
+    });
+    printValue(result, true);
+  });
+
+task
   .command('create')
   .requiredOption('--title <title>')
   .requiredOption('--description <description>')
   .option('--scale <scale>', 'simple|normal|risky|large', 'normal')
   .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--project-dir <path>', 'target project directory for this task')
+  .option('--requested-by <name>', 'who requested this task')
+  .option('--prefix <prefix>', 'task ID prefix (DEV|TEST)', 'DEV')
   .option('--config <path>')
   .option('--base-dir <path>')
   .option('--json')
   .action((options) => {
     const loaded = loadRuntime({ baseDir: options.baseDir, config: options.config });
-    const created = createTask(loaded.paths, { title: options.title, description: options.description, scale: options.scale, requiredAgents: options.requiredAgent, projectDir: options.projectDir });
+    const created = createTask(loaded.paths, { title: options.title, description: options.description, scale: options.scale, requiredAgents: options.requiredAgent, projectDir: options.projectDir, requestedBy: options.requestedBy, prefix: options.prefix });
     printValue(created, true);
   });
 
@@ -658,6 +686,27 @@ for (const [name, status] of Object.entries(STATUS_MAP)) {
       printValue(payload, true);
     });
 }
+
+task
+  .command('finalize <taskId>')
+  .description('Finalize a task: merge evidence, check units, optionally auto-report (replaces dev_finalize.py)')
+  .option('--auto-report', 'auto-transition to REPORTED if complete')
+  .option('--sec-issues', 'flag security issues (blocks auto-report)')
+  .option('--qa-issues', 'flag QA issues (blocks auto-report)')
+  .option('--config <path>')
+  .option('--base-dir <path>')
+  .option('--json')
+  .action((taskId, options) => {
+    const loaded = loadRuntime({ baseDir: options.baseDir, config: options.config });
+    const result = finalizeTask(loaded.paths, {
+      taskId,
+      autoReport: Boolean(options.autoReport),
+      secIssues: Boolean(options.secIssues),
+      qaIssues: Boolean(options.qaIssues),
+    });
+    if (!result) throw new Error(`task not found: ${taskId}`);
+    printValue(result, true);
+  });
 
 // ─── worker ─────────────────────────────────────────────────────────────────
 

@@ -4,13 +4,13 @@
 Accepted unless superseded here.
 
 ## D-001 Product identity
-- Decision: Zigrix is an **OpenClaw agent-oriented development orchestration CLI**.
-- Why: keeps scope narrow and aligned with the real operating environment.
+- Decision: Zigrix is a **multi-project parallel task orchestration CLI** for OpenClaw agent environments.
+- Why: keeps scope focused on the real operational model: multiple tasks across different projects running in parallel, managed centrally.
 
 ## D-002 Implementation language
 - Decision: the primary implementation is **Node/TypeScript at the repository root**.
 - Why: that is the live product path today.
-- Note: `legacy-python/` remains migration/reference material only.
+- Note: `legacy-python/` and `orchestration/scripts/*.py` are the migration source. Zigrix CLI replaces them.
 
 ## D-003 Primary distribution
 - Decision: first-class distribution is **GitHub Releases + install.sh**.
@@ -30,9 +30,13 @@ Accepted unless superseded here.
 
 ## D-007 Runtime state layout
 - Decision:
-  - project state: `<repo>/.zigrix/`
-  - config and cache layout may evolve, but project-local runtime state remains the main operator-visible surface
-- Why: keeps orchestration state inspectable and repo-local.
+  - Global base: `~/.zigrix/` (configurable via `ZIGRIX_HOME`)
+  - Tasks: `~/.zigrix/tasks/<taskId>.meta.json` + `<taskId>.md`
+  - Events: `~/.zigrix/tasks.jsonl`
+  - Evidence: `~/.zigrix/evidence/`
+  - Rules: `~/.zigrix/rules/`
+  - Index: `~/.zigrix/index.json` (derived projection)
+- Why: Zigrix manages multiple projects in parallel. Tasks are NOT project-bound. A global state directory is the correct model.
 
 ## D-008 Runtime version floor
 - Decision: require **Node.js 22+**.
@@ -72,3 +76,12 @@ Accepted unless superseded here.
 ## D-015 License direction
 - Decision: current default is **Apache-2.0**, pending dependency/license confirmation.
 - Why: clearer patent posture and better enterprise comfort than MIT for this category.
+
+## D-016 Task storage model
+- Decision: tasks use a **sidecar model**: `<taskId>.meta.json` (machine data) + `<taskId>.md` (human spec).
+- Why: aligns with `orchestration/MIGRATION-STRATEGY.md`. Machine data is JSON-parseable; human spec is editable markdown.
+- Compatibility: legacy `<taskId>.json` files are read with fallback.
+
+## D-017 Task ID format
+- Decision: default prefix is `DEV-` (format: `DEV-YYYYMMDD-NNN`). Supports `TEST-` and legacy `TASK-` prefixes.
+- Why: aligns with the orchestration convention already in production use.

@@ -1,93 +1,91 @@
 # Quickstart
 
 ## Goal
-Get from a fresh checkout to a Zigrix environment that OpenClaw agents can actually use.
+Get from a fresh checkout to a Zigrix environment that OpenClaw agents can use.
 
 ## Canonical target flow
-The intended operator experience is:
-
 ```text
 install
   -> zigrix onboard
   -> done
 ```
 
-Meaning:
-- the human operator installs Zigrix
-- the human operator runs `zigrix onboard`
-- after onboarding, day-to-day Zigrix usage belongs to OpenClaw agents
-- `zigrix configure` and `zigrix reset` exist for maintenance/recovery, not as the main happy path
-
-See `docs/onboarding-ownership-model.md` for the product-direction source of truth.
-
-## Current alpha reality
-The current implementation still uses `zigrix init` as the practical setup entrypoint.
-That is an implementation gap, not the intended long-term UX.
+After onboarding, day-to-day Zigrix usage belongs to OpenClaw agents.
 
 ## Prerequisites
 - Node.js 22+
 - npm 10+
 - macOS or Linux
 
-## Current alpha setup flow
-### 1) Install from source checkout
+## 1) Install from source
 ```bash
 ./install.sh
 ```
 
-### 2) Check environment
+## 2) Onboard
+```bash
+zigrix onboard --yes
+```
+
+This creates `~/.zigrix/` with config, task/evidence/rules directories.
+
+## 3) Check environment
 ```bash
 zigrix doctor
 ```
 
-### 3) Initialize a demo project
+## 4) Dispatch a task (agent usage)
 ```bash
-mkdir -p .scratch/zigrix-demo
-zigrix init --yes --project-root .scratch/zigrix-demo
-```
-
-### 4) Create a task
-```bash
-zigrix task create \
+zigrix task dispatch \
   --title "First task" \
-  --description "Verify local orchestration flow" \
-  --required-agent qa-zig \
-  --project-root .scratch/zigrix-demo \
+  --description "Verify orchestration flow" \
+  --scale simple \
   --json
 ```
 
-### 5) Collect evidence and render a report
-```bash
-zigrix evidence collect \
-  --task-id TASK-YYYYMMDD-001 \
-  --agent-id qa-zig \
-  --summary "Smoke passed" \
-  --project-root .scratch/zigrix-demo
+This returns a `proZigPrompt` for spawning the orchestrator agent.
 
+## 5) Low-level task flow (agent usage)
+```bash
+# Create a task
+zigrix task create \
+  --title "Manual task" \
+  --description "Test direct flow" \
+  --required-agent qa-zig \
+  --json
+
+# Collect evidence
+zigrix evidence collect \
+  --task-id DEV-YYYYMMDD-001 \
+  --agent-id qa-zig \
+  --summary "Smoke passed"
+
+# Merge and report
 zigrix evidence merge \
-  --task-id TASK-YYYYMMDD-001 \
-  --require-qa \
-  --project-root .scratch/zigrix-demo
+  --task-id DEV-YYYYMMDD-001 \
+  --require-qa
 
 zigrix report render \
-  --task-id TASK-YYYYMMDD-001 \
-  --project-root .scratch/zigrix-demo
+  --task-id DEV-YYYYMMDD-001
 ```
 
-## Recovery from mistakes
-Reset one template back to default:
+## 6) Finalize a task (agent usage)
 ```bash
-zigrix template reset workerPrompt --yes --project-root .scratch/zigrix-demo
+zigrix task finalize DEV-YYYYMMDD-001 --auto-report --json
 ```
 
-Reset runtime state only:
+## Recovery
+Reset one template:
 ```bash
-zigrix reset state --yes --project-root .scratch/zigrix-demo
+zigrix template reset workerPrompt --yes
+```
+
+Reset all runtime state:
+```bash
+zigrix reset state --yes
 ```
 
 ## Next reads
+- `docs/product-decisions.md`
+- `docs/cli-spec.md`
 - `docs/onboarding-ownership-model.md`
-- `docs/concepts.md`
-- `docs/runtime-flow.md`
-- `docs/state-layout.md`
-- `docs/troubleshooting.md`
