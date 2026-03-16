@@ -12,12 +12,14 @@ import {
   setAgentEnabled,
   setAgentRole,
 } from './agents/registry.js';
+import { runConfigure } from './configure.js';
 import { diffValues, getValueAtPath, parseConfigInput, resetValueAtPath, setValueAtPath } from './config/mutate.js';
 import { defaultConfig } from './config/defaults.js';
 import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
 import { gatherDoctor, renderDoctorText } from './doctor.js';
+import { runOnboard } from './onboard.js';
 import { dispatchTask } from './orchestration/dispatch.js';
 import { collectEvidence, mergeEvidence } from './orchestration/evidence.js';
 import { finalizeTask } from './orchestration/finalize.js';
@@ -123,24 +125,35 @@ program
   .description('Set up Zigrix for first use (creates ~/.zigrix, seeds rules, registers agents)')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
-  .action((options) => {
-    const baseDir = loadRuntime({}).paths.baseDir;
-    const configPath = writeDefaultConfig(undefined, Boolean(options.yes));
-    const loaded = loadRuntime({ config: configPath });
-    ensureBaseState(loaded.paths);
-    rebuildIndex(loaded.paths);
-    printValue({
-      ok: true,
-      action: 'onboard',
-      baseDir,
-      configPath,
-      paths: loaded.paths,
-      nextSteps: [
-        'Register agents: zigrix agent add --id <agentId> --role <role> --runtime openclaw --include',
-        'Seed rules: copy orchestration/rules/*.md to ~/.zigrix/rules/',
-        'Verify: zigrix doctor --json',
-      ],
-    }, options.json ?? true);
+  .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .action(async (options) => {
+    const result = await runOnboard({
+      yes: Boolean(options.yes),
+      projectDir: options.projectDir,
+      silent: Boolean(options.json),
+    });
+    printValue(result, options.json ?? true);
+  });
+
+// ─── configure ──────────────────────────────────────────────────────────────
+
+program
+  .command('configure')
+  .description('Reconfigure agents, rules, PATH, skills, or workspace settings')
+  .option('--section <section>', 'reconfigure specific section (agents|rules|workspace|path|skills), repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--projects-base-dir <path>', 'set projects base directory')
+  .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--yes', 'non-interactive confirmation')
+  .option('--json', 'JSON output')
+  .action(async (options) => {
+    const result = await runConfigure({
+      sections: options.section.length > 0 ? options.section : undefined,
+      yes: Boolean(options.yes),
+      projectDir: options.projectDir,
+      projectsBaseDir: options.projectsBaseDir,
+      silent: Boolean(options.json),
+    });
+    printValue(result, options.json ?? true);
   });
 
 // ─── init (deprecated) ─────────────────────────────────────────────────────

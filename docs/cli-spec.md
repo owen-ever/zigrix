@@ -29,6 +29,7 @@ Advanced / exceptional flows:
 ```text
 zigrix
 ├─ onboard [--yes] [--json]
+├─ configure [--section <section>] [--projects-base-dir <path>] [--project-dir <path>] [--yes] [--json]
 ├─ init (DEPRECATED → use onboard)
 ├─ doctor [--json]
 ├─ version
@@ -98,7 +99,10 @@ zigrix
 ## Key commands
 
 ### `zigrix onboard`
-Creates `~/.zigrix/`, writes default config, seeds directories. Primary human entrypoint.
+Creates `~/.zigrix/`, writes default config, seeds directories, stabilizes PATH (symlink if needed), registers skill packs into OpenClaw. Primary human entrypoint.
+
+### `zigrix configure`
+Reconfigures one or more sections after initial onboarding. Sections: `agents`, `rules`, `workspace`, `path`, `skills`. Supports `--section <name>` for targeted reconfiguration. Use `--projects-base-dir <path>` to set the workspace base directory.
 
 ### `zigrix task dispatch`
 Replaces `dev_dispatch.py`. Creates task with full orchestration metadata (workPackages, executionUnits, selectionHints), generates boot prompt for pro-zig, and writes dispatch prompt file.

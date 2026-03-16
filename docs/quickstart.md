@@ -27,11 +27,27 @@ After onboarding, day-to-day Zigrix usage belongs to OpenClaw agents.
 zigrix onboard --yes
 ```
 
-This creates `~/.zigrix/` with config, task/evidence/rules directories.
+This:
+- Creates `~/.zigrix/` with default config and directories
+- Detects OpenClaw and imports agents from `openclaw.json`
+- Seeds rule files from `orchestration/rules/`
+- Ensures `zigrix` is reachable from PATH (creates symlink if needed)
+- Registers zigrix skill packs into `~/.openclaw/skills/`
 
 ## 3) Check environment
 ```bash
 zigrix doctor
+```
+
+## 3.5) Reconfigure (optional)
+```bash
+# Re-import agents, re-register skills, etc.
+zigrix configure --yes
+
+# Or target specific sections
+zigrix configure --section agents
+zigrix configure --section skills
+zigrix configure --section workspace --projects-base-dir ~/my-projects
 ```
 
 ## 4) Dispatch a task (agent usage)

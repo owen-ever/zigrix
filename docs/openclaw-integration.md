@@ -34,39 +34,77 @@ metadata:
 This means OpenClaw can mark the skill ready only when the Zigrix binary exists on a PATH visible to the OpenClaw gateway/runtime.
 
 ## Onboarding contract for OpenClaw environments
-When OpenClaw is present, `zigrix onboard` should cover these as first-class setup steps:
-1. ensure `zigrix` is reachable from the gateway-visible PATH
-2. register Zigrix skills so they are loadable by OpenClaw
-3. verify readiness after setup
+
+When OpenClaw is present, `zigrix onboard` automatically covers:
+
+1. **PATH stabilization** — ensures `zigrix` is reachable from the gateway-visible PATH. If not found, creates a symlink in `~/.local/bin/` and warns if that directory isn't in PATH.
+2. **Skill registration** — symlinks all bundled skill packs (`skills/zigrix-*`) into `~/.openclaw/skills/`. Idempotent: skips existing symlinks that already point to the correct source.
+3. **Agent import** — reads `openclaw.json`, filters out `main`, and registers remaining agents into the zigrix config with their roles and themes.
+4. **Readiness verification** — `zigrix doctor` reports OpenClaw detection status, skill dir presence, PATH reachability, and rule file counts.
 
 Optional:
 - append Zigrix helper context into workspace notes such as `TOOLS.md`
 
-## Current alpha installation from source checkout
+## Current integrated surface (agent-facing)
 
-```bash
-./install.sh --with-openclaw-skills
-```
+### Task orchestration
+- `zigrix task dispatch` — creates task with full orchestration metadata and boot prompt (replaces `dev_dispatch.py`)
+- `zigrix task finalize` — merges evidence, checks execution units, auto-reports (replaces `dev_finalize.py`)
+- `zigrix task create/status/list/events/progress/stale/start/report`
 
-## Current integrated surface
-- `zigrix task create/status/events/progress/stale`
+### Worker lifecycle
 - `zigrix worker prepare/register/complete`
+
+### Evidence and reporting
 - `zigrix evidence collect/merge`
 - `zigrix report render`
-- `zigrix doctor`
-- `zigrix init`
 
-These are primarily **agent-facing operational surfaces** plus current alpha setup commands.
+### Pipeline
+- `zigrix pipeline run` — high-level create → evidence → merge → report flow
 
-## Current gap vs target UX
-Current alpha still exposes setup mainly through `install.sh`, `zigrix doctor`, and `zigrix init`.
-The intended public UX is:
-- install
-- `zigrix onboard`
-- agent-driven usage
-- `zigrix configure` / `zigrix reset` only for advanced maintenance or recovery
+### Setup and maintenance
+- `zigrix onboard` — first-time setup (human-facing)
+- `zigrix configure` — reconfigure agents, rules, workspace, PATH, skills
+- `zigrix doctor` — environment and readiness inspection
+- `zigrix reset config/state` — recovery
+
+## Reconfiguration
+
+`zigrix configure` supports section-targeted reconfiguration:
+
+```bash
+# Reconfigure everything
+zigrix configure
+
+# Only re-register skills
+zigrix configure --section skills
+
+# Only re-stabilize PATH
+zigrix configure --section path
+
+# Re-import agents from openclaw.json
+zigrix configure --section agents
+
+# Set projects base directory
+zigrix configure --section workspace --projects-base-dir ~/projects
+```
+
+## Installation
+
+### From source checkout
+```bash
+./install.sh --with-openclaw-skills
+zigrix onboard
+```
+
+### Target public flow
+```bash
+npm install -g zigrix
+zigrix onboard
+```
 
 ## Planned future integration
-- richer skill set
-- installer-assisted onboarding and skill updates
+- richer skill set (dispatch, finalize skills)
+- installer-assisted skill updates
 - optional companion plugin
+- dedicated dashboard

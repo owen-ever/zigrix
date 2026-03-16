@@ -1,13 +1,14 @@
 # Zigrix
 
-Zigrix is a **local-first orchestration CLI** for repeatable agent-assisted development workflows.
+Zigrix is a **multi-project parallel task orchestration CLI** for agent-assisted development workflows.
 
 It turns ad-hoc delegation into a file-backed, inspectable flow with:
-- project-local runtime state (`.zigrix/`)
-- task and event tracking
+- global runtime state (`~/.zigrix/`) — tasks are not project-bound
+- task dispatch and finalization with full orchestration metadata
 - agent registry + participation control
 - rule/template validation and recovery
 - evidence merge + final report rendering
+- OpenClaw integration (skill registration + PATH stabilization)
 - release-friendly Node/TypeScript packaging
 
 ## Current status
@@ -16,7 +17,6 @@ It turns ad-hoc delegation into a file-backed, inspectable flow with:
 - Legacy reference: **Python prototype under `legacy-python/`**
 - Supported first: **macOS, Linux**
 - Packaging path: **GitHub Releases + install.sh**, npm publish prepared for manual follow-up
-- Publish gate: `npm run publish:check`
 
 ## Intended user model
 - **Human operator:** install Zigrix, run `zigrix onboard`, and stop there unless recovery or advanced maintenance is needed.
@@ -26,28 +26,33 @@ It turns ad-hoc delegation into a file-backed, inspectable flow with:
 See `docs/onboarding-ownership-model.md` for the product-direction source of truth.
 
 ## Quick start
-### Target UX
+
 ```bash
+# Install and onboard (one-time human setup)
 ./install.sh
 zigrix onboard
+
+# Verify readiness
+zigrix doctor
 ```
 
-### Current alpha flow
-```bash
-./install.sh
-zigrix doctor
-zigrix init --yes
-zigrix run examples/hello-workflow.json --json
-```
+`zigrix onboard` will:
+1. Create `~/.zigrix/` with default config
+2. Detect OpenClaw and import agents from `openclaw.json`
+3. Seed rule files from `orchestration/rules/`
+4. Ensure `zigrix` is reachable from PATH (creates symlink if needed)
+5. Register zigrix skill packs into OpenClaw's `~/.openclaw/skills/`
 
 ## What Zigrix can do today
+- **dispatch** tasks with full orchestration metadata (replaces `dev_dispatch.py`)
+- **finalize** tasks with evidence merge and execution unit checks (replaces `dev_finalize.py`)
 - validate, inspect, change, diff, and reset config
 - manage agent registry and orchestration membership
 - validate, render, edit, diff, and reset rules/templates
 - create and track tasks with append-only event history
 - manage worker/evidence/report lifecycle
 - detect stale tasks, verify state consistency, and recover state
-- run smokeable local orchestration flows
+- **configure** agents, rules, PATH, skills, and workspace after initial setup
 
 ## Recovery-first operations
 Reset one broken template:
@@ -68,31 +73,31 @@ zigrix reset state --yes
 ## Documentation map
 - `docs/quickstart.md`
 - `docs/onboarding-ownership-model.md`
+- `docs/product-decisions.md`
+- `docs/cli-spec.md`
+- `docs/openclaw-integration.md`
 - `docs/concepts.md`
 - `docs/runtime-flow.md`
 - `docs/state-layout.md`
 - `docs/troubleshooting.md`
 - `docs/v1-scope.md`
 - `docs/non-goals.md`
-- `docs/open-source-readiness-checklist.md`
 - `docs/install.md`
 - `docs/release-process.md`
 - `docs/versioning.md`
 - `docs/known-limitations.md`
 - `docs/npm-publish-manual.md`
-- `docs/release-notes-template.md`
-- `docs/cli-spec.md`
 
 ## Repository layout
 ```text
 zigrix/
 ├─ src/                # Node/TS main implementation
 ├─ tests/              # test coverage
+├─ skills/             # OpenClaw skill packs
 ├─ examples/           # example workflows
 ├─ scripts/            # smoke / release helpers
 ├─ docs/               # product + architecture docs
 ├─ legacy-python/      # reference prototype only
-├─ skills/             # OpenClaw skill pack
 └─ .github/            # CI + issue/PR templates
 ```
 

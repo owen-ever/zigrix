@@ -6,48 +6,55 @@ The intended public flow is:
 ```text
 install
   -> zigrix onboard
+  -> done
 ```
 
-Meaning install should only make the CLI available; onboarding should complete the environment setup.
+Install makes the CLI available. Onboarding completes environment setup including PATH stabilization, skill registration, and agent import.
 
 See `docs/onboarding-ownership-model.md` for the ownership model and `docs/product-decisions.md` for the accepted decisions.
 
-## Current foundation path (source checkout)
+## From source checkout
 
 ```bash
 ./install.sh
+zigrix onboard
 ```
 
-This currently:
-- runs `npm install`
-- builds the Node/TypeScript CLI
-- exposes `zigrix` via `npm link`
+`install.sh` performs:
+- `npm install`
+- `npm run build`
+- `npm link` (exposes `zigrix` globally)
 
-## Current OpenClaw skill install path
+### With OpenClaw skills (legacy flag)
 
 ```bash
 ./install.sh --with-openclaw-skills
 ```
 
-This additionally symlinks implemented Zigrix skills into `~/.openclaw/skills/` when available.
+Note: `zigrix onboard` now handles skill registration automatically when OpenClaw is detected. The `--with-openclaw-skills` flag remains for backward compatibility.
 
-## Important gap in current alpha
-Install is **not yet equivalent to onboarding**.
+## What onboard does
 
-Current gaps include:
-- gateway-visible PATH readiness for `zigrix`
-- guaranteed OpenClaw skill registration by default
-- interactive first-run setup for workspace, agents, and rule presets
+`zigrix onboard` covers:
+1. Creates `~/.zigrix/` base directory and default config
+2. Detects OpenClaw (`~/.openclaw/`) and reads `openclaw.json`
+3. Imports agents (filters out `main`, registers with roles)
+4. Seeds rule files from `orchestration/rules/`
+5. **PATH stabilization** — if `zigrix` isn't in PATH, creates a symlink in `~/.local/bin/`
+6. **Skill registration** — symlinks `skills/zigrix-*` into `~/.openclaw/skills/`
 
-These gaps are expected to move under `zigrix onboard`.
-
-## Current verify flow
+## Verify flow
 ```bash
 zigrix --version
 zigrix doctor
 zigrix config validate --json
-zigrix init --yes
-zigrix run examples/hello-workflow.json --json
+```
+
+## Reconfigure after install
+```bash
+zigrix configure            # all sections
+zigrix configure --section agents   # just agents
+zigrix configure --section skills   # just skills
 ```
 
 ## Legacy Python note
@@ -57,4 +64,4 @@ It is no longer the default install path.
 
 ## Future release install path
 
-Primary release target is GitHub Releases plus `install.sh`, with `npm install zigrix` as the secondary public install path once onboarding and release flow stabilize.
+Primary release target is GitHub Releases plus `install.sh`, with `npm install -g zigrix` as the secondary public install path once onboarding and release flow stabilize.
