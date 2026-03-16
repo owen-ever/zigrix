@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
@@ -410,41 +409,40 @@ export function registerSkills(openclawHome: string): SkillRegistrationResult {
 
 // ─── Interactive agent selection ──────────────────────────────────────────────
 
+/**
+ * Interactive agent picker using @inquirer/prompts checkbox.
+ * Space to toggle, Enter to confirm. All agents pre-selected by default.
+ */
 export async function promptAgentSelection(
   agents: OpenClawAgent[],
 ): Promise<OpenClawAgent[]> {
   if (agents.length === 0) return [];
 
-  console.log('\nAvailable agents from openclaw.json:');
-  agents.forEach((agent, i) => {
-    const theme = agent.identity?.theme ?? 'unknown';
-    const name = agent.name ?? agent.id;
-    console.log(`  ${i + 1}. ${agent.id} — ${name} (${theme})`);
-  });
+  try {
+    const { checkbox } = await import('@inquirer/prompts');
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+    const choices = agents.map((agent) => {
+      const theme = agent.identity?.theme ?? 'unknown';
+      const name = agent.name ?? agent.id;
+      return {
+        name: `${agent.id} — ${name} (${theme})`,
+        value: agent.id,
+        checked: true,
+      };
+    });
 
-  return new Promise((resolve) => {
-    rl.question(
-      '\nSelect agents to register (comma-separated numbers, e.g. 1,3) or Enter for all: ',
-      (answer) => {
-        rl.close();
-        const trimmed = answer.trim();
-        if (!trimmed) {
-          resolve(agents);
-          return;
-        }
-        const indices = trimmed
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10) - 1)
-          .filter((idx) => idx >= 0 && idx < agents.length);
-        resolve(indices.map((idx) => agents[idx]));
-      },
-    );
-  });
+    const selected = await checkbox({
+      message: 'Select agents to register (space to toggle, enter to confirm):',
+      choices,
+    });
+
+    const selectedSet = new Set(selected);
+    return agents.filter((a) => selectedSet.has(a.id));
+  } catch {
+    // Fallback: if inquirer is unavailable or stdin is not a TTY, select all
+    console.log('ℹ️  Non-interactive mode — selecting all agents.');
+    return agents;
+  }
 }
 
 // ─── Ensure config (idempotent) ───────────────────────────────────────────────
