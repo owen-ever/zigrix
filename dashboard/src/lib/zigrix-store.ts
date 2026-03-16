@@ -425,15 +425,13 @@ function buildTaskSnapshot(
       latestTitle = candidate.payload.title as string;
   }
 
-  const sortedEvents = taskEvents
-    .map((e, idx) => ({ ...e, __idx: idx }))
-    .sort((a, b) => {
-      const tsCmp = String(b.ts || '').localeCompare(String(a.ts || ''));
-      if (tsCmp !== 0) return tsCmp;
-      return b.__idx - a.__idx;
-    })
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    .map(({ __idx, ...e }) => e);
+  const indices = taskEvents.map((_, i) => i);
+  indices.sort((a, b) => {
+    const tsCmp = String(taskEvents[b].ts || '').localeCompare(String(taskEvents[a].ts || ''));
+    if (tsCmp !== 0) return tsCmp;
+    return b - a;
+  });
+  const sortedEvents = indices.map((i) => taskEvents[i]);
 
   return {
     taskId,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 
 type Props = {
   value?: string | null;
@@ -28,14 +28,12 @@ function formatRelative(value?: string | null): string {
 }
 
 export function RelativeTime({ value }: Props) {
-  const [tick, setTick] = useState(0);
+  const [, forceUpdate] = useReducer((c: number) => c + 1, 0);
 
   useEffect(() => {
-    const timer = setInterval(() => setTick((v) => v + 1), 60_000);
+    const timer = setInterval(forceUpdate, 60_000);
     return () => clearInterval(timer);
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers re-render intentionally
-  const text = useMemo(() => formatRelative(value), [value, tick]);
-  return <span title={value || ''}>{text}</span>;
+  return <span title={value || ''}>{formatRelative(value)}</span>;
 }
