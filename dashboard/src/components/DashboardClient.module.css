@@ -1,0 +1,147 @@
+.main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-card);
+  padding: 10px 14px;
+}
+
+.brand {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerRight button {
+  border: 1px solid var(--color-border);
+  background: #0d0d0d;
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.sseWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-right: 4px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.dot_connected {
+  background: var(--status-reported);
+}
+
+.dot_disconnected {
+  background: var(--status-blocked);
+}
+
+.dot_connecting {
+  background: var(--status-in-progress);
+}
+
+.statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statusItem {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  background: var(--color-bg-card);
+}
+
+.error {
+  margin: 0;
+  color: var(--status-blocked);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 12px;
+  min-height: calc(100vh - 180px);
+}
+
+.left,
+.right {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-card);
+  min-height: 0;
+}
+
+.left {
+  padding: 10px;
+  overflow: hidden;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabs button {
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.tabActive {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent) !important;
+}
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .left {
+    max-height: 420px;
+  }
+}

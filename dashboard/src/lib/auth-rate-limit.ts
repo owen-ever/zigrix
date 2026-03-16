@@ -64,6 +64,16 @@ function getActiveState(
   return state;
 }
 
+function getRetryAt(state: RateLimitState, nowMs: number): number | null {
+  const windowActive = nowMs - state.firstFailureAtMs < WINDOW_MS;
+  if (!windowActive) return state.lockedUntilMs > nowMs ? state.lockedUntilMs : null;
+
+  const windowRetryAt = state.failures >= MAX_FAILURES ? state.firstFailureAtMs + WINDOW_MS : 0;
+  const lockRetryAt = state.lockedUntilMs > nowMs ? state.lockedUntilMs : 0;
+  const retryAt = Math.max(windowRetryAt, lockRetryAt);
+  return retryAt > nowMs ? retryAt : null;
+}
+
 function bumpFailures(
   map: Map<string, RateLimitState>,
   key: string,
@@ -78,14 +88,14 @@ function bumpFailures(
   state.failures += 1;
   state.lastSeenAtMs = nowMs;
 
-  if (state.failures > MAX_FAILURES) {
-    const exponent = state.failures - MAX_FAILURES - 1;
+  if (state.failures >= MAX_FAILURES) {
+    const exponent = state.failures - MAX_FAILURES;
     const backoffMs = Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** exponent);
     state.lockedUntilMs = Math.max(state.lockedUntilMs, nowMs + backoffMs);
   }
 
   map.set(key, state);
-  return state.lockedUntilMs > nowMs ? state.lockedUntilMs : null;
+  return getRetryAt(state, nowMs);
 }
 
 export type RateLimitResult = {
@@ -100,9 +110,8 @@ export function checkRateLimit(ip: string, username: string): RateLimitResult {
   const ipState = getActiveState(ipStates, normalizeIp(ip), nowMs);
   const usernameState = getActiveState(usernameStates, normalizeUsername(username), nowMs);
 
-  const ipRetryAt = ipState && ipState.lockedUntilMs > nowMs ? ipState.lockedUntilMs : null;
-  const usernameRetryAt =
-    usernameState && usernameState.lockedUntilMs > nowMs ? usernameState.lockedUntilMs : null;
+  const ipRetryAt = ipState ? getRetryAt(ipState, nowMs) : null;
+  const usernameRetryAt = usernameState ? getRetryAt(usernameState, nowMs) : null;
 
   const retryAtMs = Math.max(ipRetryAt ?? 0, usernameRetryAt ?? 0);
 

@@ -1,20 +1,25 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createZigrixStore } from '@/lib/zigrix-store';
+import { applyCors, handleCorsPreflight, rejectDisallowedOrigin } from '@/lib/cors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const store = createZigrixStore();
 
-export async function GET(): Promise<NextResponse> {
+export function OPTIONS(request: NextRequest): NextResponse {
+  return handleCorsPreflight(request, ['GET', 'OPTIONS']);
+}
+
+export async function GET(request: NextRequest): Promise<Response> {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) return blocked;
+
   try {
     const overview = store.loadOverview();
-    return NextResponse.json(overview);
+    return applyCors(request, NextResponse.json(overview));
   } catch (error) {
     console.error('[overview] Failed to load overview:', error);
-    return NextResponse.json(
-      { error: 'Failed to load overview data' },
-      { status: 500 },
-    );
+    return applyCors(request, NextResponse.json({ error: 'Failed to load overview data' }, { status: 500 }));
   }
 }

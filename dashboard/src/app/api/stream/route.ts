@@ -1,7 +1,8 @@
 import fs from 'node:fs';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createZigrixStore } from '@/lib/zigrix-store';
 import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { applyCors, handleCorsPreflight, rejectDisallowedOrigin } from '@/lib/cors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,16 +77,26 @@ function readMissedEvents(lastEventTs: string): Array<Record<string, unknown>> {
 
 // ─── Route ────────────────────────────────────────────────────────────────────
 
+export function OPTIONS(request: NextRequest): NextResponse {
+  return handleCorsPreflight(request, ['GET', 'OPTIONS']);
+}
+
 export async function GET(request: NextRequest): Promise<Response> {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) return blocked;
+
   // Auth check: SSE handshake must carry valid session cookie
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const session = await verifySession(token);
 
   if (!session) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return applyCors(
+      request,
+      new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
   }
 
   const reqUrl = new URL(request.url);
@@ -366,12 +377,15 @@ export async function GET(request: NextRequest): Promise<Response> {
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  });
+  return applyCors(
+    request,
+    new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    }),
+  );
 }

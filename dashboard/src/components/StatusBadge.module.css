@@ -1,0 +1,45 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--color-border);
+}
+
+.status_OPEN {
+  color: var(--status-open);
+  border-color: color-mix(in srgb, var(--status-open) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--status-open) 16%, transparent);
+}
+
+.status_IN_PROGRESS {
+  color: var(--status-in-progress);
+  border-color: color-mix(in srgb, var(--status-in-progress) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--status-in-progress) 16%, transparent);
+}
+
+.status_BLOCKED {
+  color: var(--status-blocked);
+  border-color: color-mix(in srgb, var(--status-blocked) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--status-blocked) 16%, transparent);
+}
+
+.status_DONE_PENDING_REPORT {
+  color: var(--status-done-pending-report);
+  border-color: color-mix(in srgb, var(--status-done-pending-report) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--status-done-pending-report) 16%, transparent);
+}
+
+.status_REPORTED {
+  color: var(--status-reported);
+  border-color: color-mix(in srgb, var(--status-reported) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--status-reported) 16%, transparent);
+}
+
+.status_UNKNOWN {
+  color: var(--color-text-muted);
+  background: var(--color-bg-card);
+}

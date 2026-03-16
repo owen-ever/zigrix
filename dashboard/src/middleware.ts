@@ -5,6 +5,8 @@ import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
 const PUBLIC_API_PATHS = ['/api/auth/setup', '/api/auth/login'];
 const PUBLIC_PAGE_PATHS = ['/setup', '/login'];
 
+export const runtime = 'nodejs';
+
 export const config = {
   matcher: [
     /*

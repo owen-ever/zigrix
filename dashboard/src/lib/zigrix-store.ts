@@ -53,7 +53,7 @@ export type ZigrixTaskHistoryRow = {
 
 export type ZigrixOverviewData = {
   generatedAt: string;
-  source: {
+  source?: {
     indexPath: string;
     eventsPath: string;
     specsDir: string;
@@ -467,10 +467,10 @@ function buildTaskHistory(events: ZigrixEvent[], specsDir: string): ZigrixTaskHi
       scale: event.scale || null,
       actor: event.actor || event.agentId || null,
     });
-  }
 
-  // Suppress unused variable warning
-  void statusEvent;
+    // Suppress unused variable warning
+    void statusEvent;
+  }
 
   return Array.from(tasks.values());
 }
@@ -1081,15 +1081,19 @@ export function createZigrixStore(options?: {
 
     return {
       generatedAt: new Date().toISOString(),
-      source: {
-        indexPath: paths.indexPath,
-        eventsPath: paths.eventsPath,
-        specsDir: paths.specsDir,
-        evidenceDir: paths.evidenceDir,
-        agentsStateDir: paths.agentsStateDir,
-        subagentRunsPath: paths.subagentRunsPath,
-        openclawConfigPath: paths.openclawConfigPath,
-      },
+      ...(process.env.NODE_ENV === 'development'
+        ? {
+            source: {
+              indexPath: paths.indexPath,
+              eventsPath: paths.eventsPath,
+              specsDir: paths.specsDir,
+              evidenceDir: paths.evidenceDir,
+              agentsStateDir: paths.agentsStateDir,
+              subagentRunsPath: paths.subagentRunsPath,
+              openclawConfigPath: paths.openclawConfigPath,
+            },
+          }
+        : {}),
       updatedAt: index.updatedAt,
       bucketCounts,
       statusBuckets: index.statusBuckets,

@@ -7,6 +7,7 @@ import {
   isSetupRequired,
 } from '@/lib/auth';
 import { checkRateLimit, recordFailure, recordSuccess } from '@/lib/auth-rate-limit';
+import { applyCors, handleCorsPreflight, rejectDisallowedOrigin } from '@/lib/cors';
 
 export const runtime = 'nodejs';
 
@@ -18,9 +19,16 @@ function getClientIp(request: NextRequest): string {
   );
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export function OPTIONS(request: NextRequest): NextResponse {
+  return handleCorsPreflight(request, ['POST', 'OPTIONS']);
+}
+
+export async function POST(request: NextRequest): Promise<Response> {
+  const blocked = rejectDisallowedOrigin(request);
+  if (blocked) return blocked;
+
   if (isSetupRequired()) {
-    return NextResponse.json({ error: 'Setup required' }, { status: 403 });
+    return applyCors(request, NextResponse.json({ error: 'Setup required' }, { status: 403 }));
   }
 
   const ip = getClientIp(request);
@@ -29,34 +37,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return applyCors(request, NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }));
   }
 
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    return applyCors(request, NextResponse.json({ error: 'Invalid request body' }, { status: 400 }));
   }
 
   const { username, password } = body as Record<string, unknown>;
 
   if (typeof username !== 'string' || !username.trim()) {
-    return NextResponse.json({ error: 'username is required' }, { status: 400 });
+    return applyCors(request, NextResponse.json({ error: 'username is required' }, { status: 400 }));
   }
 
   if (typeof password !== 'string') {
-    return NextResponse.json({ error: 'password is required' }, { status: 400 });
+    return applyCors(request, NextResponse.json({ error: 'password is required' }, { status: 400 }));
   }
 
   const usernameNormalized = username.trim();
 
-  // Rate limit check
   const rateLimit = checkRateLimit(ip, usernameNormalized);
   if (rateLimit.limited) {
-    return NextResponse.json(
-      { error: 'Too many attempts. Try again later.' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
-      },
+    return applyCors(
+      request,
+      NextResponse.json(
+        { error: 'Too many attempts. Try again later.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+        },
+      ),
     );
   }
 
@@ -64,7 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!valid) {
     recordFailure(ip, usernameNormalized);
-    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    return applyCors(request, NextResponse.json({ error: 'Invalid credentials' }, { status: 401 }));
   }
 
   recordSuccess(ip, usernameNormalized);
@@ -80,5 +90,5 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     path: '/',
   });
 
-  return response;
+  return applyCors(request, response);
 }
