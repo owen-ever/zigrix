@@ -85,3 +85,8 @@ Accepted unless superseded here.
 ## D-017 Task ID format
 - Decision: default prefix is `DEV-` (format: `DEV-YYYYMMDD-NNN`). Supports `TEST-` and legacy `TASK-` prefixes.
 - Why: aligns with the orchestration convention already in production use.
+
+## D-018 Dashboard
+- Decision: Zigrix ships its own **dedicated dashboard**, separate from xnote.
+- Why: xnote is an environment-specific tool. Zigrix dashboard should be self-contained and bundled with the CLI, so any Zigrix installation can visualize orchestration state without external dependencies.
+- Scope: task status, execution unit progress, evidence completeness, agent activity. Details TBD.
