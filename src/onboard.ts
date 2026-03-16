@@ -127,31 +127,58 @@ export function registerAgents(
 
 // ─── Rules seeding ────────────────────────────────────────────────────────────
 
+/**
+ * Find the bundled default rules directory shipped with the zigrix package.
+ */
+export function resolveBundledRulesDir(): string | null {
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    let dir = path.dirname(thisFile);
+    for (let i = 0; i < 5; i++) {
+      const candidate = path.join(dir, 'rules', 'defaults');
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return candidate;
+      }
+      dir = path.dirname(dir);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export function seedRules(
   sourceDir: string,
   targetDir: string,
-): { copied: string[]; skipped: string[] } {
+): { copied: string[]; skipped: string[]; source: string } {
   const copied: string[] = [];
   const skipped: string[] = [];
 
+  // Try external source first, fall back to bundled defaults
+  let effectiveSource = sourceDir;
   if (!fs.existsSync(sourceDir)) {
-    return { copied, skipped };
+    const bundled = resolveBundledRulesDir();
+    if (bundled) {
+      effectiveSource = bundled;
+    } else {
+      return { copied, skipped, source: 'none' };
+    }
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
 
-  const files = fs.readdirSync(sourceDir).filter((f) => f.endsWith('.md'));
+  const files = fs.readdirSync(effectiveSource).filter((f) => f.endsWith('.md'));
   for (const file of files) {
     const dest = path.join(targetDir, file);
     if (fs.existsSync(dest)) {
       skipped.push(file);
     } else {
-      fs.copyFileSync(path.join(sourceDir, file), dest);
+      fs.copyFileSync(path.join(effectiveSource, file), dest);
       copied.push(file);
     }
   }
 
-  return { copied, skipped };
+  return { copied, skipped, source: effectiveSource === sourceDir ? 'external' : 'bundled' };
 }
 
 // ─── PATH check and stabilization ─────────────────────────────────────────────

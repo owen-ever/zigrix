@@ -183,10 +183,16 @@ describe('seedRules', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns empty when source dir does not exist', () => {
+  it('falls back to bundled defaults when source dir does not exist', () => {
     const result = seedRules(path.join(tmpDir, 'nonexistent'), targetDir);
-    expect(result.copied).toHaveLength(0);
-    expect(result.skipped).toHaveLength(0);
+    // Should seed from bundled rules/defaults/ if available
+    if (result.source === 'bundled') {
+      expect(result.copied.length).toBeGreaterThan(0);
+    } else {
+      // No bundled rules found (e.g. CI without rules dir)
+      expect(result.copied).toHaveLength(0);
+      expect(result.skipped).toHaveLength(0);
+    }
   });
 
   it('copies .md files to target dir', () => {

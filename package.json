@@ -1,6 +1,6 @@
 {
   "name": "zigrix",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "type": "module",
   "description": "Multi-project parallel task orchestration CLI for agent-assisted development",
   "license": "Apache-2.0",
@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "rules",
     "skills",
     "examples",
     "README.md",
