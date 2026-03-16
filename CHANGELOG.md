@@ -4,30 +4,40 @@ All notable changes to Zigrix will be documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+- **Global state model**: Zigrix now uses `~/.zigrix/` (global) instead of per-project `.zigrix/`. Tasks are not project-bound. Configurable via `ZIGRIX_HOME` env.
+- **`zigrix init` deprecated**: Use `zigrix onboard` instead. `init` remains as compatibility command.
+
+### Added
+- `zigrix onboard` — primary human entrypoint: creates `~/.zigrix/`, detects OpenClaw, imports agents (interactive checkbox with space-to-toggle), seeds rules, stabilizes PATH (creates symlink if needed), auto-registers skill packs into `~/.openclaw/skills/`
+- `zigrix configure` — section-targeted reconfiguration (agents, rules, workspace, path, skills)
+- `zigrix task dispatch` — full orchestration dispatch with work packages, execution units, selection hints, and boot prompt generation (replaces `dev_dispatch.py`)
+- `zigrix task finalize` — evidence merge, execution unit completeness check, auto-close completed units, optional auto-report (replaces `dev_finalize.py`)
+- Task sidecar storage model: `<taskId>.meta.json` (machine) + `<taskId>.md` (human)
+- Task ID format: `DEV-YYYYMMDD-NNN` (supports `TEST-` and legacy `TASK-` prefixes)
+- Legacy event normalization: `timestamp` → `ts`, top-level `agentId`/`reason` → `payload`
+- `@inquirer/prompts` checkbox for interactive agent selection during onboard
+- `workspace.projectsBaseDir` config field for new project base directory
+- `paths.rulesDir` config field for rule file storage
+- Dependency: `@inquirer/prompts` (interactive terminal prompts)
+
 ### Changed
 - Promoted the Node/TypeScript implementation to the repository root
 - Moved the previous Python CLI into `legacy-python/` as a reference prototype
 - Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
+- All documentation updated from per-project `.zigrix/` to global `~/.zigrix/` model
+- Release smoke script updated for onboard/global-base CLI surface
+- `package.json` `files` now includes `skills/` for npm distribution
+- Skill packs updated to reference global state model
 
-### Added
-- Agent registry and orchestration membership commands:
-  - `zigrix agent list`
-  - `zigrix agent add/remove`
-  - `zigrix agent include/exclude`
-  - `zigrix agent enable/disable`
-  - `zigrix agent set-role`
+### Added (from initial Node migration)
+- Agent registry and orchestration membership commands
 - Registry validation that blocks unknown participants/excluded members
-- Rule/template commands:
-  - `zigrix rule list`
-  - `zigrix rule get <path>`
-  - `zigrix rule validate`
-  - `zigrix rule render <templateKind> --context <json>`
-- Template placeholder validation and render support for built-in templates
+- Rule/template commands with validation, render, diff, and reset
+- Template placeholder validation and render support
 - Node parity migration for task/worker/evidence/report/pipeline/index-rebuild commands
-- Node state/event/task persistence modules aligned with the legacy Python flow
-- Release hardening: `npm pack`, smoke script, CI dry-run pack, `files` boundary, `prebuild` clean
 - Doctor diagnostics plus safe reset flows for config/template/state recovery
-- Config/rule/template mutation surface (`set` / `diff` / `reset`) for Node CLI
+- Config/rule/template mutation surface (`set` / `diff` / `reset`)
 - Runtime consistency verification via `zigrix state check`
 - Manual npm publish runbook, SUPPORT doc, and one-command `publish:check` gate
 
@@ -46,7 +56,7 @@ All notable changes to Zigrix will be documented in this file.
   - `zigrix report render`
   - `zigrix pipeline run`
   - `zigrix index-rebuild`
-- Project-local runtime state layout under `.zigrix/`
+- Global runtime state layout under `~/.zigrix/`
 - Source-checkout installer `install.sh`
 - Initial OpenClaw skill pack skeleton
 - CI and release workflow drafts

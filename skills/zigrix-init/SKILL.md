@@ -1,20 +1,23 @@
 ---
 name: zigrix-init
-version: 0.1.0
-description: Initialize project-local Zigrix runtime state.
+version: 0.2.0
+description: "[DEPRECATED] Use zigrix onboard instead."
 metadata:
   openclaw:
     requires:
       bins: ["zigrix"]
-    cliHelp: "zigrix init --help"
 ---
 
-# zigrix init
+# Zigrix Init (Deprecated)
 
-Creates `.zigrix/` runtime directories in the current project.
+**Use `zigrix onboard` instead.**
+
+`zigrix init` is a deprecated compatibility command. It creates a config file but does not perform PATH stabilization, skill registration, or agent import.
 
 ```bash
-zigrix init
-```
+# Preferred
+zigrix onboard --yes --json
 
-Use this at the start of a new Zigrix-enabled repository.
+# Legacy (deprecated)
+zigrix init --yes --json
+```

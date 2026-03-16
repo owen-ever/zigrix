@@ -1,16 +1,18 @@
 # Zigrix v1 Scope
 
-_Last updated: 2026-03-14_
+_Last updated: 2026-03-16_
 
 ## Goal
-Ship Zigrix as an open-source ready Node/TypeScript CLI that can replace the current `workspace/orchestration` operator flow for local, file-backed orchestration work.
+Ship Zigrix as an open-source ready Node/TypeScript CLI that can replace the current `workspace/orchestration` operator flow for local, file-backed multi-project parallel task orchestration.
 
 ## v1 Must Have
 - Node/TypeScript root implementation
-- project-local config (`zigrix.config.json`)
+- global config in `~/.zigrix/zigrix.config.json`
+- `zigrix onboard` as primary human entrypoint
+- `zigrix configure` for section-targeted reconfiguration
 - agent registry / participation management
 - rule + template validation/render/edit/reset
-- task lifecycle management
+- task lifecycle management (dispatch, finalize, create, status, events, progress, stale)
 - worker prepare/register/complete
 - evidence collect/merge
 - final report render
@@ -18,15 +20,16 @@ Ship Zigrix as an open-source ready Node/TypeScript CLI that can replace the cur
 - pipeline run for local end-to-end flow
 - doctor diagnostics
 - safe reset for config/template/state recovery
+- PATH stabilization + OpenClaw skill auto-registration
 - install / build / smoke / release docs
 - CI + release asset generation path
 
 ## v1 Product Definition
 Zigrix v1 is considered ready when a new user can:
 1. install from source checkout or release asset
-2. run `zigrix doctor`
-3. initialize a project
-4. create and progress tasks
+2. run `zigrix onboard`
+3. run `zigrix doctor` and see a passing readiness report
+4. dispatch and progress tasks across multiple projects
 5. modify rules/templates safely
 6. recover from mistakes via reset
 7. follow docs without private workspace assumptions
@@ -39,6 +42,7 @@ Zigrix v1 is considered ready when a new user can:
 5. OpenClaw-friendly but not OpenClaw-dependent core behavior
 
 ## Deferred to Post-v1
+- dedicated dashboard (D-018)
 - live agent spawning / dispatch runtime integration
 - plugin SDK
 - interactive TUI/editor

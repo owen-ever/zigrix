@@ -2,6 +2,8 @@
 
 _Last updated: 2026-03-14_
 
+> **Note (2026-03-16):** This document reflects the initial bootstrap state. Zigrix now uses global `~/.zigrix/` state (not project-local `.zigrix/`), has `onboard`/`configure`/`dispatch`/`finalize` commands, and the full Python migration is complete. See `cli-spec.md` and `product-decisions.md` for current state.
+
 ## What landed
 
 A first working Node/TypeScript bootstrap now exists at the **repository root**.

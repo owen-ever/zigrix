@@ -1,6 +1,6 @@
 ---
 name: zigrix-task-create
-version: 0.1.0
+version: 0.2.0
 description: Create a new Zigrix task with title, description, and scale.
 metadata:
   openclaw:
@@ -11,10 +11,20 @@ metadata:
 
 # zigrix task create
 
-Create a task in project-local `.zigrix/tasks/`.
+Create a task in `~/.zigrix/tasks/`.
+
+For full orchestration metadata (work packages, execution units, boot prompt), use `zigrix task dispatch` instead.
 
 ```bash
+# Low-level task creation
 zigrix task create \
+  --title "Implement installer" \
+  --description "Create a safe app-owned venv installer" \
+  --scale normal \
+  --json
+
+# Full orchestration dispatch (preferred for agent workflows)
+zigrix task dispatch \
   --title "Implement installer" \
   --description "Create a safe app-owned venv installer" \
   --scale normal \

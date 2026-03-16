@@ -1,16 +1,21 @@
-# Zigrix Config Schema Draft
+# Zigrix Config Schema
 
 ## 목적
 Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 관리한다.
+
+## Location
+- Default: `~/.zigrix/zigrix.config.json`
+- Override: `ZIGRIX_HOME` env → `$ZIGRIX_HOME/zigrix.config.json`
+- Also supports YAML: `zigrix.config.yaml` / `zigrix.config.yml`
 
 ## Top-level shape
 ```json
 {
   "paths": {},
+  "workspace": {},
   "agents": {},
   "rules": {},
   "templates": {},
-  "openclaw": {},
   "runtime": {}
 }
 ```
@@ -19,42 +24,54 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 ```json
 {
   "paths": {
-    "stateDir": ".zigrix",
-    "tasksDir": ".zigrix/tasks",
-    "evidenceDir": ".zigrix/evidence",
-    "promptsDir": ".zigrix/prompts",
-    "eventsFile": ".zigrix/tasks.jsonl",
-    "indexFile": ".zigrix/index.json"
+    "baseDir": "~/.zigrix",
+    "tasksDir": "~/.zigrix/tasks",
+    "evidenceDir": "~/.zigrix/evidence",
+    "promptsDir": "~/.zigrix/prompts",
+    "eventsFile": "~/.zigrix/tasks.jsonl",
+    "indexFile": "~/.zigrix/index.json",
+    "runsDir": "~/.zigrix/runs",
+    "rulesDir": "~/.zigrix/rules"
   }
 }
 ```
-- 상대경로는 project root 기준 resolve
-- 절대경로 허용
-- collision / parent-child overlap validation 필요
+- All paths are absolute by default (resolved from `ZIGRIX_HOME`)
+- Tasks are NOT project-bound — a single Zigrix instance manages parallel tasks across projects
+
+## workspace
+```json
+{
+  "workspace": {
+    "projectsBaseDir": ""
+  }
+}
+```
+- `projectsBaseDir`: default directory for new project creation (empty = not set)
 
 ## agents
 ```json
 {
   "agents": {
     "registry": {
-      "qa-main": {
-        "label": "qa-main",
-        "role": "qa",
-        "runtime": "openclaw-session",
+      "qa-zig": {
+        "label": "qa-zig",
+        "role": "QA Agent",
+        "runtime": "openclaw",
         "enabled": true,
         "metadata": {}
       }
     },
     "orchestration": {
-      "participants": ["qa-main"],
+      "participants": ["qa-zig"],
       "excluded": []
     }
   }
 }
 ```
-- registry에는 시스템이 아는 전체 agent 저장
-- participants/excluded는 orchestration membership 제어
-- 동일 agent가 participants/excluded 양쪽에 동시에 있으면 validation error
+- registry: all known agents
+- participants/excluded: orchestration membership control
+- same agent in both participants and excluded → validation error
+- participants/excluded referencing unknown agent → validation error
 
 ## rules
 ```json
@@ -62,8 +79,16 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
   "rules": {
     "scales": {
       "simple": {
+        "requiredRoles": ["orchestrator"],
+        "optionalRoles": ["qa"]
+      },
+      "normal": {
         "requiredRoles": ["orchestrator", "qa"],
-        "optionalRoles": []
+        "optionalRoles": ["frontend", "backend"]
+      },
+      "risky": {
+        "requiredRoles": ["orchestrator", "qa", "security"],
+        "optionalRoles": ["frontend", "backend", "infra"]
       }
     },
     "completion": {
@@ -84,43 +109,39 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
   "templates": {
     "workerPrompt": {
       "format": "markdown",
-      "body": "## Worker Assignment: {{taskId}}"
+      "version": 1,
+      "placeholders": ["taskId", "title", "scale", "agentId", "description"],
+      "body": "## Worker Assignment: {{taskId}}\n- title: {{title}}\n- scale: {{scale}}\n- agent: {{agentId}}\n- description: {{description}}"
     },
     "finalReport": {
       "format": "markdown",
-      "body": "작업유형: {{scale}}"
+      "version": 1,
+      "placeholders": ["taskId", "title", "status", "summary"],
+      "body": "## Final Report: {{taskId}}\n- title: {{title}}\n- status: {{status}}\n- summary: {{summary}}"
     }
   }
 }
 ```
-- mustache-style placeholder 허용
-- 허용 placeholder 목록 관리 필요
-- render preview / validation 필요
-
-## openclaw
-```json
-{
-  "openclaw": {
-    "home": "~/.openclaw",
-    "skillsDir": "~/.openclaw/skills"
-  }
-}
-```
+- mustache-style placeholders
+- allowed placeholders are validated per template kind
+- `zigrix rule validate` checks placeholders against allowed list
 
 ## runtime
 ```json
 {
   "runtime": {
-    "defaultProjectRoot": ".",
     "outputMode": "text",
     "jsonIndent": 2
   }
 }
 ```
+- `outputMode`: overridable via `ZIGRIX_OUTPUT_MODE` env
+- `jsonIndent`: overridable via `ZIGRIX_JSON_INDENT` env
 
-## validation requirements
-- unknown keys policy 결정 필요 (strict vs allow metadata)
-- path writeability check
-- agent label uniqueness
-- template placeholder whitelist
-- role references must resolve against registry or allowed role catalog
+## Validation
+- Zod schema enforced at load time (`zigrixConfigSchema`)
+- Unknown keys: strict (rejected)
+- Path writeability: checked by `zigrix doctor`
+- Agent label uniqueness: enforced by registry
+- Template placeholder whitelist: per template kind
+- Role references: validated against registry
