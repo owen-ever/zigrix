@@ -26,8 +26,10 @@ npm run publish:check
 
 ## Local verification checklist
 ```bash
-node dist/index.js doctor
-node dist/index.js init --yes --project-root .scratch/demo --json
+TMP_HOME="$(mktemp -d)/.zigrix"
+ZIGRIX_HOME="$TMP_HOME" node dist/index.js onboard --yes --json
+node dist/index.js doctor --json
+node dist/index.js task dispatch --title "Smoke" --description "Local verify" --scale simple --json
 node dist/index.js run examples/hello-workflow.json --json
 ```
 

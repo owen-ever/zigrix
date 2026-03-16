@@ -57,11 +57,12 @@ Optional:
 - low-level command groups (`config`, `agent`, `rule`, `template`, `task`, `worker`, `evidence`, `report`, `pipeline`) primarily serve agents and advanced operators
 
 ## Migration note
-Current alpha implementation still exposes `zigrix init` and other low-level commands as the practical setup path.
-That is an implementation gap, not the desired long-term UX.
-
-The documentation and future work should converge on:
+`zigrix init` remains available as a deprecated compatibility command.
+The practical setup path is now:
 - install
-- onboard
+- `zigrix onboard`
 - agent-driven usage
-- configure/reset only for exceptions
+- `zigrix configure` / `zigrix reset` only for exceptional maintenance
+
+Remaining gap:
+- interactive agent picker is currently numeric input, not space-to-toggle UI.

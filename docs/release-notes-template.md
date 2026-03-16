@@ -18,8 +18,9 @@
 
 ## Verification
 ```bash
+zigrix onboard --yes
 zigrix doctor
-zigrix init --yes
+zigrix task dispatch --title "Smoke" --description "Release verify" --scale simple --json
 zigrix run examples/hello-workflow.json --json
 ```
 

@@ -3,9 +3,17 @@
 ## `zigrix doctor` says config is missing
 Run:
 ```bash
-zigrix init --yes
+zigrix onboard --yes
 ```
-Or initialize a target project root explicitly.
+Then re-check:
+```bash
+zigrix doctor
+```
+
+If you already onboarded before, rerun targeted setup:
+```bash
+zigrix configure --section agents --section skills --section path --yes
+```
 
 ## I broke a template
 Reset just that template:
