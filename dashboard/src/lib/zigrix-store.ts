@@ -432,7 +432,8 @@ function buildTaskSnapshot(
       if (tsCmp !== 0) return tsCmp;
       return b.__idx - a.__idx;
     })
-    .map(({ __idx: _idx, ...e }) => e);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    .map(({ __idx, ...e }) => e);
 
   return {
     taskId,

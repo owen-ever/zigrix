@@ -35,6 +35,7 @@ export function RelativeTime({ value }: Props) {
     return () => clearInterval(timer);
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers re-render intentionally
   const text = useMemo(() => formatRelative(value), [value, tick]);
   return <span title={value || ''}>{text}</span>;
 }
