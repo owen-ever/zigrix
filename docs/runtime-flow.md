@@ -28,7 +28,7 @@ For local smoke workflows, Zigrix can skip explicit worker dispatch and go strai
 - `template reset` and `rule reset` recover targeted operator mistakes
 
 ## Evidence contract
-Evidence is stored per-agent under `.zigrix/evidence/<taskId>/`. A merged view is written to `_merged.json` so downstream reporting has one stable input.
+Evidence is stored per-agent under `~/.zigrix/evidence/<taskId>/`. A merged view is written to `_merged.json` so downstream reporting has one stable input.
 
 ## Index contract
-`.zigrix/index.json` is a derived file. It should be rebuildable at any time and must not become the only source of truth.
+`~/.zigrix/index.json` is a derived file. It should be rebuildable at any time and must not become the only source of truth.

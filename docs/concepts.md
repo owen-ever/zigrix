@@ -1,7 +1,7 @@
 # Concepts
 
-## Project-local orchestration
-Zigrix keeps its runtime data inside a project-local `.zigrix/` directory. That makes the tool easy to inspect, backup, diff, and reset.
+## Global multi-project orchestration
+Zigrix keeps its runtime data in a global `~/.zigrix/` directory (configurable via `ZIGRIX_HOME`). Tasks are not bound to a single project — a single Zigrix instance manages parallel tasks across multiple project directories. Each task's `meta.json` records its `projectDir` when relevant.
 
 ## Config-first
 Behavior is controlled through `zigrix.config.json` rather than hidden hardcoded policy. Defaults exist, but the product assumes operators will inspect and occasionally modify config, rules, and templates.

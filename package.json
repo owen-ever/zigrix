@@ -2,13 +2,14 @@
   "name": "zigrix",
   "version": "0.1.0-alpha.0",
   "type": "module",
-  "description": "Node/TypeScript config-first orchestration CLI for Zigrix",
+  "description": "Multi-project parallel task orchestration CLI for agent-assisted development",
   "license": "Apache-2.0",
   "bin": {
     "zigrix": "./dist/index.js"
   },
   "files": [
     "dist",
+    "skills",
     "examples",
     "README.md",
     "LICENSE"

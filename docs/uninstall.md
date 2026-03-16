@@ -2,31 +2,41 @@
 
 ## Remove Zigrix CLI
 
-If installed with the default source-checkout installer:
+If installed via npm:
+```bash
+npm uninstall -g zigrix
+```
 
+If installed via `install.sh` (npm link):
+```bash
+cd /path/to/zigrix
+npm unlink
+```
+
+Remove PATH symlink if onboard created one:
 ```bash
 rm -f ~/.local/bin/zigrix
-rm -rf ~/.local/share/zigrix/venv
 ```
 
 ## Remove OpenClaw skill links
 
-If installed with `--with-openclaw-skills`, remove linked skills manually:
+Onboard or `--with-openclaw-skills` creates symlinks in `~/.openclaw/skills/`:
 
 ```bash
-rm -rf ~/.openclaw/skills/zigrix-shared
-rm -rf ~/.openclaw/skills/zigrix-doctor
-rm -rf ~/.openclaw/skills/zigrix-init
-rm -rf ~/.openclaw/skills/zigrix-task-create
-rm -rf ~/.openclaw/skills/zigrix-task-status
+rm -f ~/.openclaw/skills/zigrix-*
 ```
 
-## Keep or remove project state
+## Keep or remove global state
 
-Project-local runtime state is stored in:
+Zigrix runtime state is stored globally in:
 
 ```text
-<project>/.zigrix/
+~/.zigrix/
 ```
 
-Remove it only if you intentionally want to discard Zigrix runtime data.
+This includes config, tasks, evidence, rules, and event logs.
+Remove it only if you intentionally want to discard all Zigrix data.
+
+```bash
+rm -rf ~/.zigrix
+```

@@ -9,38 +9,44 @@
 
 ### 2. Core state layer
 - resolves portable paths
-- manages `.zigrix/` project runtime state
-- persists tasks, prompts, evidence, and index files
-- appends events
+- manages `~/.zigrix/` global runtime state
+- persists tasks (sidecar model: `.meta.json` + `.md`), prompts, evidence, and index files
+- appends events to `tasks.jsonl`
 - renders user-facing reports from merged evidence
 - detects stale in-progress tasks for recovery
 
 ### 3. Integration layer
 - OpenClaw-aware but optional
-- skill-pack installation and usage guidance
+- PATH stabilization and skill-pack auto-registration during onboard
 - worker/evidence lifecycle bridging without hard dependency on OpenClaw internals
-- future adapter point for richer session-aware commands
+- `configure` for section-targeted reconfiguration
 
 ## Runtime state model
 
-Project-local runtime state:
+Global runtime state:
 
 ```text
-<project>/.zigrix/
+~/.zigrix/
+├─ zigrix.config.json
 ├─ tasks/
+│  ├─ <taskId>.meta.json    # machine-readable metadata
+│  └─ <taskId>.md           # human-readable spec
 ├─ prompts/
 ├─ evidence/
-├─ tasks.jsonl
-└─ index.json
+├─ rules/                   # seeded from orchestration/rules/
+├─ runs/
+├─ tasks.jsonl              # append-only event log
+└─ index.json               # derived projection (rebuildable)
 ```
 
-This keeps source and runtime clearly separated.
-
-## Why project-local first
-- easier to reason about
-- reproducible per repo
-- avoids hidden global mutation
-- maps naturally to agent working directories
+## Why global
+- Zigrix manages multiple projects in parallel — tasks are NOT project-bound
+- A single task may span multiple project directories
+- Global state avoids scattering `.zigrix/` across unrelated repos
+- `meta.json` records `projectDir` per task when relevant
 
 ## Future boundary
-The existing `orchestration/` scripts are the source material for later command families, but not the final public package layout. Zigrix should wrap and absorb the useful logic, not expose raw legacy script names.
+The existing `orchestration/scripts/*.py` are the migration source. Zigrix CLI replaces them:
+- `dev_dispatch.py` → `zigrix task dispatch`
+- `dev_finalize.py` → `zigrix task finalize`
+- Worker scripts → `zigrix worker prepare/register/complete`
