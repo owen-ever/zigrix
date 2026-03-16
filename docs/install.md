@@ -1,17 +1,29 @@
 # Installation
 
+## Product-direction note
+The intended public flow is:
+
+```text
+install
+  -> zigrix onboard
+```
+
+Meaning install should only make the CLI available; onboarding should complete the environment setup.
+
+See `docs/onboarding-ownership-model.md` for the ownership model and `docs/product-decisions.md` for the accepted decisions.
+
 ## Current foundation path (source checkout)
 
 ```bash
 ./install.sh
 ```
 
-This will:
-- run `npm install`
-- build the Node/TypeScript CLI
-- expose `zigrix` via `npm link`
+This currently:
+- runs `npm install`
+- builds the Node/TypeScript CLI
+- exposes `zigrix` via `npm link`
 
-## With OpenClaw skill install
+## Current OpenClaw skill install path
 
 ```bash
 ./install.sh --with-openclaw-skills
@@ -19,8 +31,17 @@ This will:
 
 This additionally symlinks implemented Zigrix skills into `~/.openclaw/skills/` when available.
 
-## Verify
+## Important gap in current alpha
+Install is **not yet equivalent to onboarding**.
 
+Current gaps include:
+- gateway-visible PATH readiness for `zigrix`
+- guaranteed OpenClaw skill registration by default
+- interactive first-run setup for workspace, agents, and rule presets
+
+These gaps are expected to move under `zigrix onboard`.
+
+## Current verify flow
 ```bash
 zigrix --version
 zigrix doctor
@@ -36,4 +57,4 @@ It is no longer the default install path.
 
 ## Future release install path
 
-Primary release target is GitHub Releases. The release path will center on Node-built assets plus `install.sh`, with optional skill bundle support.
+Primary release target is GitHub Releases plus `install.sh`, with `npm install zigrix` as the secondary public install path once onboarding and release flow stabilize.

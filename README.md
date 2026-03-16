@@ -18,7 +18,21 @@ It turns ad-hoc delegation into a file-backed, inspectable flow with:
 - Packaging path: **GitHub Releases + install.sh**, npm publish prepared for manual follow-up
 - Publish gate: `npm run publish:check`
 
+## Intended user model
+- **Human operator:** install Zigrix, run `zigrix onboard`, and stop there unless recovery or advanced maintenance is needed.
+- **OpenClaw agents:** use the operational Zigrix commands (`task`, `worker`, `evidence`, `report`, `pipeline`, and low-level config surfaces) after onboarding.
+- **Advanced maintenance:** `zigrix configure` for reconfiguration, `zigrix reset` for recovery.
+
+See `docs/onboarding-ownership-model.md` for the product-direction source of truth.
+
 ## Quick start
+### Target UX
+```bash
+./install.sh
+zigrix onboard
+```
+
+### Current alpha flow
 ```bash
 ./install.sh
 zigrix doctor
@@ -53,6 +67,7 @@ zigrix reset state --yes
 
 ## Documentation map
 - `docs/quickstart.md`
+- `docs/onboarding-ownership-model.md`
 - `docs/concepts.md`
 - `docs/runtime-flow.md`
 - `docs/state-layout.md`

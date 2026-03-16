@@ -7,11 +7,9 @@
 | macOS | target | primary dev and smoke-test platform |
 | Linux | target | first-class supported platform |
 | Windows | later | explicitly not first-wave |
-| Python 3.10 | supported | minimum supported version |
-| Python 3.11 | supported | recommended |
-| Python 3.12 | supported | expected to work |
-| OpenClaw installed | optional | required only for skill-pack integration |
-| OpenClaw absent | supported | core CLI should still work |
+| Node.js 22+ | supported | current runtime floor |
+| OpenClaw installed | preferred | canonical operator environment |
+| OpenClaw absent | supported | core CLI can still work, but this is not the primary user story |
 
 ## Release guarantees by stage
 
@@ -19,7 +17,12 @@
 |---|---|---|
 | alpha | source / install.sh | best effort, rapid iteration |
 | beta | GitHub Release assets | stable golden path expected |
-| v1.0 | GitHub Release assets | documented install/upgrade/uninstall and smoke-tested release |
+| v1.0 | GitHub Release assets + npm | documented install/onboard/upgrade/uninstall and smoke-tested release |
+
+## Intended ownership model
+- human operator: install Zigrix and run `zigrix onboard`
+- OpenClaw agents: perform routine Zigrix operations afterwards
+- `configure` / `reset`: maintenance and recovery paths
 
 ## Out of scope for first public release
 - Windows native installer polish
@@ -29,9 +32,10 @@
 
 ## Required external assumptions
 - writable project directory
-- Python 3.10+
+- Node.js 22+
 - shell environment capable of running `install.sh`
 
 ## OpenClaw-specific notes
-- skill-pack integration assumes access to `~/.openclaw/skills/` or equivalent configured home
-- core Zigrix commands must not require OpenClaw internals to be present
+- canonical onboarding should make `zigrix` reachable from the OpenClaw gateway-visible PATH
+- canonical onboarding should register the Zigrix skill-pack for OpenClaw
+- core Zigrix commands should still avoid hard dependency on OpenClaw internals

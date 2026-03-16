@@ -8,14 +8,27 @@
 - strict `--json` support for automation
 - project-local state by default
 - recoverable mutation flows
+- clear split between human onboarding and agent operations
 
-## Global flags
+## Product-direction command model
+The intended public flow is:
 
-- `--json` — emit machine-readable JSON
-- `--project-root <path>` — operate on a specific project root
-- `--version` — print version and exit
+```text
+install
+  -> zigrix onboard
+  -> done
+```
 
-## Command tree
+Advanced / exceptional flows:
+- `zigrix configure`
+- `zigrix reset`
+
+Meaning:
+- the human operator should usually only install Zigrix and run `zigrix onboard`
+- after onboarding, OpenClaw agents should use the low-level operational commands
+- `configure` and `reset` are maintenance/recovery entrypoints, not the main happy path
+
+## Current alpha command tree
 
 ```text
 zigrix
@@ -82,22 +95,37 @@ zigrix
    └─ run --title --description [--scale] [--required-agent] [--evidence-summary] [--require-qa] [--auto-report] [--record-feedback]
 ```
 
+## Planned migration direction
+- `zigrix onboard` becomes the primary human-facing entrypoint after install
+- `zigrix configure` becomes the advanced reconfiguration entrypoint
+- `zigrix reset` remains the recovery entrypoint
+- `zigrix init` should eventually become a deprecated alias or an internal compatibility bridge
+- low-level groups (`config`, `agent`, `rule`, `template`, `task`, `worker`, `evidence`, `report`, `pipeline`) remain available for agents and advanced operators
+
+## Global flags
+- `--json` — emit machine-readable JSON
+- `--project-root <path>` — operate on a specific project root
+- `--version` — print version and exit
+
 ## Implemented commands
 
 ### `zigrix init`
 Creates `.zigrix/` runtime directories in the target project and writes default config when needed.
+Current alpha setup still depends on it, but it is not the intended long-term primary onboarding verb.
 
 ### `zigrix doctor`
-Inspects Node version, config presence, write access, state directory, and OpenClaw readiness.
+Inspects Node version, config presence, write access, state directory, and partial OpenClaw readiness.
+Future onboarding work should expand it into a stronger readiness checker.
 
 ### `zigrix config set/diff/reset`
 Allows safe config mutation and default-based recovery. Reset requires `--yes`.
+These are primarily advanced/operator or agent-facing surfaces.
 
 ### `zigrix reset config`
 Restores a config subtree from `defaultConfig`. Useful when rules/templates are accidentally removed or corrupted.
 
 ### `zigrix reset state`
-Deletes and recreates `.zigrix/` runtime state, then rebuilds the index. This is a recoverability tool, not a config mutation tool.
+Deletes and recreates `.zigrix/` runtime state, then rebuilds the index. This is a recoverability tool, not a first-run config tool.
 
 ### `zigrix state check`
 Verifies task/evidence/merged-state consistency so release smoke and operators can detect drift before it becomes a user-facing problem.
@@ -109,7 +137,7 @@ Edits policy paths under `rules.*`, shows drift from defaults, and can restore d
 Allows direct editing and recovery of built-in templates while keeping schema validation on write.
 
 ### Task / worker / evidence / report / pipeline
-These commands now cover the current local orchestration parity surface used by the Python prototype.
+These commands cover the local orchestration surface and are primarily intended for agent-driven usage after onboarding.
 
 ## Output rules
 - human mode: concise, outcome-first
