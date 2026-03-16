@@ -53,6 +53,16 @@ npm install
 npm run build
 npm link
 
+# Symlink zigrix to /usr/local/bin for non-login shell access (e.g., OpenClaw agents using exec)
+ZIGRIX_LINKED="$(command -v zigrix 2>/dev/null || true)"
+if [[ -n "$ZIGRIX_LINKED" ]] && [[ -w /usr/local/bin ]]; then
+  ln -sfn "$ZIGRIX_LINKED" /usr/local/bin/zigrix
+  echo "- /usr/local/bin/zigrix → $ZIGRIX_LINKED (non-login shell PATH)"
+elif [[ -n "$ZIGRIX_LINKED" ]]; then
+  echo "⚠️  /usr/local/bin is not writable. To make zigrix available in non-login shells, run:"
+  echo "   sudo ln -sfn $ZIGRIX_LINKED /usr/local/bin/zigrix"
+fi
+
 if [[ "$WITH_OPENCLAW_SKILLS" == "1" ]]; then
   mkdir -p "$OPENCLAW_HOME/skills"
   for skill_dir in "$REPO_ROOT"/skills/*; do

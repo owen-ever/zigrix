@@ -26,6 +26,23 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
     ? fs.readdirSync(rulesDir).filter((f) => f.endsWith('.md')).sort()
     : [];
 
+  // Non-login shell PATH reachability check
+  const nonLoginShellPaths = ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+  const zigrixInNonLoginPath = nonLoginShellPaths.some((dir) => {
+    try {
+      return fs.existsSync(path.join(dir, 'zigrix'));
+    } catch {
+      return false;
+    }
+  });
+  const zigrixNonLoginLocation = nonLoginShellPaths.find((dir) => {
+    try {
+      return fs.existsSync(path.join(dir, 'zigrix'));
+    } catch {
+      return false;
+    }
+  }) ?? null;
+
   const payload = {
     node: {
       executable: process.execPath,
@@ -68,6 +85,11 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
       skillsDir: openclawSkillsDir,
       skillsDirExists: fs.existsSync(openclawSkillsDir),
     },
+    pathReach: {
+      nonLoginShellPaths,
+      zigrixInNonLoginPath,
+      zigrixNonLoginLocation,
+    },
   };
 
   if (!payload.node.ok) warnings.push('Node.js 22+ is required.');
@@ -76,6 +98,12 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
   if (!payload.writeAccess.baseDir) warnings.push('Base directory is not writable.');
   if (!payload.openclaw.exists) warnings.push('~/.openclaw not found. OpenClaw integration remains optional.');
   if (payload.rules.count === 0) warnings.push('No rule files found in rules directory. Seed from orchestration/rules/.');
+  if (!payload.pathReach.zigrixInNonLoginPath) {
+    warnings.push(
+      'zigrix is not reachable from non-login shell PATH (checked: /usr/local/bin, /usr/bin). ' +
+      'Run `zigrix onboard` or manually: sudo ln -sfn $(which zigrix) /usr/local/bin/zigrix',
+    );
+  }
 
   return {
     ...payload,
@@ -94,6 +122,7 @@ export function renderDoctorText(payload: Record<string, any>): string {
     `- Config: ${payload.paths.configPath ?? 'missing'}`,
     `- Rules dir: ${payload.rules.dir} (${payload.rules.count} files)`,
     `- OpenClaw home: ${payload.openclaw.home} (${payload.openclaw.exists ? 'present' : 'missing'})`,
+    `- Non-login PATH reach: ${payload.pathReach.zigrixInNonLoginPath ? `yes (${payload.pathReach.zigrixNonLoginLocation})` : 'no'}`,
     `- Ready: ${payload.summary.ready ? 'yes' : 'no'}`,
   ];
   for (const warning of payload.summary.warnings as string[]) {

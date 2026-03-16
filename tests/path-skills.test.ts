@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   checkZigrixInPath,
   ensureZigrixInPath,
+  findSystemBinDir,
   findUserBinDir,
   registerSkills,
   resolveSkillsDir,
@@ -34,6 +35,17 @@ describe('findUserBinDir', () => {
     const dir = findUserBinDir();
     const home = process.env.HOME ?? os.homedir();
     expect(dir.startsWith(home)).toBe(true);
+  });
+});
+
+// ─── findSystemBinDir ──────────────────────────────────────────────────────────
+
+describe('findSystemBinDir', () => {
+  it('returns null or a known system path', () => {
+    const dir = findSystemBinDir();
+    if (dir !== null) {
+      expect(['/usr/local/bin', '/usr/bin']).toContain(dir);
+    }
   });
 });
 
@@ -68,6 +80,38 @@ describe('ensureZigrixInPath', () => {
 
     const result = ensureZigrixInPath();
     // Either it creates a symlink (if it can resolve the bin) or warns
+    if (!result.alreadyInPath && !result.symlinkCreated) {
+      expect(result.warning).toBeTruthy();
+    }
+  });
+
+  it('uses override system bin dir when _overrideSystemBinDir is provided and writable', () => {
+    // Create a temp dir that acts as a writable "system" bin dir
+    const fakeSystemBin = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-sysbin-'));
+    try {
+      // Set PATH to something that doesn't have zigrix
+      process.env.PATH = tmpDir;
+
+      const result = ensureZigrixInPath({ _overrideSystemBinDir: fakeSystemBin });
+
+      if (resolveZigrixBin()) {
+        // Should create symlink in fakeSystemBin
+        expect(result.symlinkCreated).toBe(true);
+        expect(result.symlinkPath).toBe(path.join(fakeSystemBin, 'zigrix'));
+        expect(result.warning).toBeNull();
+      }
+    } finally {
+      fs.rmSync(fakeSystemBin, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to user bin dir when _overrideSystemBinDir is null', () => {
+    // Override to null forces the user-bin-dir fallback
+    process.env.PATH = tmpDir;
+
+    const result = ensureZigrixInPath({ _overrideSystemBinDir: null });
+
+    // Should either create a symlink in user dir, or warn (if binEntry not found)
     if (!result.alreadyInPath && !result.symlinkCreated) {
       expect(result.warning).toBeTruthy();
     }

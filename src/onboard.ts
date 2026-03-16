@@ -243,6 +243,26 @@ export function resolveZigrixBin(): string | null {
 }
 
 /**
+ * Resolve a system-level bin directory that is writable and accessible
+ * from non-login shells (e.g., /usr/local/bin).
+ * Returns the first writable candidate, or null if none are writable.
+ */
+export function findSystemBinDir(): string | null {
+  const candidates = ['/usr/local/bin', '/usr/bin'];
+  for (const dir of candidates) {
+    try {
+      if (fs.existsSync(dir)) {
+        fs.accessSync(dir, fs.constants.W_OK);
+        return dir;
+      }
+    } catch {
+      // not writable or inaccessible
+    }
+  }
+  return null;
+}
+
+/**
  * Preferred user-local bin directory for symlink placement.
  * Returns the first writable directory from a priority list,
  * or falls back to ~/.local/bin (creating it if needed).
@@ -272,9 +292,13 @@ export function findUserBinDir(): string {
 
 /**
  * Ensure zigrix is reachable from PATH.
- * If not found, creates a wrapper script in ~/.local/bin/.
+ * Priority:
+ *   1. /usr/local/bin — stable path, accessible from non-login shells (OpenClaw agents, exec)
+ *   2. ~/.local/bin   — user-local fallback; may not be in PATH, shows warning if so
+ *
+ * @param opts._overrideSystemBinDir - Override system bin dir selection (for testing)
  */
-export function ensureZigrixInPath(): PathStabilizeResult {
+export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | null }): PathStabilizeResult {
   if (checkZigrixInPath()) {
     return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
   }
@@ -289,6 +313,32 @@ export function ensureZigrixInPath(): PathStabilizeResult {
     };
   }
 
+  // ── Strategy 1: system bin dir (accessible from non-login shells) ──────────
+  const systemBinDir =
+    opts !== undefined && '_overrideSystemBinDir' in opts
+      ? opts._overrideSystemBinDir
+      : findSystemBinDir();
+
+  if (systemBinDir) {
+    const symlinkPath = path.join(systemBinDir, 'zigrix');
+    try {
+      // Remove stale entry if present
+      try {
+        if (fs.existsSync(symlinkPath) || fs.lstatSync(symlinkPath).isSymbolicLink()) {
+          fs.unlinkSync(symlinkPath);
+        }
+      } catch {
+        // doesn't exist — fine
+      }
+      fs.symlinkSync(binEntry, symlinkPath);
+      fs.chmodSync(symlinkPath, 0o755);
+      return { alreadyInPath: false, symlinkCreated: true, symlinkPath, warning: null };
+    } catch {
+      // Fall through to user bin dir
+    }
+  }
+
+  // ── Strategy 2: user-local bin dir ────────────────────────────────────────
   const userBinDir = findUserBinDir();
   try {
     fs.mkdirSync(userBinDir, { recursive: true });
@@ -303,9 +353,6 @@ export function ensureZigrixInPath(): PathStabilizeResult {
 
   const symlinkPath = path.join(userBinDir, 'zigrix');
 
-  // Create a wrapper script that invokes node with the correct entry
-  const wrapper = `#!/usr/bin/env node\nimport('${binEntry.replace(/\\/g, '/')}');\n`;
-
   try {
     // Remove existing if present (stale symlink or old wrapper)
     if (fs.existsSync(symlinkPath) || fs.lstatSync(symlinkPath).isSymbolicLink()) {
@@ -316,13 +363,16 @@ export function ensureZigrixInPath(): PathStabilizeResult {
   }
 
   try {
-    // Prefer symlink to the actual CLI bin (simpler, no wrapper needed)
     fs.symlinkSync(binEntry, symlinkPath);
     fs.chmodSync(symlinkPath, 0o755);
   } catch {
     // Symlink failed, try writing a wrapper script
     try {
-      fs.writeFileSync(symlinkPath, `#!/usr/bin/env node\nimport('${binEntry.replace(/\\/g, '/')}');\n`, { mode: 0o755 });
+      fs.writeFileSync(
+        symlinkPath,
+        `#!/usr/bin/env node\nimport('${binEntry.replace(/\\/g, '/')}');\n`,
+        { mode: 0o755 },
+      );
     } catch (e) {
       return {
         alreadyInPath: false,
@@ -337,10 +387,9 @@ export function ensureZigrixInPath(): PathStabilizeResult {
   const pathEnv = process.env.PATH ?? '';
   const inPath = pathEnv.split(path.delimiter).some((d) => path.resolve(d) === path.resolve(userBinDir));
 
-  let warning: string | null = null;
-  if (!inPath) {
-    warning = `Created zigrix at ${symlinkPath}, but ${userBinDir} is not in your PATH. Add it:\n  export PATH="${userBinDir}:$PATH"`;
-  }
+  const warning: string | null = inPath
+    ? null
+    : `Created zigrix at ${symlinkPath}, but ${userBinDir} is not in your PATH. Add it:\n  export PATH="${userBinDir}:$PATH"`;
 
   return { alreadyInPath: false, symlinkCreated: true, symlinkPath, warning };
 }
