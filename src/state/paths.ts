@@ -1,38 +1,39 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 import type { ZigrixConfig } from '../config/schema.js';
 
 export type ZigrixPaths = {
-  projectRoot: string;
-  projectState: string;
+  baseDir: string;
   tasksDir: string;
   promptsDir: string;
   evidenceDir: string;
   eventsFile: string;
   indexFile: string;
   runsDir: string;
+  rulesDir: string;
 };
 
-export function resolvePaths(projectRoot: string, config: ZigrixConfig): ZigrixPaths {
-  const root = path.resolve(projectRoot);
-  const stateDir = path.resolve(root, config.paths.stateDir);
+export function resolvePaths(config: ZigrixConfig): ZigrixPaths {
   return {
-    projectRoot: root,
-    projectState: stateDir,
-    tasksDir: path.resolve(root, config.paths.tasksDir),
-    promptsDir: path.resolve(root, config.paths.promptsDir),
-    evidenceDir: path.resolve(root, config.paths.evidenceDir),
-    eventsFile: path.resolve(root, config.paths.eventsFile),
-    indexFile: path.resolve(root, config.paths.indexFile),
-    runsDir: path.resolve(root, config.paths.runsDir),
+    baseDir: config.paths.baseDir,
+    tasksDir: config.paths.tasksDir,
+    promptsDir: config.paths.promptsDir,
+    evidenceDir: config.paths.evidenceDir,
+    eventsFile: config.paths.eventsFile,
+    indexFile: config.paths.indexFile,
+    runsDir: config.paths.runsDir,
+    rulesDir: config.paths.rulesDir,
   };
 }
 
-export function ensureProjectState(paths: ZigrixPaths): void {
-  fs.mkdirSync(paths.projectState, { recursive: true });
+export function ensureBaseState(paths: ZigrixPaths): void {
+  fs.mkdirSync(paths.baseDir, { recursive: true });
   fs.mkdirSync(paths.tasksDir, { recursive: true });
   fs.mkdirSync(paths.promptsDir, { recursive: true });
   fs.mkdirSync(paths.evidenceDir, { recursive: true });
   fs.mkdirSync(paths.runsDir, { recursive: true });
+  fs.mkdirSync(paths.rulesDir, { recursive: true });
 }
+
+/** @deprecated Use ensureBaseState */
+export const ensureProjectState = ensureBaseState;

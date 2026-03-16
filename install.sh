@@ -2,7 +2,6 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="${ZIGRIX_BIN_DIR:-$HOME/.local/bin}"
 OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 WITH_OPENCLAW_SKILLS=0
 
@@ -12,6 +11,8 @@ Usage: ./install.sh [--with-openclaw-skills]
 
 Builds the Node/TypeScript Zigrix CLI from this checkout and exposes the
 `zigrix` command via `npm link`.
+
+After install, run `zigrix onboard` to complete setup.
 EOF
 }
 
@@ -47,7 +48,6 @@ if [[ "$NODE_MAJOR" -lt 22 ]]; then
   exit 1
 fi
 
-mkdir -p "$BIN_DIR"
 cd "$REPO_ROOT"
 npm install
 npm run build
@@ -67,8 +67,8 @@ Zigrix install complete.
 - executable: $(command -v zigrix)
 - node: $(node -v)
 
-Next steps:
-  zigrix config validate --json
-  zigrix init --yes
-  zigrix run examples/hello-workflow.json --json
+Next step:
+  zigrix onboard
+
+This will create ~/.zigrix, seed rule files, and register agents.
 EOF

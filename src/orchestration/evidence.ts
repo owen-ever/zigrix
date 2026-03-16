@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { appendEvent, nowIso } from '../state/events.js';
-import { type ZigrixPaths, ensureProjectState } from '../state/paths.js';
+import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { loadTask, rebuildIndex } from '../state/tasks.js';
 import { resolveRequiredAgents } from './worker.js';
 
@@ -45,7 +45,7 @@ export function collectEvidence(paths: ZigrixPaths, params: {
   notes?: string;
   limit?: number;
 }): Record<string, unknown> | null {
-  ensureProjectState(paths);
+  ensureBaseState(paths);
   const task = loadTask(paths, params.taskId);
   if (!task) return null;
   const transcriptRows = params.transcript ? readTranscript(path.resolve(params.transcript), params.limit ?? 40) : [];

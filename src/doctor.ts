@@ -21,6 +21,11 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
   const openclawSkillsDir = path.join(openclawHome, 'skills');
   const warnings: string[] = [];
 
+  const rulesDir = paths.rulesDir;
+  const ruleFiles = fs.existsSync(rulesDir)
+    ? fs.readdirSync(rulesDir).filter((f) => f.endsWith('.md')).sort()
+    : [];
+
   const payload = {
     node: {
       executable: process.execPath,
@@ -28,24 +33,29 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
       ok: Number(process.versions.node.split('.')[0]) >= 22,
     },
     paths: {
-      projectRoot: loaded.projectRoot,
+      baseDir: loaded.baseDir,
       configPath: loaded.configPath,
-      projectState: paths.projectState,
       tasksDir: paths.tasksDir,
       promptsDir: paths.promptsDir,
       evidenceDir: paths.evidenceDir,
       runsDir: paths.runsDir,
+      rulesDir: paths.rulesDir,
     },
     files: {
       configExists: loaded.configPath ? fs.existsSync(loaded.configPath) : false,
-      projectStateExists: fs.existsSync(paths.projectState),
+      baseDirExists: fs.existsSync(paths.baseDir),
       indexExists: fs.existsSync(paths.indexFile),
       eventsExists: fs.existsSync(paths.eventsFile),
     },
+    rules: {
+      dir: rulesDir,
+      exists: fs.existsSync(rulesDir),
+      files: ruleFiles,
+      count: ruleFiles.length,
+    },
     writeAccess: {
-      projectRoot: existsWritable(loaded.projectRoot),
-      configPath: loaded.configPath ? existsWritable(loaded.configPath) : existsWritable(path.join(loaded.projectRoot, 'zigrix.config.json')),
-      stateParent: existsWritable(paths.projectState),
+      baseDir: existsWritable(paths.baseDir),
+      configPath: loaded.configPath ? existsWritable(loaded.configPath) : existsWritable(path.join(paths.baseDir, 'zigrix.config.json')),
     },
     binaries: {
       node: process.execPath,
@@ -61,14 +71,16 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
   };
 
   if (!payload.node.ok) warnings.push('Node.js 22+ is required.');
-  if (!payload.files.configExists) warnings.push('zigrix.config.json not found. Run `zigrix init --yes`.');
-  if (!payload.writeAccess.projectRoot) warnings.push('Project root is not writable.');
+  if (!payload.files.configExists) warnings.push('zigrix.config.json not found. Run `zigrix onboard`.');
+  if (!payload.files.baseDirExists) warnings.push('~/.zigrix not found. Run `zigrix onboard`.');
+  if (!payload.writeAccess.baseDir) warnings.push('Base directory is not writable.');
   if (!payload.openclaw.exists) warnings.push('~/.openclaw not found. OpenClaw integration remains optional.');
+  if (payload.rules.count === 0) warnings.push('No rule files found in rules directory. Seed from orchestration/rules/.');
 
   return {
     ...payload,
     summary: {
-      ready: payload.node.ok && payload.writeAccess.projectRoot,
+      ready: payload.node.ok && payload.writeAccess.baseDir && payload.files.configExists,
       warnings,
     },
   };
@@ -78,9 +90,9 @@ export function renderDoctorText(payload: Record<string, any>): string {
   const lines = [
     'Zigrix Doctor',
     `- Node: ${payload.node.version} (${payload.node.ok ? 'ok' : 'too old'})`,
-    `- Project root: ${payload.paths.projectRoot}`,
+    `- Base dir: ${payload.paths.baseDir}`,
     `- Config: ${payload.paths.configPath ?? 'missing'}`,
-    `- Project state: ${payload.paths.projectState} (${payload.files.projectStateExists ? 'present' : 'missing'})`,
+    `- Rules dir: ${payload.rules.dir} (${payload.rules.count} files)`,
     `- OpenClaw home: ${payload.openclaw.home} (${payload.openclaw.exists ? 'present' : 'missing'})`,
     `- Ready: ${payload.summary.ready ? 'yes' : 'no'}`,
   ];

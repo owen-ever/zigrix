@@ -7,8 +7,9 @@ import { zigrixConfigSchema } from '../src/config/schema.js';
 describe('zigrix config schema', () => {
   it('accepts default config', () => {
     const parsed = zigrixConfigSchema.parse(defaultConfig);
-    expect(parsed.paths.stateDir).toBe('.zigrix');
+    expect(parsed.paths.baseDir).toContain('.zigrix');
     expect(parsed.rules.stale.defaultHours).toBe(24);
+    expect(parsed.workspace.projectsBaseDir).toBe('');
   });
 
   it('rejects participant/excluded overlap', () => {

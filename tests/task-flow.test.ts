@@ -5,6 +5,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { defaultConfig } from '../src/config/defaults.js';
+import { zigrixConfigSchema } from '../src/config/schema.js';
 import { collectEvidence, mergeEvidence } from '../src/orchestration/evidence.js';
 import { runPipeline } from '../src/orchestration/pipeline.js';
 import { renderReport } from '../src/orchestration/report.js';
@@ -12,10 +13,27 @@ import { completeWorker, prepareWorker, registerWorker } from '../src/orchestrat
 import { resolvePaths } from '../src/state/paths.js';
 import { createTask, listTaskEvents, loadTask, recordTaskProgress, updateTaskStatus } from '../src/state/tasks.js';
 
+function makeTempPaths() {
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-task-flow-'));
+  const cfg = zigrixConfigSchema.parse({
+    ...structuredClone(defaultConfig),
+    paths: {
+      baseDir: tmpBase,
+      tasksDir: path.join(tmpBase, 'tasks'),
+      evidenceDir: path.join(tmpBase, 'evidence'),
+      promptsDir: path.join(tmpBase, 'prompts'),
+      eventsFile: path.join(tmpBase, 'tasks.jsonl'),
+      indexFile: path.join(tmpBase, 'index.json'),
+      runsDir: path.join(tmpBase, 'runs'),
+      rulesDir: path.join(tmpBase, 'rules'),
+    },
+  });
+  return resolvePaths(cfg);
+}
+
 describe('task parity flow', () => {
   it('supports task -> worker -> evidence -> report flow', () => {
-    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-task-flow-'));
-    const paths = resolvePaths(projectRoot, structuredClone(defaultConfig) as never);
+    const paths = makeTempPaths();
 
     const task = createTask(paths, {
       title: 'Parity task',
@@ -48,8 +66,7 @@ describe('task parity flow', () => {
   });
 
   it('runs pipeline with evidence summaries and auto-report', () => {
-    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-pipeline-'));
-    const paths = resolvePaths(projectRoot, structuredClone(defaultConfig) as never);
+    const paths = makeTempPaths();
     const result = runPipeline(paths, {
       title: 'Pipeline task',
       description: 'Pipeline test',

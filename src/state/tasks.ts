@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { appendEvent, loadEvents, nowIso } from './events.js';
-import { type ZigrixPaths, ensureProjectState } from './paths.js';
+import { type ZigrixPaths, ensureBaseState } from './paths.js';
 
 export type ZigrixTask = {
   taskId: string;
@@ -14,6 +14,7 @@ export type ZigrixTask = {
   updatedAt: string;
   requiredAgents: string[];
   workerSessions: Record<string, unknown>;
+  projectDir?: string;
 };
 
 const TASK_ID_RE = /^TASK-(\d{8})-(\d{3})$/;
@@ -31,7 +32,7 @@ function readJson(filePath: string): Record<string, unknown> | null {
 }
 
 export function nextTaskId(paths: ZigrixPaths): string {
-  ensureProjectState(paths);
+  ensureBaseState(paths);
   const today = nowIso().slice(0, 10).replaceAll('-', '');
   const prefix = `TASK-${today}-`;
   let maxN = 0;
@@ -44,7 +45,7 @@ export function nextTaskId(paths: ZigrixPaths): string {
 }
 
 export function saveTask(paths: ZigrixPaths, task: ZigrixTask): ZigrixTask {
-  ensureProjectState(paths);
+  ensureBaseState(paths);
   task.updatedAt = nowIso();
   fs.writeFileSync(taskPath(paths, task.taskId), `${JSON.stringify(task, null, 2)}\n`, 'utf8');
   rebuildIndex(paths);
@@ -57,7 +58,7 @@ export function loadTask(paths: ZigrixPaths, taskId: string): ZigrixTask | null 
 }
 
 export function listTasks(paths: ZigrixPaths): ZigrixTask[] {
-  ensureProjectState(paths);
+  ensureBaseState(paths);
   return fs.readdirSync(paths.tasksDir)
     .filter((name) => name.startsWith('TASK-') && name.endsWith('.json'))
     .sort()
@@ -72,7 +73,7 @@ export function listTaskEvents(paths: ZigrixPaths, taskId?: string): Array<Recor
   return taskId ? rows.filter((row) => String(row.taskId ?? '') === taskId) : rows;
 }
 
-export function createTask(paths: ZigrixPaths, params: { title: string; description: string; scale?: string; requiredAgents?: string[] }): ZigrixTask {
+export function createTask(paths: ZigrixPaths, params: { title: string; description: string; scale?: string; requiredAgents?: string[]; projectDir?: string }): ZigrixTask {
   const task: ZigrixTask = {
     taskId: nextTaskId(paths),
     title: params.title,
@@ -83,6 +84,7 @@ export function createTask(paths: ZigrixPaths, params: { title: string; descript
     updatedAt: nowIso(),
     requiredAgents: [...(params.requiredAgents ?? [])],
     workerSessions: {},
+    ...(params.projectDir ? { projectDir: params.projectDir } : {}),
   };
   saveTask(paths, task);
   appendEvent(paths.eventsFile, {
@@ -151,7 +153,7 @@ export function applyStalePolicy(paths: ZigrixPaths, hours = 24, reason = 'stale
 }
 
 export function rebuildIndex(paths: ZigrixPaths): Record<string, unknown> {
-  ensureProjectState(paths);
+  ensureBaseState(paths);
   const tasks = listTasks(paths);
   const events = loadEvents(paths.eventsFile);
   const activeStatuses = new Set(['OPEN', 'IN_PROGRESS', 'BLOCKED', 'DONE_PENDING_REPORT']);

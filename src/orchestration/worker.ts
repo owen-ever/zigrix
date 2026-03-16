@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { appendEvent } from '../state/events.js';
-import { type ZigrixPaths, ensureProjectState } from '../state/paths.js';
+import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { loadTask, saveTask, type ZigrixTask } from '../state/tasks.js';
 
 export const DEFAULT_REQUIRED_AGENTS = ['pro-zig', 'qa-zig'];
@@ -29,6 +29,7 @@ function renderPrompt(params: {
   unitId?: string;
   workPackage?: string;
   dod?: string;
+  projectDir?: string;
 }): string {
   const sections = [
     `## Worker Assignment: ${params.task.taskId}`,
@@ -39,6 +40,7 @@ function renderPrompt(params: {
     `| title | ${params.task.title} |`,
     `| scale | ${params.task.scale} |`,
     `| role | ${params.agentId} |`,
+    ...(params.projectDir ? [`| projectDir | ${params.projectDir} |`] : []),
     '',
     '### Assignment',
     params.description,
@@ -60,11 +62,13 @@ export function prepareWorker(paths: ZigrixPaths, params: {
   unitId?: string;
   workPackage?: string;
   dod?: string;
+  projectDir?: string;
 }): Record<string, unknown> | null {
-  ensureProjectState(paths);
+  ensureBaseState(paths);
   const task = loadTask(paths, params.taskId);
   if (!task) return null;
-  const prompt = renderPrompt({ task, ...params });
+  const projectDir = params.projectDir ?? task.projectDir;
+  const prompt = renderPrompt({ task, ...params, projectDir });
   const promptPath = path.join(paths.promptsDir, `${params.taskId}-${params.agentId}.md`);
   fs.writeFileSync(promptPath, `${prompt}\n`, 'utf8');
   task.workerSessions[params.agentId] = {

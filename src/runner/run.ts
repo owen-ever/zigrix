@@ -57,13 +57,13 @@ function runStep(step: Workflow['steps'][number], cwd: string): Promise<StepRunR
 }
 
 export async function runWorkflow(params: {
-  projectRoot: string;
   config: ZigrixConfig;
   workflowPath: string;
 }): Promise<{ record: WorkflowRunRecord; savedPath: string }> {
-  const workflowPath = path.resolve(params.projectRoot, params.workflowPath);
+  const workflowPath = path.resolve(params.workflowPath);
   const raw = fs.readFileSync(workflowPath, 'utf8');
   const parsed = workflowSchema.parse(JSON.parse(raw)) as Workflow;
+  const workflowDir = path.dirname(workflowPath);
 
   const startedAt = new Date();
   const runId = `run-${startedAt.toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19)}`;
@@ -71,7 +71,7 @@ export async function runWorkflow(params: {
   let overallStatus: 'success' | 'failed' = 'success';
 
   for (const step of parsed.steps) {
-    const cwd = step.cwd ? path.resolve(params.projectRoot, step.cwd) : params.projectRoot;
+    const cwd = step.cwd ? path.resolve(workflowDir, step.cwd) : workflowDir;
     const result = await runStep(step, cwd);
     steps.push(result);
     if (result.status !== 'success') {
@@ -92,7 +92,7 @@ export async function runWorkflow(params: {
     steps,
   };
 
-  const savedPath = saveRunRecord(params.projectRoot, params.config, record);
+  const savedPath = saveRunRecord(params.config, record);
   return { record, savedPath };
 }
 

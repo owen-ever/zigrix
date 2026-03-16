@@ -3,22 +3,19 @@ import path from 'node:path';
 import process from 'node:process';
 import YAML from 'yaml';
 
-import { defaultConfig } from './defaults.js';
+import { defaultConfig, ZIGRIX_HOME } from './defaults.js';
 import { type ZigrixConfig, zigrixConfigSchema } from './schema.js';
 
 const CONFIG_CANDIDATES = [
   'zigrix.config.json',
   'zigrix.config.yaml',
   'zigrix.config.yml',
-  '.zigrixrc.json',
-  '.zigrixrc.yaml',
-  '.zigrixrc.yml',
 ] as const;
 
 export type LoadedConfig = {
   config: ZigrixConfig;
   configPath: string | null;
-  projectRoot: string;
+  baseDir: string;
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -50,13 +47,13 @@ function parseConfigFile(filePath: string): unknown {
   return JSON.parse(raw);
 }
 
-function resolveConfigPath(projectRoot: string, explicitPath?: string): string | null {
+function resolveConfigPath(baseDir: string, explicitPath?: string): string | null {
   if (explicitPath) {
-    return path.resolve(projectRoot, explicitPath);
+    return path.resolve(explicitPath);
   }
 
   for (const candidate of CONFIG_CANDIDATES) {
-    const fullPath = path.join(projectRoot, candidate);
+    const fullPath = path.join(baseDir, candidate);
     if (fs.existsSync(fullPath)) {
       return fullPath;
     }
@@ -75,23 +72,17 @@ function applyEnvOverrides(config: ZigrixConfig): ZigrixConfig {
       copy.runtime.jsonIndent = indent;
     }
   }
-  if (process.env.ZIGRIX_STATE_DIR) {
-    copy.paths.stateDir = process.env.ZIGRIX_STATE_DIR;
-  }
-  if (process.env.ZIGRIX_RUNS_DIR) {
-    copy.paths.runsDir = process.env.ZIGRIX_RUNS_DIR;
-  }
   return copy;
 }
 
-export function loadConfig(options?: { projectRoot?: string; configPath?: string }): LoadedConfig {
-  const projectRoot = path.resolve(options?.projectRoot ?? process.cwd());
-  const configPath = resolveConfigPath(projectRoot, options?.configPath);
+export function loadConfig(options?: { baseDir?: string; configPath?: string }): LoadedConfig {
+  const baseDir = path.resolve(options?.baseDir ?? ZIGRIX_HOME);
+  const configPath = resolveConfigPath(baseDir, options?.configPath);
   const parsed = configPath ? parseConfigFile(configPath) : {};
   const merged = deepMerge(structuredClone(defaultConfig) as unknown as ZigrixConfig, parsed);
   const withEnv = applyEnvOverrides(merged);
   const result = zigrixConfigSchema.parse(withEnv);
-  return { config: result, configPath, projectRoot };
+  return { config: result, configPath, baseDir };
 }
 
 export function writeConfigFile(targetPath: string, config: ZigrixConfig): string {
@@ -101,13 +92,13 @@ export function writeConfigFile(targetPath: string, config: ZigrixConfig): strin
   return resolvedPath;
 }
 
-export function writeDefaultConfig(targetDir: string, force = false): string {
-  const projectRoot = path.resolve(targetDir);
-  const targetPath = path.join(projectRoot, 'zigrix.config.json');
+export function writeDefaultConfig(baseDir?: string, force = false): string {
+  const resolvedBase = path.resolve(baseDir ?? ZIGRIX_HOME);
+  const targetPath = path.join(resolvedBase, 'zigrix.config.json');
   if (fs.existsSync(targetPath) && !force) {
     throw new Error(`config already exists: ${targetPath}`);
   }
-  fs.mkdirSync(projectRoot, { recursive: true });
+  fs.mkdirSync(resolvedBase, { recursive: true });
   return writeConfigFile(targetPath, structuredClone(defaultConfig) as unknown as ZigrixConfig);
 }
 

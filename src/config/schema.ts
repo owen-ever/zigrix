@@ -21,13 +21,17 @@ const templateSchema = z.object({
 
 export const zigrixConfigSchema = z.object({
   paths: z.object({
-    stateDir: pathSchema,
+    baseDir: pathSchema,
     tasksDir: pathSchema,
     evidenceDir: pathSchema,
     promptsDir: pathSchema,
     eventsFile: pathSchema,
     indexFile: pathSchema,
     runsDir: pathSchema,
+    rulesDir: pathSchema,
+  }),
+  workspace: z.object({
+    projectsBaseDir: z.string().default(''),
   }),
   agents: z.object({
     registry: z.record(z.string(), agentSchema),
@@ -95,19 +99,27 @@ export const zigrixConfigJsonSchema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   title: 'ZigrixConfig',
   type: 'object',
-  required: ['paths', 'agents', 'rules', 'templates', 'runtime'],
+  required: ['paths', 'workspace', 'agents', 'rules', 'templates', 'runtime'],
   properties: {
     paths: {
       type: 'object',
-      required: ['stateDir', 'tasksDir', 'evidenceDir', 'promptsDir', 'eventsFile', 'indexFile', 'runsDir'],
+      required: ['baseDir', 'tasksDir', 'evidenceDir', 'promptsDir', 'eventsFile', 'indexFile', 'runsDir', 'rulesDir'],
       properties: {
-        stateDir: { type: 'string' },
+        baseDir: { type: 'string' },
         tasksDir: { type: 'string' },
         evidenceDir: { type: 'string' },
         promptsDir: { type: 'string' },
         eventsFile: { type: 'string' },
         indexFile: { type: 'string' },
         runsDir: { type: 'string' },
+        rulesDir: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+    workspace: {
+      type: 'object',
+      properties: {
+        projectsBaseDir: { type: 'string' },
       },
       additionalProperties: false,
     },

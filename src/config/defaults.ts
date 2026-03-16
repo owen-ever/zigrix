@@ -1,12 +1,21 @@
+import path from 'node:path';
+import os from 'node:os';
+
+export const ZIGRIX_HOME = process.env.ZIGRIX_HOME ?? path.join(os.homedir(), '.zigrix');
+
 export const defaultConfig = {
   paths: {
-    stateDir: '.zigrix',
-    tasksDir: '.zigrix/tasks',
-    evidenceDir: '.zigrix/evidence',
-    promptsDir: '.zigrix/prompts',
-    eventsFile: '.zigrix/tasks.jsonl',
-    indexFile: '.zigrix/index.json',
-    runsDir: '.zigrix/runs',
+    baseDir: ZIGRIX_HOME,
+    tasksDir: path.join(ZIGRIX_HOME, 'tasks'),
+    evidenceDir: path.join(ZIGRIX_HOME, 'evidence'),
+    promptsDir: path.join(ZIGRIX_HOME, 'prompts'),
+    eventsFile: path.join(ZIGRIX_HOME, 'tasks.jsonl'),
+    indexFile: path.join(ZIGRIX_HOME, 'index.json'),
+    runsDir: path.join(ZIGRIX_HOME, 'runs'),
+    rulesDir: path.join(ZIGRIX_HOME, 'rules'),
+  },
+  workspace: {
+    projectsBaseDir: '',
   },
   agents: {
     registry: {},

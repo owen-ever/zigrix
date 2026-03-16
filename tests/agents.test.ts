@@ -41,9 +41,9 @@ describe('agent registry mutations', () => {
   });
 
   it('persists mutated config to zigrix.config.json', () => {
-    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-agent-config-'));
-    const configPath = writeDefaultConfig(projectRoot);
-    const loaded = loadConfig({ projectRoot });
+    const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-agent-config-'));
+    const configPath = writeDefaultConfig(tmpBase);
+    const loaded = loadConfig({ baseDir: tmpBase });
     const next = addAgent(loaded.config, {
       id: 'front-main',
       role: 'frontend',
@@ -52,7 +52,7 @@ describe('agent registry mutations', () => {
     }).config;
 
     writeConfigFile(configPath, next);
-    const reloaded = loadConfig({ projectRoot });
+    const reloaded = loadConfig({ baseDir: tmpBase });
     expect(reloaded.config.agents.registry['front-main'].role).toBe('frontend');
     expect(reloaded.config.agents.orchestration.participants).toContain('front-main');
   });
