@@ -100,11 +100,15 @@ function loadRuntime(options: { baseDir?: string; config?: string }) {
   return { ...loaded, paths: resolvePaths(loaded.config) };
 }
 
+const { version: pkgVersion } = JSON.parse(
+  fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8')
+) as { version: string };
+
 const program = new Command();
 program
   .name('zigrix')
   .description('Zigrix — multi-project parallel task orchestration CLI')
-  .version('0.1.0-alpha.0');
+  .version(pkgVersion);
 
 const config = program.command('config').description('Inspect Zigrix config');
 const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
