@@ -16,7 +16,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   if (!isLocalAccessRequest(request)) {
     return applyCors(
       request,
-      NextResponse.json({ error: 'Setup is allowed only from local access' }, { status: 403 }),
+      NextResponse.json({ error: 'Setup is allowed only from local/private network access' }, { status: 403 }),
     );
   }
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (!isLocalAccessRequest(request)) {
     return applyCors(
       request,
-      NextResponse.json({ error: 'Setup is allowed only from local access' }, { status: 403 }),
+      NextResponse.json({ error: 'Setup is allowed only from local/private network access' }, { status: 403 }),
     );
   }
 
