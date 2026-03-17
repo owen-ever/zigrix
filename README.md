@@ -9,6 +9,7 @@ It turns ad-hoc delegation into a file-backed, inspectable flow with:
 - rule/template validation and recovery
 - evidence merge + final report rendering
 - OpenClaw integration (skill registration + PATH stabilization)
+- built-in web dashboard (`zigrix dashboard --port 3838`)
 - release-friendly Node/TypeScript packaging
 
 ## Current status
@@ -34,6 +35,10 @@ zigrix onboard
 
 # Verify readiness
 zigrix doctor
+
+# Launch dashboard (foreground, Ctrl+C to stop)
+zigrix dashboard
+# zigrix dashboard --port 3939
 ```
 
 ### Prerequisites: Node.js version
@@ -82,6 +87,7 @@ zigrix --version   # should now match package.json
 - create and track tasks with append-only event history
 - manage worker/evidence/report lifecycle
 - detect stale tasks, verify state consistency, and recover state
+- start a bundled web dashboard with explicit port control (`zigrix dashboard --port <n>`, default 3838)
 - **configure** agents, rules, PATH, skills, and workspace after initial setup
 
 ## Recovery-first operations
@@ -140,7 +146,7 @@ zigrix/
 
 ## Non-goals right now
 - hosted control plane
-- GUI/TUI product surface
+- hosted multi-user control-plane UI surface
 - generalized plugin SDK
 - automatic npm publish execution
 - Windows-first support

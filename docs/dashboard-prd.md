@@ -189,17 +189,16 @@ xnote의 `stableSerialize`는 매 업데이트마다 전체 JSON 직렬화 + 문
 ### 5. Rate Limit: xnote 패턴 참조
 `auth-login-rate-limit.ts` 포팅. IP 기반 윈도우 카운터, 5회/분 초과 시 429.
 
-## CLI Integration
+## CLI Integration (current)
 ```bash
-# 대시보드 서버 시작
-zigrix dashboard start [--port 3000]
+# 대시보드 서버 시작 (foreground)
+zigrix dashboard              # default: 3838
+zigrix dashboard --port 3939  # explicit port override
 
-# 대시보드 서버 중지
-zigrix dashboard stop
-
-# 대시보드 상태 확인
-zigrix dashboard status
+# 종료: Ctrl+C
 ```
+
+> Note: `start/stop/status` 서브커맨드는 아직 없음. 현재 v1은 foreground 실행 모델이다.
 
 ## Non-goals (v1)
 - 대시보드에서 태스크 생성/수정 (읽기 전용, 중단만 가능)
@@ -225,4 +224,4 @@ zigrix dashboard status
 6. 우측 이벤트 로그 탭
 7. 우측 대화 내역 탭 (OpenClaw 연동 + 미설치 fallback)
 8. SSE 실시간 (재연결 정합성 포함)
-9. CLI 통합 (dashboard start/stop/status)
+9. CLI 통합 (`zigrix dashboard [--port]` foreground 모델)

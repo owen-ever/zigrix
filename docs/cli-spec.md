@@ -93,7 +93,8 @@ zigrix
 ├─ pipeline
 │  └─ run --title --description [--scale] [--required-agent] [--evidence-summary] [--require-qa] [--auto-report] [--record-feedback]
 ├─ run <workflowPath>
-└─ inspect <runIdOrPath>
+├─ inspect <runIdOrPath>
+└─ dashboard [--port <n>]
 ```
 
 ## Key commands
@@ -115,6 +116,13 @@ Lower-level task creation without orchestration metadata enrichment. Use `dispat
 
 ### `zigrix doctor`
 Inspects Node version, config, base dir, rules dir, OpenClaw readiness.
+
+### `zigrix dashboard`
+Starts the bundled Next.js standalone dashboard in the foreground.
+- default port: `3838`
+- explicit port: `zigrix dashboard --port <n>`
+- stop: `Ctrl+C`
+- port conflicts fail fast with an explicit error (no auto-port hopping)
 
 ## Global flags
 - `--json` — emit machine-readable JSON

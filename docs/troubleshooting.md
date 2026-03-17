@@ -49,5 +49,18 @@ Use these in order:
 3. `bash scripts/release-smoke.sh`
 4. `zigrix doctor`
 
+## `zigrix dashboard` says port is already in use
+Use another port explicitly:
+```bash
+zigrix dashboard --port 3939
+```
+
+## `zigrix dashboard` fails with packaging error (`dist/dashboard` missing)
+Rebuild dashboard bundle and retry:
+```bash
+npm run build:dashboard
+zigrix dashboard
+```
+
 ## OpenClaw is not installed
 Core Zigrix commands can still work. OpenClaw is optional for the local file-backed core.

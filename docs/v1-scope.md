@@ -19,6 +19,7 @@ Ship Zigrix as an open-source ready Node/TypeScript CLI that can replace the cur
 - stale detection / recovery
 - pipeline run for local end-to-end flow
 - doctor diagnostics
+- bundled web dashboard launch command (`zigrix dashboard`, default port 3838)
 - safe reset for config/template/state recovery
 - PATH stabilization + OpenClaw skill auto-registration
 - install / build / smoke / release docs
@@ -42,7 +43,6 @@ Zigrix v1 is considered ready when a new user can:
 5. OpenClaw-friendly but not OpenClaw-dependent core behavior
 
 ## Deferred to Post-v1
-- dedicated dashboard (D-018)
 - live agent spawning / dispatch runtime integration
 - plugin SDK
 - interactive TUI/editor
