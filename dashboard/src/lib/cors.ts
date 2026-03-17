@@ -22,6 +22,18 @@ function resolveAllowedOrigin(request: Request): { allowedOrigin: string | null;
   const origin = request.headers.get('origin');
   if (!origin) return { allowedOrigin: null, origin: null };
 
+  // Always allow same-origin requests.
+  // This prevents false 403s when dashboard is accessed via non-localhost hosts
+  // (e.g. AirMini hostname/IP) before corsOrigins is explicitly configured.
+  try {
+    const requestOrigin = new URL(request.url).origin;
+    if (requestOrigin === origin) {
+      return { allowedOrigin: origin, origin };
+    }
+  } catch {
+    // ignore URL parse issues and continue with configured allowlist check
+  }
+
   const allowedOrigins = parseAllowedOrigins();
   const allowedOrigin = allowedOrigins.find((candidate) => candidate === origin) || null;
   return { allowedOrigin, origin };

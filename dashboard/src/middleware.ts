@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySession, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { verifySession, SESSION_COOKIE_NAME, isSetupRequired } from '@/lib/auth';
 
 // Paths that don't require authentication
 const PUBLIC_API_PATHS = ['/api/auth/setup', '/api/auth/login'];
-const PUBLIC_PAGE_PATHS = ['/setup', '/login'];
 
 export const runtime = 'nodejs';
 
@@ -18,13 +17,31 @@ export const config = {
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
+  const setupRequired = isSetupRequired();
 
-  // Always allow public paths
+  const isSetupPage = pathname === '/setup' || pathname.startsWith('/setup/');
+  const isLoginPage = pathname === '/login' || pathname.startsWith('/login/');
+
+  // Public auth APIs always pass through (route handlers enforce setup state).
   if (PUBLIC_API_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  if (PUBLIC_PAGE_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+  // Setup flow routing
+  if (isSetupPage) {
+    if (setupRequired) return NextResponse.next();
+
+    // Setup already done: bounce away from /setup.
+    const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+    const session = await verifySession(token);
+    return NextResponse.redirect(new URL(session ? '/' : '/login', request.url));
+  }
+
+  if (isLoginPage) {
+    // First-time users should be sent to /setup, not /login.
+    if (setupRequired) {
+      return NextResponse.redirect(new URL('/setup', request.url));
+    }
     return NextResponse.next();
   }
 
@@ -40,11 +57,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
-  // Page routes: redirect to /login if not authenticated
+  // Page routes: redirect based on setup/auth state
   if (!session) {
+    if (setupRequired) {
+      return NextResponse.redirect(new URL('/setup', request.url));
+    }
+
     const loginUrl = new URL('/login', request.url);
     // Preserve the original destination for post-login redirect
-    if (pathname !== '/' && pathname !== '/login') {
+    if (pathname !== '/' && !isLoginPage) {
       loginUrl.searchParams.set('next', pathname);
     }
     return NextResponse.redirect(loginUrl);
