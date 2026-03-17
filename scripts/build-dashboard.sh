@@ -18,15 +18,9 @@ else
 fi
 
 # 2. Next.js 빌드 (output: standalone)
-# Use explicit Next CLI path to avoid PATH/bin-link differences across CI runners.
+# Use npm exec so CLI resolution follows package bin metadata (layout-agnostic).
 echo "🔨 Building Next.js (standalone)..."
-NEXT_BIN="$DASHBOARD_DIR/node_modules/next/dist/bin/next"
-if [ ! -f "$NEXT_BIN" ]; then
-  echo "❌ next CLI not found: $NEXT_BIN" >&2
-  echo "   npm install may have failed or produced unexpected layout." >&2
-  exit 1
-fi
-(cd "$DASHBOARD_DIR" && node "$NEXT_BIN" build)
+(cd "$DASHBOARD_DIR" && npm exec -- next build)
 
 # 3. 기존 dist/dashboard 정리
 rm -rf "$DIST_DASHBOARD"
