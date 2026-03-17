@@ -9,12 +9,17 @@ DIST_DASHBOARD="$PKG_ROOT/dist/dashboard"
 echo "=== Building zigrix dashboard ==="
 
 # 1. dashboard 의존성 설치
+# NOTE: for npm run, --prefix must be passed before subcommand (npm --prefix <dir> run ...)
 echo "📦 Installing dashboard dependencies..."
-npm install --prefix "$DASHBOARD_DIR" --no-fund --no-audit
+if [ -f "$DASHBOARD_DIR/package-lock.json" ]; then
+  npm --prefix "$DASHBOARD_DIR" ci --no-fund --no-audit
+else
+  npm --prefix "$DASHBOARD_DIR" install --no-fund --no-audit
+fi
 
 # 2. Next.js 빌드 (output: standalone)
 echo "🔨 Building Next.js (standalone)..."
-npm run build --prefix "$DASHBOARD_DIR"
+npm --prefix "$DASHBOARD_DIR" run build
 
 # 3. 기존 dist/dashboard 정리
 rm -rf "$DIST_DASHBOARD"
