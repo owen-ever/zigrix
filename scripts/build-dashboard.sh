@@ -12,14 +12,14 @@ echo "=== Building zigrix dashboard ==="
 # NOTE: for npm run, --prefix must be passed before subcommand (npm --prefix <dir> run ...)
 echo "📦 Installing dashboard dependencies..."
 if [ -f "$DASHBOARD_DIR/package-lock.json" ]; then
-  npm --prefix "$DASHBOARD_DIR" ci --no-fund --no-audit
+  (cd "$DASHBOARD_DIR" && npm ci --no-fund --no-audit)
 else
-  npm --prefix "$DASHBOARD_DIR" install --no-fund --no-audit
+  (cd "$DASHBOARD_DIR" && npm install --no-fund --no-audit)
 fi
 
 # 2. Next.js 빌드 (output: standalone)
 echo "🔨 Building Next.js (standalone)..."
-npm --prefix "$DASHBOARD_DIR" run build
+(cd "$DASHBOARD_DIR" && npm run build)
 
 # 3. 기존 dist/dashboard 정리
 rm -rf "$DIST_DASHBOARD"
