@@ -23,15 +23,29 @@ function resolveAllowedOrigin(request: Request): { allowedOrigin: string | null;
   if (!origin) return { allowedOrigin: null, origin: null };
 
   // Always allow same-origin requests.
-  // This prevents false 403s when dashboard is accessed via non-localhost hosts
-  // (e.g. AirMini hostname/IP) before corsOrigins is explicitly configured.
+  // In proxied deployments request.url may be internal, so we also reconstruct
+  // candidate external origins from forwarded headers.
+  const sameOriginCandidates = new Set<string>();
   try {
-    const requestOrigin = new URL(request.url).origin;
-    if (requestOrigin === origin) {
-      return { allowedOrigin: origin, origin };
-    }
+    sameOriginCandidates.add(new URL(request.url).origin);
   } catch {
-    // ignore URL parse issues and continue with configured allowlist check
+    // ignore URL parse issues and continue
+  }
+
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const host = request.headers.get('host')?.trim();
+
+  if (forwardedHost && forwardedProto) {
+    sameOriginCandidates.add(`${forwardedProto}://${forwardedHost}`);
+  }
+  if (host) {
+    sameOriginCandidates.add(`https://${host}`);
+    sameOriginCandidates.add(`http://${host}`);
+  }
+
+  if (sameOriginCandidates.has(origin)) {
+    return { allowedOrigin: origin, origin };
   }
 
   const allowedOrigins = parseAllowedOrigins();
