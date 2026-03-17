@@ -183,9 +183,10 @@ export function seedRules(
 
 // ─── PATH check and stabilization ─────────────────────────────────────────────
 
-export function checkZigrixInPath(): boolean {
-  const pathEnv = process.env.PATH ?? '';
-  const dirs = pathEnv.split(path.delimiter).filter(Boolean);
+export const STABLE_SHELL_PATHS = ['/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+
+export function checkZigrixInPath(opts?: { _overrideStablePaths?: string[] }): boolean {
+  const dirs = opts?._overrideStablePaths ?? STABLE_SHELL_PATHS;
   for (const dir of dirs) {
     try {
       if (!fs.existsSync(dir)) continue;
@@ -297,9 +298,10 @@ export function findUserBinDir(): string {
  *   2. ~/.local/bin   — user-local fallback; may not be in PATH, shows warning if so
  *
  * @param opts._overrideSystemBinDir - Override system bin dir selection (for testing)
+ * @param opts._overrideStablePaths  - Override stable paths list (for testing)
  */
-export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | null }): PathStabilizeResult {
-  if (checkZigrixInPath()) {
+export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | null; _overrideStablePaths?: string[] }): PathStabilizeResult {
+  if (checkZigrixInPath({ _overrideStablePaths: opts?._overrideStablePaths })) {
     return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
   }
 
@@ -333,7 +335,15 @@ export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | nul
       fs.symlinkSync(binEntry, symlinkPath);
       fs.chmodSync(symlinkPath, 0o755);
       return { alreadyInPath: false, symlinkCreated: true, symlinkPath, warning: null };
-    } catch {
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'EACCES') {
+        return {
+          alreadyInPath: false,
+          symlinkCreated: false,
+          symlinkPath: null,
+          warning: `Cannot write to ${systemBinDir} (permission denied). Run:\n  sudo ln -sfn $(which zigrix) ${symlinkPath}`,
+        };
+      }
       // Fall through to user bin dir
     }
   }
