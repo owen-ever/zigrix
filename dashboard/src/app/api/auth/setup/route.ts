@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isSetupRequired, setupAdmin } from '@/lib/auth';
 import { applyCors, handleCorsPreflight, rejectDisallowedOrigin } from '@/lib/cors';
+import { isLocalAccessRequest } from '@/lib/local-access';
 
 export const runtime = 'nodejs';
 
@@ -12,6 +13,13 @@ export async function GET(request: NextRequest): Promise<Response> {
   const blocked = rejectDisallowedOrigin(request);
   if (blocked) return blocked;
 
+  if (!isLocalAccessRequest(request)) {
+    return applyCors(
+      request,
+      NextResponse.json({ error: 'Setup is allowed only from local access' }, { status: 403 }),
+    );
+  }
+
   if (!isSetupRequired()) {
     return applyCors(request, NextResponse.json({ error: 'Not found' }, { status: 404 }));
   }
@@ -22,6 +30,13 @@ export async function GET(request: NextRequest): Promise<Response> {
 export async function POST(request: NextRequest): Promise<Response> {
   const blocked = rejectDisallowedOrigin(request);
   if (blocked) return blocked;
+
+  if (!isLocalAccessRequest(request)) {
+    return applyCors(
+      request,
+      NextResponse.json({ error: 'Setup is allowed only from local access' }, { status: 403 }),
+    );
+  }
 
   if (!isSetupRequired()) {
     return applyCors(request, NextResponse.json({ error: 'Not found' }, { status: 404 }));
