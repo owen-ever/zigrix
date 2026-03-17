@@ -42,6 +42,7 @@ import {
   updateTaskStatus,
 } from './state/tasks.js';
 import { verifyState } from './state/verify.js';
+import { runDashboard, DASHBOARD_DEFAULT_PORT } from './dashboard.js';
 
 const STATUS_MAP: Record<string, string> = {
   start: 'IN_PROGRESS',
@@ -885,6 +886,22 @@ program
   .action((runIdOrPath, options) => {
     const loaded = loadConfig({ baseDir: options.baseDir, configPath: options.config });
     printValue(loadRunRecord(loaded.config, runIdOrPath), true);
+  });
+
+// ─── dashboard ──────────────────────────────────────────────────────────────
+
+program
+  .command('dashboard')
+  .description('Start the zigrix web dashboard (Next.js) in the foreground')
+  .option('--port <n>', `TCP port to listen on (default: ${DASHBOARD_DEFAULT_PORT})`, String(DASHBOARD_DEFAULT_PORT))
+  .action(async (options) => {
+    const port = parseInt(options.port, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      console.error(`Invalid port: ${options.port}`);
+      process.exitCode = 1;
+      return;
+    }
+    await runDashboard({ port });
   });
 
 program.parseAsync(process.argv).catch((error) => {
