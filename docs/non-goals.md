@@ -3,7 +3,7 @@
 ## Explicitly Not in Tonight's Scope
 - remote orchestration control plane
 - hosted SaaS experience
-- browser UI / desktop UI / TUI
+- hosted multi-tenant dashboard service (SaaS control plane)
 - generalized multi-vendor AI runtime abstraction
 - automatic npm publish execution
 - cloud sync or shared state server

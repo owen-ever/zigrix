@@ -7,6 +7,7 @@ This document answers one question: can Zigrix be handed to an external user wit
 - [x] `npm run test`
 - [x] `npm run build`
 - [x] `npm run smoke`
+- [x] `npm run build:dashboard`
 - [x] `bash scripts/release-smoke.sh`
 - [x] `npm pack --dry-run`
 - [x] docs map is current

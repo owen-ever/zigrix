@@ -7,4 +7,4 @@
 - npm publish is prepared but intentionally deferred to a manual next step
 - Windows-first support is not a release target yet
 - `legacy-python/` remains useful as a reference during migration, but it is not a supported product path
-- dedicated dashboard (D-018) is planned but not yet implemented
+- dashboard currently runs as a foreground process only (`zigrix dashboard`, stop via Ctrl+C); daemon/process manager controls are not shipped yet

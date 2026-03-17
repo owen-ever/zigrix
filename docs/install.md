@@ -42,6 +42,7 @@ zigrix onboard
 `install.sh` performs:
 - `npm install`
 - `npm run build`
+- `npm run build:dashboard` (bundles Next standalone server into `dist/dashboard`)
 - `npm link` (exposes `zigrix` globally)
 
 ### With OpenClaw skills (legacy flag)
@@ -67,6 +68,7 @@ Note: `zigrix onboard` now handles skill registration automatically when OpenCla
 zigrix --version           # should match version in package.json
 zigrix doctor
 zigrix config validate --json
+zigrix dashboard --port 3838   # Ctrl+C after startup check
 ```
 
 ### Version mismatch

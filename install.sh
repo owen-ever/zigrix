@@ -51,6 +51,7 @@ fi
 cd "$REPO_ROOT"
 npm install
 npm run build
+npm run build:dashboard
 npm link
 
 # Symlink zigrix to /usr/local/bin for non-login shell access (e.g., OpenClaw agents using exec)

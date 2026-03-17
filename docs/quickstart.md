@@ -50,6 +50,13 @@ zigrix configure --section skills
 zigrix configure --section workspace --projects-base-dir ~/my-projects
 ```
 
+## 3.6) Dashboard check (optional)
+```bash
+zigrix dashboard             # default port: 3838
+# zigrix dashboard --port 3939
+# stop with Ctrl+C
+```
+
 ## 4) Dispatch a task (agent usage)
 ```bash
 zigrix task dispatch \

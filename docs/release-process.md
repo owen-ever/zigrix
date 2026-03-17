@@ -21,7 +21,7 @@
 ## Release flow
 1. merge release-ready changes
 2. run CI on supported matrix (includes `npm pack --dry-run` + smoke)
-3. `npm ci && npm run test && npm run build && npm run smoke`
+3. `npm ci && npm run test && npm run build && npm run build:dashboard && npm run smoke`
 4. `bash scripts/release-smoke.sh` (full 10-step e2e)
 5. create Git tag
 6. publish GitHub Release with assets (`zigrix-release.tgz`, `zigrix-dist.tgz`, `install.sh`, `checksums.txt`)

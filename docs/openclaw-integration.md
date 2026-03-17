@@ -66,6 +66,7 @@ Optional:
 - `zigrix onboard` — first-time setup (human-facing)
 - `zigrix configure` — reconfigure agents, rules, workspace, PATH, skills
 - `zigrix doctor` — environment and readiness inspection
+- `zigrix dashboard --port <n>` — launch bundled dashboard (default 3838)
 - `zigrix reset config/state` — recovery
 
 ## Reconfiguration
@@ -107,4 +108,4 @@ zigrix onboard
 - richer skill set (dispatch, finalize skills)
 - installer-assisted skill updates
 - optional companion plugin
-- dedicated dashboard
+- dashboard lifecycle UX enhancements (daemon mode, status command)

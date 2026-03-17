@@ -10,6 +10,7 @@ All notable changes to Zigrix will be documented in this file.
 
 ### Added
 - `zigrix onboard` — primary human entrypoint: creates `~/.zigrix/`, detects OpenClaw, imports agents (interactive checkbox with space-to-toggle), seeds rules, stabilizes PATH (creates symlink if needed), auto-registers skill packs into `~/.openclaw/skills/`
+- `zigrix dashboard` — starts bundled Next.js standalone dashboard in foreground mode (default port `3838`, `--port <n>` override)
 - `zigrix configure` — section-targeted reconfiguration (agents, rules, workspace, path, skills)
 - `zigrix task dispatch` — full orchestration dispatch with work packages, execution units, selection hints, and boot prompt generation (replaces `dev_dispatch.py`)
 - `zigrix task finalize` — evidence merge, execution unit completeness check, auto-close completed units, optional auto-report (replaces `dev_finalize.py`)
@@ -27,6 +28,10 @@ All notable changes to Zigrix will be documented in this file.
 - Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
 - All documentation updated from per-project `.zigrix/` to global `~/.zigrix/` model
 - Release smoke script updated for onboard/global-base CLI surface
+- Dashboard packaging moved to bundled `dist/dashboard` runtime for global installs (`zigrix dashboard` executes prebuilt `server.js`)
+- CI/Release workflows now run `npm run build:dashboard` before `npm pack`
+- `install.sh` now includes `npm run build:dashboard` so source installs can run dashboard immediately
+- Documentation aligned with current dashboard behavior (implemented, foreground model, default port 3838)
 - `package.json` `files` now includes `skills/` for npm distribution
 - Skill packs updated to reference global state model
 

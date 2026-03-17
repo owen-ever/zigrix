@@ -1,4 +1,4 @@
-import { execSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
@@ -8,20 +8,15 @@ import { fileURLToPath } from 'node:url';
 export const DASHBOARD_DEFAULT_PORT = 3838;
 
 /**
- * Resolve the dashboard directory from a given dist index.js path.
- * Convention: dist/index.js → ../../dashboard (i.e. <package-root>/dashboard)
+ * Resolve the pre-built dashboard directory from dist/index.js path.
+ * Convention: dist/index.js → dist/dashboard/ (sibling directory in dist/)
  *
- * The path "../../dashboard" is interpreted relative to the FILE dist/index.js:
- *   - First ".." removes the filename component  → <pkg>/dist/
- *   - Second ".." removes the dist directory     → <pkg>/  (package root)
- *   - "dashboard"                                → <pkg>/dashboard
- *
- * Using path.resolve(distIndexPath, '..', '..', 'dashboard') achieves exactly
- * this because path.resolve treats each ".." as stripping the last segment of
- * the current accumulated path (including the filename on the first step).
+ * path.resolve(distIndexPath, '..', 'dashboard'):
+ *   - First ".." strips the filename  → <pkg>/dist/
+ *   - "dashboard"                     → <pkg>/dist/dashboard/
  */
 export function resolveDashboardDir(distIndexPath: string): string {
-  return path.resolve(distIndexPath, '..', '..', 'dashboard');
+  return path.resolve(distIndexPath, '..', 'dashboard');
 }
 
 /**
@@ -56,25 +51,30 @@ export interface RunDashboardOptions {
 /**
  * Main entry point for `zigrix dashboard`.
  *
- * Steps:
- *  1. Resolve dashboard directory relative to this module's dist path.
- *  2. Check port availability; fail clearly on conflict.
- *  3. Auto-install if node_modules is missing.
- *  4. Auto-build if .next directory is missing.
- *  5. Spawn `next start -p <port>` in foreground and wait.
+ * Runs the pre-built Next.js standalone server bundled in dist/dashboard/.
+ * No runtime npm install or build step — the dashboard must be built
+ * during `npm pack` / `npm run build:dashboard`.
  */
 export async function runDashboard(options: RunDashboardOptions = {}): Promise<void> {
   const port = options.port ?? DASHBOARD_DEFAULT_PORT;
 
-  // Resolve dashboard directory.
-  // When running from compiled dist/index.js: import.meta.url resolves to
-  // file:///…/dist/index.js, so dirname is …/dist.
-  // ../../dashboard therefore points to <package-root>/dashboard.
+  // Resolve pre-built dashboard directory (dist/dashboard/).
   const selfPath = fileURLToPath(import.meta.url);
   const dashboardDir = resolveDashboardDir(selfPath);
+  const serverScript = path.join(dashboardDir, 'server.js');
 
   if (!fs.existsSync(dashboardDir)) {
-    throw new Error(`Dashboard directory not found: ${dashboardDir}`);
+    throw new Error(
+      `Dashboard not found at ${dashboardDir}. ` +
+        `This is a packaging error — please report it at https://github.com/owen-ever/zigrix/issues`
+    );
+  }
+
+  if (!fs.existsSync(serverScript)) {
+    throw new Error(
+      `Dashboard server.js not found at ${serverScript}. ` +
+        `This is a packaging error — please report it.`
+    );
   }
 
   // --- Port conflict check ---
@@ -86,28 +86,17 @@ export async function runDashboard(options: RunDashboardOptions = {}): Promise<v
     );
   }
 
-  // --- Auto-install dependencies ---
-  const nodeModulesDir = path.join(dashboardDir, 'node_modules');
-  if (!fs.existsSync(nodeModulesDir)) {
-    console.log('📦 dashboard/node_modules not found — running npm install…');
-    execSync('npm install', { cwd: dashboardDir, stdio: 'inherit' });
-  }
-
-  // --- Auto-build ---
-  const nextBuildDir = path.join(dashboardDir, '.next');
-  if (!fs.existsSync(nextBuildDir)) {
-    console.log('🔨 dashboard/.next not found — running npm run build…');
-    execSync('npm run build', { cwd: dashboardDir, stdio: 'inherit' });
-  }
-
-  // --- Launch Next.js in foreground ---
+  // --- Launch pre-built Next.js standalone server ---
   console.log(`🚀 Starting zigrix dashboard on http://localhost:${port}`);
 
-  const nextBin = path.join(dashboardDir, 'node_modules', '.bin', 'next');
-  const child = spawn(nextBin, ['start', '-p', String(port)], {
+  const child = spawn(process.execPath, [serverScript], {
     cwd: dashboardDir,
     stdio: 'inherit',
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOSTNAME: '0.0.0.0',
+    },
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -115,12 +104,12 @@ export async function runDashboard(options: RunDashboardOptions = {}): Promise<v
       if (code === 0 || signal === 'SIGINT' || signal === 'SIGTERM') {
         resolve();
       } else {
-        reject(new Error(`next start exited with code ${code ?? signal}`));
+        reject(new Error(`Dashboard server exited with code ${code ?? signal}`));
       }
     });
 
     child.on('error', (err) => {
-      reject(new Error(`Failed to start next: ${err.message}`));
+      reject(new Error(`Failed to start dashboard server: ${err.message}`));
     });
 
     // Forward SIGINT/SIGTERM to child for clean shutdown

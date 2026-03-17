@@ -32,27 +32,26 @@ describe('DASHBOARD_DEFAULT_PORT', () => {
 // ─── tests: resolveDashboardDir ─────────────────────────────────────────────
 
 describe('resolveDashboardDir', () => {
-  it('resolves to <package-root>/dashboard from dist/index.js', () => {
+  it('resolves to <package-root>/dist/dashboard from dist/index.js', () => {
     // Simulate: distIndexPath = <repoRoot>/dist/index.js
     const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     const simulatedDistIndex = path.join(repoRoot, 'dist', 'index.js');
     const result = resolveDashboardDir(simulatedDistIndex);
-    expect(result).toBe(path.join(repoRoot, 'dashboard'));
+    expect(result).toBe(path.join(repoRoot, 'dist', 'dashboard'));
   });
 
   it('resolves correctly for arbitrary dist paths', () => {
-    // "../../dashboard" relative to the FILE /some/project/dist/index.js:
+    // "../dashboard" relative to the FILE /some/project/dist/index.js:
     //   ".." removes "index.js" → /some/project/dist/
-    //   ".." removes "dist"     → /some/project/  (package root)
-    //   "dashboard"             → /some/project/dashboard
+    //   "dashboard"             → /some/project/dist/dashboard
     const result = resolveDashboardDir('/some/project/dist/index.js');
-    expect(result).toBe('/some/project/dashboard');
+    expect(result).toBe('/some/project/dist/dashboard');
   });
 
   it('resolves correctly for nested dist paths', () => {
-    // Same logic: /a/b/c/dist/index.js → package root is /a/b/c → /a/b/c/dashboard
+    // Same logic: /a/b/c/dist/index.js → /a/b/c/dist/dashboard
     const result = resolveDashboardDir('/a/b/c/dist/index.js');
-    expect(result).toBe('/a/b/c/dashboard');
+    expect(result).toBe('/a/b/c/dist/dashboard');
   });
 });
 

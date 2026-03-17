@@ -29,6 +29,11 @@ htmlcov/
 build/
 dist/
 node_modules/
+
+# Dashboard build artifacts (generated during npm pack)
+dist/dashboard/
+dashboard/.next/
+dashboard/node_modules/
 coverage/
 *.egg-info/
 .eggs/
@@ -52,3 +57,6 @@ checksums.txt
 
 # OpenClaw local integration scratch
 .openclaw/
+
+# Local-only helper scripts (not for package/repo)
+scripts/local/
