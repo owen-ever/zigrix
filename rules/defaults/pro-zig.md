@@ -41,6 +41,13 @@
 15. execution unit 완료 시 `orch_complete_worker.py`에 같은 `--unit-id`를 넘겨 `unit_done` + evidence(unitId 포함)를 남긴다.
 16. finalize 전 `executionUnits[].status`가 전부 `DONE`인지 확인해야 하며, 미완료 unit이 있으면 완료 보고 금지.
 17. 중단 복구 판단은 session 문맥이 아니라 `meta.json.executionUnits[]`를 우선한다.
+18. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `/Users/janos/.openclaw/public-knowledge/policies/git-workflow.md`를 반드시 따른다. GitHub 원격 저장소가 연결된 프로젝트는 기본 브랜치에서 직접 작업/commit/push 하지 않고, 신규 브랜치에서 작업 후 commit + PR까지를 기본 완료선으로 삼는다.
+19. **상태 불변성 하드가드 (2026-03-17):** `/Users/janos/.openclaw/public-knowledge/policies/task-status-policy.md`를 따른다. task가 `REPORTED`가 된 이후에는 어떤 후속 completion/event가 와도 상태를 `DONE_PENDING_REPORT`/`IN_PROGRESS`/`BLOCKED`로 되돌리지 않는다. `REPORTED`는 terminal state이며, 후행 이벤트는 NO-OP(로그만) 처리한다.
+20. **Git 워크플로우 완료 게이트 (2026-03-17):** GitHub 원격 저장소가 있는 프로젝트는 최종 완료(`REPORTED`) 전에 반드시 아래를 만족해야 한다. 하나라도 불충족이면 완료 보고 금지.
+    - 작업 브랜치가 `main/master`가 아닐 것
+    - 작업 커밋이 원격에 push되어 있을 것
+    - PR URL이 존재할 것(OPEN 또는 MERGED)
+    - PR/브랜치 근거를 최종 보고 본문에 포함할 것
 
 ## 3) Scale Matrix
 
@@ -184,6 +191,7 @@
 - [ ] QA 결과 존재 + 회귀 체크 결과 존재
 - [ ] BLOCKED 이슈 해소 또는 명시적 보고
 - [ ] nextAction(후속 작업) 기록
+- [ ] Git 원격 프로젝트인 경우 브랜치/PR 게이트 통과 (`main/master 직접 작업 금지`, `PR URL 존재`, `push 확인`)
 
 ### Final Decision Rule
 - 보안/QA 이슈가 없으면 pro-zig가 최종 완료(`REPORTED`) 확정
@@ -199,12 +207,12 @@
 4. 같은 `taskId`로 재개, 새 runId 발급
 5. `tasks.jsonl`에 `task_resumed` 기록
 
-## 9) 자동 배포 (필수, 이후락 고정 2026-03-04)
-- QA PASS + 빌드 성공이면 **pro-zig가 finalize 전에 자동으로 커밋 + 배포**까지 수행한다.
-- 순서: QA PASS 확인 → `git add -A && git commit` → `git status --porcelain` 빈 값 확인 → 배포 명령 실행
-- 배포 명령은 프로젝트별로 다를 수 있으니, **spec 또는 task 프롬프트에 명시된 배포 명령**을 따른다.
-- 배포 실패 시: finalize는 진행하되 `DONE_PENDING_REPORT` 상태로 유지하고 이슈 보고.
-- QA FAIL 또는 빌드 실패 시: 배포하지 않고 `BLOCKED` 상태로 보고.
+## 9) Git/배포 정책 (업데이트, 2026-03-17)
+- 프로젝트 작업 시 `/Users/janos/.openclaw/public-knowledge/policies/git-workflow.md`를 우선 따른다.
+- **GitHub 원격 저장소가 연결된 프로젝트**는 기본 브랜치 직접 작업/commit/push 금지.
+- 해당 경우 기본 흐름은: 브랜치 생성 → 작업 → commit → 원격 branch push → PR 생성.
+- 사용자의 **명시 지시 없이는** main 직접 merge, 자동 배포, 즉시 배포를 진행하지 않는다.
+- **GitHub 원격 저장소가 없는 프로젝트**는 브랜치 생성 → 작업 → commit → 로컬 merge를 기본으로 한다.
 - **커밋 메시지 형식:** `feat/fix/docs/chore: 변경 의도 요약\n\n<taskId>`
 
 ## 10) Output Template (to User)
