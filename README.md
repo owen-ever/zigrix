@@ -36,6 +36,36 @@ zigrix onboard
 zigrix doctor
 ```
 
+### Prerequisites: Node.js version
+
+Zigrix requires Node.js **22 or later**. Verify before installing:
+
+```bash
+node --version   # must be v22.x or higher
+```
+
+If you use **nvm**, make sure the correct version is active:
+
+```bash
+nvm use 22        # or: nvm use --lts
+node --version    # confirm v22+
+```
+
+> **Important (nvm users):** `npm link` binds `zigrix` to whichever Node version is active at install time.
+> If you switch node versions later, re-run the install to rebind:
+> ```bash
+> npm run build && npm link
+> ```
+
+### Version mismatch troubleshooting
+
+If `zigrix --version` shows an unexpected version after updating, rebuild and relink:
+
+```bash
+npm run build && npm link
+zigrix --version   # should now match package.json
+```
+
 `zigrix onboard` will:
 1. Create `~/.zigrix/` with default config
 2. Detect OpenClaw and import agents from `openclaw.json`

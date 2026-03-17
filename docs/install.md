@@ -13,6 +13,25 @@ Install makes the CLI available. Onboarding completes environment setup includin
 
 See `docs/onboarding-ownership-model.md` for the ownership model and `docs/product-decisions.md` for the accepted decisions.
 
+## Prerequisites: Node.js version
+
+Zigrix requires Node.js **22 or later**.
+
+```bash
+node --version   # must print v22.x or higher
+```
+
+If you use **nvm**, activate the correct version before installing:
+
+```bash
+nvm use 22        # or: nvm use --lts
+node --version    # confirm v22+
+```
+
+> **nvm + npm link note:** `npm link` binds the `zigrix` binary to the Node version that is active at the time `npm link` runs.
+> If you later switch node versions (e.g. `nvm use 20`), the linked binary may break.
+> Always run `npm run build && npm link` again after switching node versions.
+
 ## From source checkout
 
 ```bash
@@ -45,9 +64,19 @@ Note: `zigrix onboard` now handles skill registration automatically when OpenCla
 
 ## Verify flow
 ```bash
-zigrix --version
+zigrix --version           # should match version in package.json
 zigrix doctor
 zigrix config validate --json
+```
+
+### Version mismatch
+
+If `zigrix --version` shows an unexpected version after updating the source:
+
+```bash
+cd /path/to/zigrix
+npm run build && npm link
+zigrix --version   # should now be correct
 ```
 
 ## Reconfigure after install
