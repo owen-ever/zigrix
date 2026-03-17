@@ -43,5 +43,18 @@ node dist/index.js configure --section path --yes --json >/dev/null
 echo "11. workflow run"
 node dist/index.js run examples/hello-workflow.json --base-dir "$ZIGRIX_HOME" --json
 
+echo "12. npm pack dry-run (files check)"
+PACK_LIST="$(npm pack --dry-run --json 2>/dev/null | node -e "
+const chunks = [];
+process.stdin.on('data', c => chunks.push(c));
+process.stdin.on('end', () => {
+  const arr = JSON.parse(chunks.join(''));
+  const files = arr[0].files.map(f => f.path);
+  console.log(files.join('\n'));
+});
+" 2>/dev/null || npm pack --dry-run 2>&1)"
+echo "$PACK_LIST" | grep -q "dist/dashboard/server.js" || { echo "❌ dist/dashboard/server.js not found in pack"; exit 1; }
+echo "  ✅ dist/dashboard/server.js found in pack"
+
 echo ""
 echo "=== All smoke tests passed ==="
