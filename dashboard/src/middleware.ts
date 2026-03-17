@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, SESSION_COOKIE_NAME, isSetupRequired } from '@/lib/auth';
+import { isLocalAccessRequest } from '@/lib/local-access';
 
 // Paths that don't require authentication
 const PUBLIC_API_PATHS = ['/api/auth/setup', '/api/auth/login'];
@@ -18,6 +19,7 @@ export const config = {
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const setupRequired = isSetupRequired();
+  const localAccess = isLocalAccessRequest(request);
 
   const isSetupPage = pathname === '/setup' || pathname.startsWith('/setup/');
   const isLoginPage = pathname === '/login' || pathname.startsWith('/login/');
@@ -25,6 +27,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // Public auth APIs always pass through (route handlers enforce setup state).
   if (PUBLIC_API_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
+  }
+
+  // Before initial setup, block remote page access entirely.
+  // Admin setup must happen from local/private network access.
+  if (setupRequired && !localAccess && !pathname.startsWith('/api/')) {
+    return new NextResponse('Dashboard setup is allowed only from local/private network access.', {
+      status: 403,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   }
 
   // Setup flow routing
