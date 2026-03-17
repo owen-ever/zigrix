@@ -46,6 +46,16 @@ All notable changes to Zigrix will be documented in this file.
 - Runtime consistency verification via `zigrix state check`
 - Manual npm publish runbook, SUPPORT doc, and one-command `publish:check` gate
 
+## [0.1.0-alpha.8] - 2026-03-17
+
+### Fixed
+- Hardened first-run dashboard setup access policy for the dashboard first-run flow.
+- Tightened setup guardrails to allow only safe first-run/private-network initialization paths.
+
+### Release
+- Published `zigrix@0.1.0-alpha.8` to npm.
+- Published `v0.1.0-alpha.8` GitHub release with release notes.
+
 ## [0.1.0a0] - 2026-03-13
 
 ### Added
