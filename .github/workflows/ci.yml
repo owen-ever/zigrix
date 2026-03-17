@@ -35,5 +35,8 @@ jobs:
       - name: Smoke test
         run: npm run smoke
 
+      - name: Build dashboard
+        run: npm run build:dashboard
+
       - name: Dry-run pack
         run: npm pack --dry-run

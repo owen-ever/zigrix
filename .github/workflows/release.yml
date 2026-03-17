@@ -28,6 +28,9 @@ jobs:
           npm run build
           npm run smoke
 
+      - name: Build dashboard
+        run: npm run build:dashboard
+
       - name: Package
         run: |
           npm pack

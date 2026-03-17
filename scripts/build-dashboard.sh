@@ -8,6 +8,12 @@ DIST_DASHBOARD="$PKG_ROOT/dist/dashboard"
 
 echo "=== Building zigrix dashboard ==="
 
+# Skip if already built (idempotent for prepack re-entry)
+if [ -f "$DIST_DASHBOARD/server.js" ]; then
+  echo "✅ Dashboard already built → dist/dashboard/server.js exists, skipping."
+  exit 0
+fi
+
 # 1. dashboard 의존성 설치
 echo "📦 Installing dashboard dependencies..."
 if [ -f "$DASHBOARD_DIR/package-lock.json" ]; then
