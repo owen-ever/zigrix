@@ -88,10 +88,10 @@ describe('ensureZigrixInPath', () => {
     // Create a temp dir that acts as a writable "system" bin dir
     const fakeSystemBin = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-sysbin-'));
     try {
-      // Set PATH to something that doesn't have zigrix
-      process.env.PATH = tmpDir;
-
-      const result = ensureZigrixInPath({ _overrideSystemBinDir: fakeSystemBin });
+      const result = ensureZigrixInPath({
+        _overrideSystemBinDir: fakeSystemBin,
+        _overrideStablePaths: [],  // bypass stable-path check so symlink creation proceeds
+      });
 
       if (resolveZigrixBin()) {
         // Should create symlink in fakeSystemBin
@@ -105,10 +105,10 @@ describe('ensureZigrixInPath', () => {
   });
 
   it('falls back to user bin dir when _overrideSystemBinDir is null', () => {
-    // Override to null forces the user-bin-dir fallback
-    process.env.PATH = tmpDir;
-
-    const result = ensureZigrixInPath({ _overrideSystemBinDir: null });
+    const result = ensureZigrixInPath({
+      _overrideSystemBinDir: null,
+      _overrideStablePaths: [],  // bypass stable-path check
+    });
 
     // Should either create a symlink in user dir, or warn (if binEntry not found)
     if (!result.alreadyInPath && !result.symlinkCreated) {
