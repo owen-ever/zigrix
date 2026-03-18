@@ -224,25 +224,35 @@ describe('seedRules', () => {
 
 describe('checkZigrixInPath', () => {
   let tmpDir: string;
-  const originalPath = process.env.PATH;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-path-test-'));
   });
 
   afterEach(() => {
-    process.env.PATH = originalPath;
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns true when zigrix binary exists in PATH', () => {
+  it('returns true when zigrix binary exists in stable paths', () => {
     fs.writeFileSync(path.join(tmpDir, 'zigrix'), '#!/bin/sh\necho zigrix', { mode: 0o755 });
-    process.env.PATH = `${tmpDir}${path.delimiter}${originalPath}`;
-    expect(checkZigrixInPath()).toBe(true);
+    expect(checkZigrixInPath({ _overrideStablePaths: [tmpDir] })).toBe(true);
   });
 
-  it('returns false when zigrix is not in PATH', () => {
-    process.env.PATH = tmpDir; // only our empty temp dir
-    expect(checkZigrixInPath()).toBe(false);
+  it('returns false when zigrix is not in stable paths', () => {
+    // tmpDir is empty — no zigrix binary
+    expect(checkZigrixInPath({ _overrideStablePaths: [tmpDir] })).toBe(false);
+  });
+
+  it('returns false when zigrix is in PATH but not in stable paths (nvm scenario)', () => {
+    // Create a fake nvm-style dir with zigrix in it
+    const nvmBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-nvm-test-'));
+    try {
+      fs.writeFileSync(path.join(nvmBinDir, 'zigrix'), '#!/bin/sh\necho zigrix', { mode: 0o755 });
+      // Even though zigrix is accessible via PATH (nvm dir), stable paths don't include nvmBinDir
+      // checkZigrixInPath should return false — only stable paths are checked
+      expect(checkZigrixInPath({ _overrideStablePaths: [tmpDir] })).toBe(false);
+    } finally {
+      fs.rmSync(nvmBinDir, { recursive: true, force: true });
+    }
   });
 });
