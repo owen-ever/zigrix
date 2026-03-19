@@ -20,8 +20,8 @@ function autoCloseCompletedUnits(task: ZigrixTask): boolean {
     const s = session as Record<string, unknown>;
     if (s.status === 'done') doneAgents.add(agentId);
   }
-  // pro-zig is always "done" at finalize time
-  doneAgents.add('pro-zig');
+  // orchestrator is always "done" at finalize time
+  doneAgents.add(task.orchestratorId ?? 'pro-zig');
 
   let changed = false;
   for (const unit of units) {

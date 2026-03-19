@@ -16,10 +16,13 @@ describe('zigrix config schema', () => {
     expect(() => zigrixConfigSchema.parse({
       ...defaultConfig,
       agents: {
-        registry: {},
+        registry: {
+          'qa-main': { label: 'qa-main', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+        },
         orchestration: {
           participants: ['qa-main'],
           excluded: ['qa-main'],
+          orchestratorId: 'pro-zig',
         },
       },
     })).toThrow(/cannot be both participant and excluded/);
@@ -33,6 +36,7 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: ['ghost-agent'],
           excluded: [],
+          orchestratorId: 'pro-zig',
         },
       },
     })).toThrow(/must exist in registry/);
@@ -41,5 +45,56 @@ describe('zigrix config schema', () => {
   it('reads nested dotted paths', () => {
     expect(getConfigValue(zigrixConfigSchema.parse(defaultConfig), 'rules.completion.requireQa')).toBe(true);
     expect(getConfigValue(zigrixConfigSchema.parse(defaultConfig), 'missing.path')).toBeUndefined();
+  });
+
+  it('rejects unknown orchestratorId when an orchestrator role agent exists', () => {
+    expect(() => zigrixConfigSchema.parse({
+      ...defaultConfig,
+      agents: {
+        registry: {
+          'real-orch': { label: 'real-orch', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+          'qa-main': { label: 'qa-main', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+        },
+        orchestration: {
+          participants: [],
+          excluded: [],
+          orchestratorId: 'ghost-zig',
+        },
+      },
+    })).toThrow(/orchestratorId .* must exist in registry/);
+  });
+
+  it('allows non-matching orchestratorId when no orchestrator role agent exists yet', () => {
+    // During bootstrap, orchestratorId might be set before the agent is registered
+    const parsed = zigrixConfigSchema.parse({
+      ...defaultConfig,
+      agents: {
+        registry: {
+          'qa-main': { label: 'qa-main', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+        },
+        orchestration: {
+          participants: [],
+          excluded: [],
+          orchestratorId: 'pro-zig',
+        },
+      },
+    });
+    expect(parsed.agents.orchestration.orchestratorId).toBe('pro-zig');
+  });
+
+  it('rejects excluded orchestratorId', () => {
+    expect(() => zigrixConfigSchema.parse({
+      ...defaultConfig,
+      agents: {
+        registry: {
+          'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+        },
+        orchestration: {
+          participants: [],
+          excluded: ['pro-zig'],
+          orchestratorId: 'pro-zig',
+        },
+      },
+    })).toThrow(/orchestratorId .* cannot be excluded/);
   });
 });

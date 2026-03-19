@@ -8,9 +8,23 @@ import { addAgent, excludeAgent, includeAgent, listAgents, removeAgent, setAgent
 import { defaultConfig } from '../src/config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from '../src/config/load.js';
 
+function makeConfigWithOrchestrator() {
+  // Add pro-zig as orchestrator first so orchestratorId validation passes
+  let config = structuredClone(defaultConfig);
+  config.agents.registry['pro-zig'] = {
+    label: 'pro-zig',
+    role: 'orchestrator',
+    runtime: 'openclaw',
+    enabled: true,
+    metadata: {},
+  };
+  config.agents.orchestration.participants.push('pro-zig');
+  return config;
+}
+
 describe('agent registry mutations', () => {
   it('adds, includes, excludes, edits, and removes agents', () => {
-    let config = structuredClone(defaultConfig);
+    let config = makeConfigWithOrchestrator();
 
     config = addAgent(config, {
       id: 'qa-main',
@@ -19,7 +33,7 @@ describe('agent registry mutations', () => {
       include: true,
     }).config;
 
-    expect(listAgents(config)).toHaveLength(1);
+    expect(listAgents(config)).toHaveLength(2);
     expect(config.agents.orchestration.participants).toContain('qa-main');
 
     config = excludeAgent(config, 'qa-main').config;
@@ -33,18 +47,47 @@ describe('agent registry mutations', () => {
     config = setAgentEnabled(config, 'qa-main', false).config;
     expect(config.agents.registry['qa-main'].enabled).toBe(false);
 
-    config = setAgentRole(config, 'qa-main', 'quality').config;
-    expect(config.agents.registry['qa-main'].role).toBe('quality');
+    config = setAgentRole(config, 'qa-main', 'security').config;
+    expect(config.agents.registry['qa-main'].role).toBe('security');
 
     config = removeAgent(config, 'qa-main').config;
-    expect(listAgents(config)).toHaveLength(0);
+    expect(listAgents(config)).toHaveLength(1);
+  });
+
+  it('normalizes role aliases on add', () => {
+    let config = makeConfigWithOrchestrator();
+    config = addAgent(config, {
+      id: 'fe-main',
+      role: 'front',
+      runtime: 'openclaw',
+      include: true,
+    }).config;
+    expect(config.agents.registry['fe-main'].role).toBe('frontend');
+  });
+
+  it('rejects unknown roles', () => {
+    const config = makeConfigWithOrchestrator();
+    expect(() => addAgent(config, {
+      id: 'bad-agent',
+      role: 'wizard',
+      runtime: 'openclaw',
+    })).toThrow(/must be one of/);
   });
 
   it('persists mutated config to zigrix.config.json', () => {
     const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-agent-config-'));
     const configPath = writeDefaultConfig(tmpBase);
     const loaded = loadConfig({ baseDir: tmpBase });
-    const next = addAgent(loaded.config, {
+
+    // First add an orchestrator so orchestratorId validation passes
+    let next = addAgent(loaded.config, {
+      id: 'pro-zig',
+      role: 'orchestrator',
+      runtime: 'openclaw-session',
+      include: true,
+    }).config;
+
+    next = addAgent(next, {
       id: 'front-main',
       role: 'frontend',
       runtime: 'openclaw-session',

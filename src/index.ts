@@ -131,10 +131,12 @@ program
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .action(async (options) => {
     const result = await runOnboard({
       yes: Boolean(options.yes),
       projectDir: options.projectDir,
+      orchestratorId: options.orchestratorId,
       silent: Boolean(options.json),
     });
     printValue(result, options.json ?? true);
@@ -148,6 +150,7 @@ program
   .option('--section <section>', 'reconfigure specific section (agents|rules|workspace|path|skills), repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--projects-base-dir <path>', 'set projects base directory')
   .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .action(async (options) => {
@@ -156,6 +159,7 @@ program
       yes: Boolean(options.yes),
       projectDir: options.projectDir,
       projectsBaseDir: options.projectsBaseDir,
+      orchestratorId: options.orchestratorId,
       silent: Boolean(options.json),
     });
     printValue(result, options.json ?? true);
@@ -607,7 +611,7 @@ task
   .option('--json')
   .action((options) => {
     const loaded = loadRuntime({ baseDir: options.baseDir, config: options.config });
-    const result = dispatchTask(loaded.paths, {
+    const result = dispatchTask(loaded.paths, loaded.config, {
       title: options.title,
       description: options.description,
       scale: options.scale,

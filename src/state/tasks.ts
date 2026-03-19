@@ -40,6 +40,13 @@ export type ZigrixTask = {
   selectedAgents?: string[];
   workPackages?: WorkPackage[];
   executionUnits?: ExecutionUnit[];
+  baselineRequiredAgents?: string[];
+  candidateAgents?: string[];
+  requiredRoles?: string[];
+  optionalRoles?: string[];
+  roleAgentMap?: Record<string, string[]>;
+  orchestratorId?: string;
+  qaAgentId?: string;
   orchestratorSessionKey?: string;
   orchestratorSessionId?: string;
 };

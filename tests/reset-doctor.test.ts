@@ -17,6 +17,21 @@ import { createTask, listTasks } from '../src/state/tasks.js';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const nodeBin = process.execPath;
 
+function setupOpenClawConfig(tmpRoot: string) {
+  const openclawHome = path.join(tmpRoot, '.openclaw');
+  fs.mkdirSync(openclawHome, { recursive: true });
+  fs.writeFileSync(path.join(openclawHome, 'openclaw.json'), JSON.stringify({
+    agents: {
+      list: [
+        { id: 'main', default: true },
+        { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
+        { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+      ],
+    },
+  }));
+  return openclawHome;
+}
+
 describe('doctor and reset flows', () => {
   it('reports doctor summary for initialized base dir', () => {
     const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-doctor-'));
@@ -28,8 +43,10 @@ describe('doctor and reset flows', () => {
   });
 
   it('resets config/template and runtime state through CLI', () => {
-    const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-reset-'));
-    const env = { ...process.env, ZIGRIX_HOME: tmpBase };
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-reset-'));
+    const zigrixHome = path.join(tmpRoot, '.zigrix');
+    const openclawHome = setupOpenClawConfig(tmpRoot);
+    const env = { ...process.env, ZIGRIX_HOME: zigrixHome, OPENCLAW_HOME: openclawHome };
 
     execFileSync(nodeBin, ['dist/index.js', 'onboard', '--yes'], { cwd: repoRoot, env });
     execFileSync(nodeBin, ['dist/index.js', 'template', 'set', 'workerPrompt', '--body', 'custom-body'], { cwd: repoRoot, env });
@@ -39,7 +56,7 @@ describe('doctor and reset flows', () => {
     const resetTemplate = JSON.parse(execFileSync(nodeBin, ['dist/index.js', 'template', 'get', 'workerPrompt', '--json'], { cwd: repoRoot, encoding: 'utf8', env })) as { body: string };
     expect(resetTemplate.body).not.toBe('custom-body');
 
-    const loaded = loadConfig({ baseDir: tmpBase });
+    const loaded = loadConfig({ baseDir: zigrixHome });
     const paths = resolvePaths(loaded.config);
     createTask(paths, { title: 'reset me', description: 'state reset' });
     expect(listTasks(paths)).toHaveLength(1);

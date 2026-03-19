@@ -11,6 +11,7 @@ import {
   filterAgents,
   loadOpenClawConfig,
   promptAgentSelection,
+  ensureOrchestratorId,
   registerAgents,
   registerSkills,
   seedRules,
@@ -43,6 +44,7 @@ export interface RunConfigureOptions {
   yes?: boolean;
   projectDir?: string;
   projectsBaseDir?: string;
+  orchestratorId?: string;
   silent?: boolean;
 }
 
@@ -127,6 +129,20 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
     } else {
       warnings.push('OpenClaw config not found — agent reconfiguration skipped.');
       log(`⚠️  ${warnings[warnings.length - 1]}`);
+    }
+  }
+
+  // ─── orchestrator ────────────────────────────────────────────────────
+  if (sections.includes('agents') || options.orchestratorId) {
+    const orchResult = ensureOrchestratorId(config, options.orchestratorId);
+    config = orchResult.config;
+    if (orchResult.changed) {
+      configDirty = true;
+      log(`✅ Orchestrator set to: ${config.agents.orchestration.orchestratorId}`);
+    }
+    if (orchResult.warning) {
+      warnings.push(orchResult.warning);
+      log(`⚠️  ${orchResult.warning}`);
     }
   }
 
