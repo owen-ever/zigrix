@@ -85,12 +85,13 @@ describe('configure', () => {
   });
 
   it('registers agents from openclaw config', async () => {
-    // Create a fake openclaw.json with agents
+    // Create a fake openclaw.json with agents (must include an orchestrator role for orchestratorId validation)
     fs.mkdirSync(openclawHome, { recursive: true });
     fs.writeFileSync(path.join(openclawHome, 'openclaw.json'), JSON.stringify({
       agents: {
         list: [
           { id: 'main', default: true },
+          { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
           { id: 'front-zig', name: 'front-zig', identity: { theme: 'Frontend Agent' } },
           { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
         ],
@@ -105,6 +106,7 @@ describe('configure', () => {
     expect(result.ok).toBe(true);
     expect(result.agentsRegistered).toContain('front-zig');
     expect(result.agentsRegistered).toContain('qa-zig');
+    expect(result.agentsRegistered).toContain('pro-zig');
     // main should not be registered
     expect(result.agentsRegistered).not.toContain('main');
   });

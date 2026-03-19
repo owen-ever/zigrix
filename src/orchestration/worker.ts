@@ -5,7 +5,26 @@ import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { loadTask, saveTask, type ZigrixTask } from '../state/tasks.js';
 
-export const DEFAULT_REQUIRED_AGENTS = ['pro-zig', 'qa-zig'];
+export const DEFAULT_REQUIRED_AGENTS = ['orchestrator', 'qa'] as const;
+
+const DEFAULT_ORCHESTRATOR_ID = 'pro-zig';
+const DEFAULT_QA_AGENT_ID = 'qa-zig';
+
+function resolveDefaultRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
+  const orchestratorId = typeof task.orchestratorId === 'string' && task.orchestratorId.trim().length > 0
+    ? task.orchestratorId
+    : DEFAULT_ORCHESTRATOR_ID;
+  const qaAgentId = typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0
+    ? task.qaAgentId
+    : DEFAULT_QA_AGENT_ID;
+
+  const resolvedByRole: Record<(typeof DEFAULT_REQUIRED_AGENTS)[number], string> = {
+    orchestrator: orchestratorId,
+    qa: qaAgentId,
+  };
+
+  return [...new Set(DEFAULT_REQUIRED_AGENTS.map((role) => resolvedByRole[role]))];
+}
 
 export function resolveRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
   for (const key of ['requiredAgents', 'selectedAgents', 'baselineRequiredAgents']) {
@@ -18,7 +37,7 @@ export function resolveRequiredAgents(task: Partial<ZigrixTask> & Record<string,
   if (workers && typeof workers === 'object' && Object.keys(workers).length > 0) {
     return Object.keys(workers).sort();
   }
-  return [...DEFAULT_REQUIRED_AGENTS];
+  return resolveDefaultRequiredAgents(task);
 }
 
 function renderPrompt(params: {

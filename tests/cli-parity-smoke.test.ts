@@ -10,10 +10,28 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const nodeBin = process.execPath;
 
+function setupOpenClawConfig(tmpBase: string) {
+  // Create a mock openclaw home with agents so onboard registers them
+  const openclawHome = path.join(tmpBase, '.openclaw');
+  fs.mkdirSync(openclawHome, { recursive: true });
+  fs.writeFileSync(path.join(openclawHome, 'openclaw.json'), JSON.stringify({
+    agents: {
+      list: [
+        { id: 'main', default: true },
+        { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
+        { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+      ],
+    },
+  }));
+  return openclawHome;
+}
+
 describe('cli parity smoke', () => {
   it('supports onboard/task/evidence/report commands through built CLI', () => {
-    const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-cli-'));
-    const env = { ...process.env, ZIGRIX_HOME: tmpBase };
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-cli-'));
+    const zigrixHome = path.join(tmpRoot, '.zigrix');
+    const openclawHome = setupOpenClawConfig(tmpRoot);
+    const env = { ...process.env, ZIGRIX_HOME: zigrixHome, OPENCLAW_HOME: openclawHome };
 
     execFileSync(nodeBin, ['dist/index.js', 'onboard', '--yes'], { cwd: repoRoot, env });
     const createRaw = execFileSync(nodeBin, ['dist/index.js', 'task', 'create', '--title', 'CLI task', '--description', 'smoke', '--required-agent', 'qa-zig', '--json'], { cwd: repoRoot, encoding: 'utf8', env });

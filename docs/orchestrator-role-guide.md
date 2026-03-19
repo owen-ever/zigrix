@@ -76,8 +76,8 @@ zigrix task dispatch \
 1. **스케일 정책 확인**: `rules.scales.normal` → `requiredRoles: ["orchestrator", "qa"]`
 2. **역할별 에이전트 매핑**: 레지스트리에서 각 역할에 해당하는 enabled 에이전트 검색
 3. **필수 에이전트 선택**: requiredRoles의 에이전트 확정 (orchestrator 역할 → `orchestratorId` 우선)
-4. **후보 에이전트 식별**: optionalRoles + 후보 순서 규칙으로 추가 가능한 에이전트 제시
-5. **실행 유닛 생성**: `orchestratorId`, `qaAgentId`를 실행 owner로 지정
+4. **후보 에이전트 식별**: optionalRoles + `CANDIDATE_ROLE_ORDER`에서 추가 가능한 에이전트 제시
+5. **실행 유닛 생성**: `orchestratorId`와 `qaAgentId`를 owner로 설정
 
 ### 출력 예시 (JSON)
 ```json
@@ -104,18 +104,18 @@ zigrix task dispatch \
 | 규칙 | 설명 |
 |------|------|
 | 역할 정규화 | 등록/변경 시 별칭이 표준 역할로 자동 변환 |
-| 미지원 역할 거부 | `"wizard"` 같은 비표준 역할은 에러 |
+| 미지원 역할 거부 | `"wizard"` 같은 비표준 역할 → 에러 |
 | orchestratorId 검증 | orchestrator 역할 에이전트가 있을 때, orchestratorId는 반드시 레지스트리에 존재 |
-| orchestratorId 제외 금지 | orchestratorId가 excluded 목록에 있으면 에러 |
-| 스케일 역할 검증 | `rules.scales`의 역할이 표준 역할 목록에 없으면 경고 |
+| orchestratorId 제외 금지 | orchestratorId가 excluded 목록에 있으면 → 에러 |
+| 스케일 역할 검증 | `rules.scales`의 역할이 표준 역할 목록에 없으면 → 경고 |
 
 ## FAQ
 
 ### Q: 기존에 하드코딩된 `pro-zig` / `qa-zig`는 어떻게 되나?
-A: 기본값 예시로는 남아 있지만, 설정으로 오버라이드 가능. `orchestratorId`를 변경하면 실행 유닛 owner, 부트 프롬프트 대상, 필수 에이전트 목록이 함께 바뀐다.
+A: 기본값으로 남아 있지만, 설정으로 오버라이드 가능. `orchestratorId`를 변경하면 실행 유닛의 owner, 부트 프롬프트, 필수 에이전트 목록이 모두 연동 변경된다.
 
 ### Q: 에이전트 하나가 여러 역할을 가질 수 있나?
-A: 현재는 에이전트당 하나의 역할만 지원한다. 여러 역할이 필요하면 별도 에이전트로 분리 등록한다.
+A: 현재는 에이전트당 하나의 역할만 지원. 한 에이전트가 여러 역할을 수행해야 하면 별도 에이전트로 등록.
 
 ### Q: 새로운 역할을 추가할 수 있나?
-A: 표준 역할 6종은 코드 상수로 정의되어 있다. 새 역할 추가는 코드 변경(`src/agents/roles.ts`)이 필요하다.
+A: 표준 역할 6종은 코드에 정의됨. 새 역할 추가는 `src/agents/roles.ts`의 `STANDARD_AGENT_ROLES` 수정 필요 (설정만으로는 불가).
