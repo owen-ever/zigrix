@@ -2,7 +2,7 @@
 
 ## Primary lifecycle
 1. `zigrix onboard` (one-time human setup)
-2. `zigrix task dispatch` (preferred) or `zigrix task create`
+2. `zigrix task dispatch` (standard path; role-based selection)
 3. `zigrix worker prepare`
 4. `zigrix worker register`
 5. `zigrix worker complete`
@@ -12,7 +12,7 @@
 9. `zigrix task finalize` (preferred) or `zigrix task report`
 
 ## Minimal local happy path
-For local smoke workflows, Zigrix can skip explicit worker dispatch and go straight from task creation to evidence collection and report rendering.
+For local smoke workflows, Zigrix can skip explicit worker dispatch and go from `task dispatch` to evidence collection and report rendering.
 
 ## Status transitions
 - `OPEN`

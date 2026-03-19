@@ -47,7 +47,7 @@ Zigrix gives that work a control surface — visible, recoverable, and inspectab
 | Capability | Description |
 |---|---|
 | **Task dispatch** | Tracked tasks with full orchestration metadata |
-| **Specialist routing** | Work goes to the right agent — not just any agent |
+| **Specialist routing** | Role-based dispatch maps work to standard roles (`orchestrator`, `qa`, `security`, `frontend`, `backend`, `system`) |
 | **Evidence collection** | Workers contribute evidence before finalization |
 | **Final reporting** | Inspectable reports with execution unit checks |
 | **Built-in dashboard** | Web UI for runtime visibility (`zigrix dashboard`) |
@@ -105,9 +105,9 @@ A typical Zigrix flow:
 ```text
 Human installs → zigrix onboard → runtime ready
 
-  zigrix dispatch --title "..." --description "..."
+  zigrix task dispatch --title "..." --description "..." --scale normal
     → specialist agents contribute evidence
-    → zigrix finalize merges evidence + checks execution units
+    → zigrix task finalize merges evidence + checks execution units
     → reportable result
 
   zigrix dashboard
@@ -117,8 +117,8 @@ Human installs → zigrix onboard → runtime ready
 ### Key commands
 
 ```bash
-# Dispatch a new task
-zigrix dispatch --title "Implement auth module" --description "..."
+# Dispatch a new task (role-based selection)
+zigrix task dispatch --title "Implement auth module" --description "..." --scale normal --json
 
 # Check runtime health
 zigrix doctor
@@ -135,6 +135,23 @@ zigrix template reset workerPrompt --yes
 zigrix reset config --yes
 zigrix reset state --yes
 ```
+
+### Standard roles and orchestrator selection
+
+Zigrix dispatch uses a closed set of normalized roles:
+
+- `orchestrator`
+- `qa`
+- `security`
+- `frontend`
+- `backend`
+- `system`
+
+At dispatch time, Zigrix resolves `requiredRoles` / `optionalRoles` from scale rules and maps them to enabled agents in the registry.
+
+- `agents.orchestration.orchestratorId` selects the orchestrator owner agent
+- if multiple orchestrator-role agents exist, `orchestratorId` is the source of truth
+- dispatch output includes orchestration fields such as `orchestratorId`, `qaAgentId`, `baselineRequiredAgents`, `candidateAgents`, `roleAgentMap`, and `orchestratorPrompt`
 
 ---
 
@@ -159,7 +176,7 @@ Zigrix is **OpenClaw-first** in intended use.
 
 When OpenClaw is available, Zigrix:
 
-- **imports agent definitions** from `openclaw.json` — filters `main`, registers the rest with roles
+- **imports agent definitions** from `openclaw.json` — filters `main`, normalizes agent roles, and sets/validates `orchestratorId`
 - **registers skill packs** — symlinks `skills/zigrix-*` into `~/.openclaw/skills/`
 - **stabilizes CLI visibility** — ensures `zigrix` is reachable from the OpenClaw gateway-visible PATH
 - **inspects readiness** — `zigrix doctor` reports OpenClaw detection, skill dir presence, and PATH reachability
@@ -192,7 +209,7 @@ Use it to inspect:
 | Role | What they do |
 |---|---|
 | **Human operator** | Install, run `zigrix onboard`, verify with `zigrix doctor`, then stop |
-| **OpenClaw agents** | Use operational commands: `dispatch`, `finalize`, `worker`, `evidence`, `report` |
+| **OpenClaw agents** | Use operational commands: `task dispatch`, `task finalize`, `worker`, `evidence`, `report` |
 | **Advanced maintenance** | `zigrix configure` for reconfiguration, `zigrix reset` for recovery |
 
 See [docs/onboarding-ownership-model.md](docs/onboarding-ownership-model.md) for the ownership model.
@@ -243,12 +260,15 @@ zigrix/
 | [Quick Start](docs/quickstart.md) | First-time setup walk-through |
 | [Install](docs/install.md) | Install paths, prerequisites, nvm notes |
 | [OpenClaw Integration](docs/openclaw-integration.md) | Agent import, skill registration, PATH |
+| [Config Schema](docs/config-schema.md) | Config contract including role model and `orchestratorId` |
+| [Orchestrator/Role Guide](docs/orchestrator-role-guide.md) | Role normalization, dispatch mapping, and orchestrator selection |
 | [Architecture](docs/architecture.md) | System design and runtime layout |
 | [CLI Spec](docs/cli-spec.md) | Full command reference |
 | [Runtime Flow](docs/runtime-flow.md) | Task lifecycle from dispatch to report |
 | [State Layout](docs/state-layout.md) | `~/.zigrix/` directory structure |
 | [Concepts](docs/concepts.md) | Core abstractions and terminology |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and recovery |
+| [Main Agent Skill Guide](skills/zigrix-main-agent-guide/SKILL.md) | Dispatch → orchestrator spawn → worker/evidence/finalize chain |
 | [Product Decisions](docs/product-decisions.md) | Why things are the way they are |
 
 ---

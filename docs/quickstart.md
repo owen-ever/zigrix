@@ -66,18 +66,18 @@ zigrix task dispatch \
   --json
 ```
 
-This returns a `proZigPrompt` for spawning the orchestrator agent.
+This returns an `orchestratorPrompt` (plus `proZigPrompt` compatibility alias) for spawning the orchestrator agent.
 
 ## 5) Low-level task flow (agent usage)
 ```bash
-# Create a task
-zigrix task create \
+# Dispatch a task (role-based selection)
+zigrix task dispatch \
   --title "Manual task" \
   --description "Test direct flow" \
-  --required-agent qa-zig \
+  --scale normal \
   --json
 
-# Collect evidence
+# Collect evidence (example: QA agent)
 zigrix evidence collect \
   --task-id DEV-YYYYMMDD-001 \
   --agent-id qa-zig \

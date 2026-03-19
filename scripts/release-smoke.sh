@@ -17,8 +17,8 @@ node dist/index.js onboard --yes --json >/dev/null
 echo "3. config validate"
 node dist/index.js config validate --base-dir "$ZIGRIX_HOME" --json
 
-echo "4. task create"
-TASK_RAW="$(node dist/index.js task create --title "Smoke task" --description "Release smoke" --required-agent qa-zig --project-dir "$TMP_DIR/project" --base-dir "$ZIGRIX_HOME" --json)"
+echo "4. task dispatch"
+TASK_RAW="$(node dist/index.js task dispatch --title "Smoke task" --description "Release smoke" --scale normal --project-dir "$TMP_DIR/project" --base-dir "$ZIGRIX_HOME" --json)"
 TASK_ID="$(echo "$TASK_RAW" | node -e "process.stdin.setEncoding('utf8');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).taskId))")"
 echo "  taskId=$TASK_ID"
 
