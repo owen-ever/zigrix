@@ -9,6 +9,7 @@ import { zigrixConfigSchema, type ZigrixConfig } from '../src/config/schema.js';
 import { dispatchTask } from '../src/orchestration/dispatch.js';
 import { collectEvidence } from '../src/orchestration/evidence.js';
 import { finalizeTask } from '../src/orchestration/finalize.js';
+import { renderReport } from '../src/orchestration/report.js';
 import { completeWorker, registerWorker } from '../src/orchestration/worker.js';
 import { resolvePaths } from '../src/state/paths.js';
 import { loadTask, updateTaskStatus } from '../src/state/tasks.js';
@@ -134,7 +135,7 @@ describe('dispatch and finalize', () => {
     expect((result.missingAgents as string[]).length).toBeGreaterThan(0);
   });
 
-  it('uses configurable orchestratorId in execution units', () => {
+  it('uses configurable orchestratorId in execution units and QA completion checks', () => {
     const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-custom-orch-'));
     const cfg = zigrixConfigSchema.parse({
       ...structuredClone(defaultConfig),
@@ -183,5 +184,21 @@ describe('dispatch and finalize', () => {
     const qaUnits = units.filter((u) => u.owner === 'custom-qa');
     expect(orchUnits.length).toBeGreaterThan(0);
     expect(qaUnits.length).toBeGreaterThan(0);
+
+    // Verify dynamic QA evidence path (not hardcoded qa-zig)
+    updateTaskStatus(paths, taskId, 'IN_PROGRESS');
+    registerWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:test:custom-orch', runId: 'r1' });
+    completeWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:test:custom-orch', runId: 'r1' });
+    collectEvidence(paths, { taskId, agentId: 'custom-orch', summary: 'orchestrated' });
+
+    registerWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:test:custom-qa', runId: 'r2' });
+    completeWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:test:custom-qa', runId: 'r2' });
+    collectEvidence(paths, { taskId, agentId: 'custom-qa', summary: 'QA passed' });
+
+    const finalized = finalizeTask(paths, { taskId, autoReport: true }) as Record<string, unknown>;
+    expect(finalized.complete).toBe(true);
+
+    const reportPayload = renderReport(paths, { taskId, recordEvents: false }) as Record<string, unknown>;
+    expect(String(reportPayload.report)).toContain('custom-qa evidence 존재');
   });
 });

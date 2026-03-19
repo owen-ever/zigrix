@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { appendEvent, nowIso } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
-import { loadTask, rebuildIndex } from '../state/tasks.js';
+import { type ZigrixTask, loadTask, rebuildIndex } from '../state/tasks.js';
 import { resolveRequiredAgents } from './worker.js';
 
 function readTranscript(transcriptPath: string, limit = 40): Array<Record<string, unknown>> {
@@ -30,6 +30,22 @@ function extractEvidence(rows: Array<Record<string, unknown>>): Record<string, u
     if (row.role === 'toolResult') toolResults.push(row.content);
   }
   return { lastAssistant, toolResults: toolResults.slice(-3) };
+}
+
+function resolveQaAgentId(task: ZigrixTask): string {
+  if (typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0) {
+    return task.qaAgentId;
+  }
+
+  const roleMap = task.roleAgentMap;
+  if (roleMap && typeof roleMap === 'object') {
+    const qaAgents = (roleMap as Record<string, unknown>).qa;
+    if (Array.isArray(qaAgents) && qaAgents.length > 0) {
+      return String(qaAgents[0]);
+    }
+  }
+
+  return 'qa-zig';
 }
 
 export function collectEvidence(paths: ZigrixPaths, params: {
@@ -92,9 +108,10 @@ export function mergeEvidence(paths: ZigrixPaths, params: { taskId: string; requ
   const presentAgents = [...new Set(items.map((item) => String(item.agentId)))].sort();
   const requiredAgents = [...(params.requiredAgents?.length ? params.requiredAgents : resolveRequiredAgents(task))];
   const missingAgents = requiredAgents.filter((agentId) => !presentAgents.includes(agentId));
-  const qaPresent = presentAgents.includes('qa-zig');
+  const qaAgentId = resolveQaAgentId(task);
+  const qaPresent = presentAgents.includes(qaAgentId);
   const complete = missingAgents.length === 0 && (!(params.requireQa ?? false) || qaPresent);
-  const merged = { ts: nowIso(), taskId: params.taskId, requiredAgents, presentAgents, missingAgents, qaPresent, complete, items };
+  const merged = { ts: nowIso(), taskId: params.taskId, requiredAgents, presentAgents, missingAgents, qaAgentId, qaPresent, complete, items };
   const outPath = path.join(taskDir, '_merged.json');
   fs.writeFileSync(outPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
   appendEvent(paths.eventsFile, {
@@ -102,5 +119,5 @@ export function mergeEvidence(paths: ZigrixPaths, params: { taskId: string; requ
     payload: { requiredAgents, missingAgents, complete, mergedPath: outPath, qaPresent },
   });
   rebuildIndex(paths);
-  return { ok: true, taskId: params.taskId, complete, missingAgents, mergedPath: outPath };
+  return { ok: true, taskId: params.taskId, complete, missingAgents, qaAgentId, qaPresent, mergedPath: outPath };
 }
