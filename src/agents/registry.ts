@@ -1,3 +1,4 @@
+import { assertStandardAgentRole } from './roles.js';
 import { type ZigrixConfig, zigrixConfigSchema } from '../config/schema.js';
 
 export type AgentMutationResult = {
@@ -50,10 +51,12 @@ export function addAgent(config: ZigrixConfig, params: {
     throw new Error(`agent already exists: ${params.id}`);
   }
 
+  const normalizedRole = assertStandardAgentRole(params.role, 'agent role');
+
   const next = structuredClone(config);
   next.agents.registry[params.id] = {
     label: params.label ?? params.id,
-    role: params.role,
+    role: normalizedRole,
     runtime: params.runtime,
     enabled: params.enabled ?? true,
     metadata: {},
@@ -121,8 +124,9 @@ export function setAgentEnabled(config: ZigrixConfig, agentId: string, enabled: 
 
 export function setAgentRole(config: ZigrixConfig, agentId: string, role: string): AgentMutationResult {
   assertAgentExists(config, agentId);
+  const normalizedRole = assertStandardAgentRole(role, 'agent role');
   const next = structuredClone(config);
-  next.agents.registry[agentId].role = role;
+  next.agents.registry[agentId].role = normalizedRole;
   return {
     config: zigrixConfigSchema.parse(next),
     changed: true,

@@ -53,22 +53,52 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 {
   "agents": {
     "registry": {
+      "pro-zig": {
+        "label": "pro-zig",
+        "role": "orchestrator",
+        "runtime": "openclaw",
+        "enabled": true,
+        "metadata": {}
+      },
       "qa-zig": {
         "label": "qa-zig",
-        "role": "QA Agent",
+        "role": "qa",
         "runtime": "openclaw",
         "enabled": true,
         "metadata": {}
       }
     },
     "orchestration": {
-      "participants": ["qa-zig"],
-      "excluded": []
+      "participants": ["pro-zig", "qa-zig"],
+      "excluded": [],
+      "orchestratorId": "pro-zig"
     }
   }
 }
 ```
-- registry: all known agents
+
+### Standard Agent Roles
+Zigrix enforces a closed set of standard roles. All role values in the registry and scale rules must resolve to one of these:
+
+| Role | Aliases | Description |
+|------|---------|-------------|
+| `orchestrator` | `pro`, `orchestrate`, `orchestration` | Coordination / execution planning |
+| `qa` | `quality`, `test`, `testing`, `qualityassurance` | Quality assurance / verification |
+| `security` | `sec` | Security review / audit |
+| `frontend` | `front`, `ui`, `client` | UI / client-side |
+| `backend` | `back`, `server`, `api` | API / DB / server-side |
+| `system` | `sys`, `infra`, `infrastructure`, `architecture` | System architecture / platform |
+
+Role values are normalized automatically. Aliases like `"infra"` become `"system"`, `"front"` becomes `"frontend"`, etc.
+
+### orchestratorId
+- `orchestratorId`: the agent id that acts as orchestrator for dispatched tasks
+- Must exist in registry when any orchestrator-role agent is registered
+- Cannot be in `excluded` list
+- Default: `"pro-zig"`
+
+### Registry rules
+- registry: all known agents (each with a standard role)
 - participants/excluded: orchestration membership control
 - same agent in both participants and excluded → validation error
 - participants/excluded referencing unknown agent → validation error
@@ -88,7 +118,7 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
       },
       "risky": {
         "requiredRoles": ["orchestrator", "qa", "security"],
-        "optionalRoles": ["frontend", "backend", "infra"]
+        "optionalRoles": ["frontend", "backend", "system"]
       }
     },
     "completion": {
@@ -102,6 +132,9 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
   }
 }
 ```
+- Scale roles must be standard roles (see table above)
+- `requiredRoles`: agents with these roles MUST complete for the task to finalize
+- `optionalRoles`: agents with these roles MAY be included by the orchestrator
 
 ## templates
 ```json
@@ -144,4 +177,5 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 - Path writeability: checked by `zigrix doctor`
 - Agent label uniqueness: enforced by registry
 - Template placeholder whitelist: per template kind
-- Role references: validated against registry
+- Role references: validated against standard roles list
+- orchestratorId: validated against registry when orchestrator-role agents exist

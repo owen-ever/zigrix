@@ -1,3 +1,4 @@
+import { STANDARD_AGENT_ROLES } from '../agents/roles.js';
 import { type ZigrixConfig } from '../config/schema.js';
 
 export const TEMPLATE_PLACEHOLDERS = {
@@ -54,12 +55,7 @@ export function validateRules(config: ZigrixConfig): {
   invalidRoles: string[];
 } {
   const knownRoles = new Set(Object.values(config.agents.registry).map((agent) => agent.role));
-  knownRoles.add('orchestrator');
-  knownRoles.add('qa');
-  knownRoles.add('frontend');
-  knownRoles.add('backend');
-  knownRoles.add('security');
-  knownRoles.add('infra');
+  for (const role of STANDARD_AGENT_ROLES) knownRoles.add(role);
 
   const invalidRoles = new Set<string>();
   for (const scale of Object.values(config.rules.scales)) {

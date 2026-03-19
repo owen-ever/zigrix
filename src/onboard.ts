@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
+import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { ensureBaseState, resolvePaths, type ZigrixPaths } from './state/paths.js';
@@ -25,6 +26,8 @@ export interface OpenClawConfig {
     list?: OpenClawAgent[];
   };
 }
+
+export type AgentRoleAssignments = Record<string, StandardAgentRole>;
 
 export interface PathStabilizeResult {
   alreadyInPath: boolean;
@@ -65,6 +68,7 @@ export interface OnboardResult {
 export interface RunOnboardOptions {
   yes?: boolean;
   projectDir?: string;
+  orchestratorId?: string;
   silent?: boolean;
 }
 
@@ -98,6 +102,7 @@ export function filterAgents(agents: OpenClawAgent[]): OpenClawAgent[] {
 export function registerAgents(
   config: ZigrixConfig,
   agents: OpenClawAgent[],
+  roleAssignments?: AgentRoleAssignments,
 ): { config: ZigrixConfig; registered: string[]; skipped: string[] } {
   let current = structuredClone(config);
   const registered: string[] = [];
@@ -109,7 +114,12 @@ export function registerAgents(
       skipped.push(agent.id);
       continue;
     }
-    const role = agent.identity?.theme ?? 'assistant';
+
+    const role = roleAssignments?.[agent.id] ?? inferStandardAgentRole({
+      agentId: agent.id,
+      theme: agent.identity?.theme ?? null,
+    });
+
     const result = addAgent(current, {
       id: agent.id,
       role,
@@ -531,6 +541,99 @@ export async function promptAgentSelection(
   }
 }
 
+export async function promptAgentRoleAssignments(
+  agents: OpenClawAgent[],
+): Promise<AgentRoleAssignments> {
+  const defaults: AgentRoleAssignments = Object.fromEntries(
+    agents.map((agent) => [agent.id, inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null })]),
+  ) as AgentRoleAssignments;
+
+  if (agents.length === 0) return defaults;
+
+  try {
+    const { checkbox } = await import('@inquirer/prompts');
+    const assignments: AgentRoleAssignments = {};
+
+    for (const agent of agents) {
+      const suggested = defaults[agent.id];
+      let selected: string[] = [];
+      while (selected.length !== 1) {
+        selected = await checkbox({
+          message: `Assign role for ${agent.id} (space toggle + enter confirm, choose exactly one):`,
+          choices: STANDARD_AGENT_ROLES.map((role) => ({
+            name: `${role}${role === suggested ? ' (suggested)' : ''}`,
+            value: role,
+            checked: role === suggested,
+          })),
+        });
+        if (selected.length !== 1) {
+          console.log(`⚠️  Select exactly one role for ${agent.id}.`);
+        }
+      }
+      assignments[agent.id] = selected[0] as StandardAgentRole;
+    }
+
+    return assignments;
+  } catch {
+    console.log('ℹ️  Non-interactive mode — inferring roles from agent ids/themes.');
+    return defaults;
+  }
+}
+
+export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string): {
+  config: ZigrixConfig;
+  changed: boolean;
+  warning?: string;
+} {
+  const next = structuredClone(config);
+  const participants = new Set(next.agents.orchestration.participants);
+  const excluded = new Set(next.agents.orchestration.excluded);
+  const participantMode = participants.size > 0;
+
+  const eligible = Object.entries(next.agents.registry)
+    .filter(([agentId, agent]) => {
+      if (!agent.enabled) return false;
+      if (agent.role !== 'orchestrator') return false;
+      if (excluded.has(agentId)) return false;
+      if (participantMode && !participants.has(agentId)) return false;
+      return true;
+    })
+    .map(([agentId]) => agentId)
+    .sort();
+
+  const requested = preferredId?.trim();
+  const current = next.agents.orchestration.orchestratorId;
+
+  if (requested) {
+    if (!eligible.includes(requested)) {
+      return {
+        config: next,
+        changed: false,
+        warning: `requested orchestrator '${requested}' is not eligible (eligible: ${eligible.join(', ') || 'none'})`,
+      };
+    }
+    const changed = current !== requested;
+    next.agents.orchestration.orchestratorId = requested;
+    return { config: next, changed };
+  }
+
+  if (eligible.includes(current)) {
+    return { config: next, changed: false };
+  }
+
+  const fallback = eligible[0];
+  if (!fallback) {
+    return {
+      config: next,
+      changed: false,
+      warning: 'no eligible orchestrator role agent found. set one with --orchestrator-id after assigning roles.',
+    };
+  }
+
+  next.agents.orchestration.orchestratorId = fallback;
+  return { config: next, changed: true };
+}
+
 // ─── Ensure config (idempotent) ───────────────────────────────────────────────
 
 function ensureConfig(): { configPath: string; isNew: boolean } {
@@ -596,18 +699,50 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       selectedAgents = await promptAgentSelection(allAgents);
     }
 
+    let nextConfig = loaded.config;
+
     if (selectedAgents.length > 0) {
-      const result = registerAgents(loaded.config, selectedAgents);
+      const roleAssignments = options.yes
+        ? Object.fromEntries(selectedAgents.map((agent) => [agent.id, inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null })])) as AgentRoleAssignments
+        : await promptAgentRoleAssignments(selectedAgents);
+
+      const result = registerAgents(nextConfig, selectedAgents, roleAssignments);
+      nextConfig = result.config;
       agentsRegistered = result.registered;
       agentsSkipped = result.skipped;
 
       if (agentsRegistered.length > 0) {
-        writeConfigFile(configPath, result.config);
         log(`✅ Registered agents: ${agentsRegistered.join(', ')}`);
       }
       if (agentsSkipped.length > 0) {
         log(`⏭️  Already registered (skipped): ${agentsSkipped.join(', ')}`);
       }
+    }
+
+    const orchResult = ensureOrchestratorId(nextConfig, options.orchestratorId);
+    nextConfig = orchResult.config;
+    if (orchResult.warning) {
+      warnings.push(orchResult.warning);
+      log(`⚠️  ${orchResult.warning}`);
+    }
+
+    if (agentsRegistered.length > 0 || orchResult.changed) {
+      writeConfigFile(configPath, nextConfig);
+      if (orchResult.changed) {
+        log(`✅ Orchestrator set to: ${nextConfig.agents.orchestration.orchestratorId}`);
+      }
+    }
+  }
+
+  if (!openclawConfig && options.orchestratorId) {
+    const orchResult = ensureOrchestratorId(loaded.config, options.orchestratorId);
+    if (orchResult.warning) {
+      warnings.push(orchResult.warning);
+      log(`⚠️  ${orchResult.warning}`);
+    }
+    if (orchResult.changed) {
+      writeConfigFile(configPath, orchResult.config);
+      log(`✅ Orchestrator set to: ${orchResult.config.agents.orchestration.orchestratorId}`);
     }
   }
 

@@ -46,7 +46,12 @@ function collectRisks(merged: Record<string, unknown>): string[] {
 
 function qaLine(merged: Record<string, unknown>): string {
   const present = new Set(Array.isArray(merged.presentAgents) ? merged.presentAgents.map(String) : []);
-  return present.has('qa-zig') ? '- qa-zig evidence 존재, QA 수행됨' : '- qa-zig evidence 없음 또는 별도 QA 미실행';
+  const qaAgentId = typeof merged.qaAgentId === 'string' && merged.qaAgentId.trim().length > 0
+    ? merged.qaAgentId
+    : 'qa-zig';
+  return present.has(qaAgentId)
+    ? `- ${qaAgentId} evidence 존재, QA 수행됨`
+    : `- ${qaAgentId} evidence 없음 또는 별도 QA 미실행`;
 }
 
 export function renderReport(paths: ZigrixPaths, params: { taskId: string; recordEvents?: boolean }): Record<string, unknown> | null {

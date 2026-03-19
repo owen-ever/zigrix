@@ -22,13 +22,14 @@ export const defaultConfig = {
     orchestration: {
       participants: [],
       excluded: [],
+      orchestratorId: 'pro-zig',
     },
   },
   rules: {
     scales: {
       simple: { requiredRoles: ['orchestrator'], optionalRoles: ['qa'] },
       normal: { requiredRoles: ['orchestrator', 'qa'], optionalRoles: ['frontend', 'backend'] },
-      risky: { requiredRoles: ['orchestrator', 'qa', 'security'], optionalRoles: ['frontend', 'backend', 'infra'] },
+      risky: { requiredRoles: ['orchestrator', 'qa', 'security'], optionalRoles: ['frontend', 'backend', 'system'] },
     },
     completion: {
       requireQa: true,
