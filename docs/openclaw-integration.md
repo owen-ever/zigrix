@@ -33,13 +33,15 @@ metadata:
 
 This means OpenClaw can mark the skill ready only when the Zigrix binary exists on a PATH visible to the OpenClaw gateway/runtime.
 
+Bundled skills include operational packs (`zigrix-task-*`, `zigrix-worker`, `zigrix-evidence`, `zigrix-report`, `zigrix-doctor`) and the orchestration guide pack (`zigrix-main-agent-guide`).
+
 ## Onboarding contract for OpenClaw environments
 
 When OpenClaw is present, `zigrix onboard` automatically covers:
 
 1. **PATH stabilization** — ensures `zigrix` is reachable from the gateway-visible PATH. If not found, creates a symlink in `~/.local/bin/` and warns if that directory isn't in PATH.
 2. **Skill registration** — symlinks all bundled skill packs (`skills/zigrix-*`) into `~/.openclaw/skills/`. Idempotent: skips existing symlinks that already point to the correct source.
-3. **Agent import** — reads `openclaw.json`, filters out `main`, and registers remaining agents into the zigrix config with their roles and themes.
+3. **Agent import** — reads `openclaw.json`, filters out `main`, normalizes imported roles to Zigrix standard roles, and sets/validates `agents.orchestration.orchestratorId`.
 4. **Readiness verification** — `zigrix doctor` reports OpenClaw detection status, skill dir presence, PATH reachability, and rule file counts.
 
 Optional:
@@ -48,7 +50,7 @@ Optional:
 ## Current integrated surface (agent-facing)
 
 ### Task orchestration
-- `zigrix task dispatch` — creates task with full orchestration metadata and boot prompt (replaces `dev_dispatch.py`)
+- `zigrix task dispatch` — creates task with full orchestration metadata, resolves roles to agents, and emits `orchestratorPrompt` for the configured orchestrator (replaces `dev_dispatch.py`)
 - `zigrix task finalize` — merges evidence, checks execution units, auto-reports (replaces `dev_finalize.py`)
 - `zigrix task create/status/list/events/progress/stale/start/report`
 

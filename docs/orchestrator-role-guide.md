@@ -75,9 +75,9 @@ zigrix task dispatch \
 
 1. **스케일 정책 확인**: `rules.scales.normal` → `requiredRoles: ["orchestrator", "qa"]`
 2. **역할별 에이전트 매핑**: 레지스트리에서 각 역할에 해당하는 enabled 에이전트 검색
-3. **필수 에이전트 선택**: requiredRoles의 에이전트 확정 (orchestrator 역할 → orchestratorId 우선)
-4. **후보 에이전트 식별**: optionalRoles + CANDIDATE_ROLE_ORDER에서 추가 가능한 에이전트 제시
-5. **실행 유닛 생성**: orchestratorId와 qaAgentId를 owner로 설정
+3. **필수 에이전트 선택**: requiredRoles의 에이전트 확정 (orchestrator 역할 → `orchestratorId` 우선)
+4. **후보 에이전트 식별**: optionalRoles + `CANDIDATE_ROLE_ORDER`에서 추가 가능한 에이전트 제시
+5. **실행 유닛 생성**: `orchestratorId`와 `qaAgentId`를 owner로 설정
 
 ### 출력 예시 (JSON)
 ```json

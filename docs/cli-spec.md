@@ -28,8 +28,8 @@ Advanced / exceptional flows:
 
 ```text
 zigrix
-├─ onboard [--yes] [--json]
-├─ configure [--section <section>] [--projects-base-dir <path>] [--project-dir <path>] [--yes] [--json]
+├─ onboard [--orchestrator-id <agentId>] [--yes] [--json]
+├─ configure [--section <section>] [--projects-base-dir <path>] [--project-dir <path>] [--orchestrator-id <agentId>] [--yes] [--json]
 ├─ init (DEPRECATED → use onboard)
 ├─ doctor [--json]
 ├─ version
@@ -100,19 +100,19 @@ zigrix
 ## Key commands
 
 ### `zigrix onboard`
-Creates `~/.zigrix/`, writes default config, seeds directories, stabilizes PATH (symlink if needed), registers skill packs into OpenClaw. Primary human entrypoint.
+Creates `~/.zigrix/`, writes default config, seeds directories, stabilizes PATH (symlink if needed), registers skill packs into OpenClaw, and initializes agent/orchestrator defaults. Primary human entrypoint.
 
 ### `zigrix configure`
-Reconfigures one or more sections after initial onboarding. Sections: `agents`, `rules`, `workspace`, `path`, `skills`. Supports `--section <name>` for targeted reconfiguration. Use `--projects-base-dir <path>` to set the workspace base directory.
+Reconfigures one or more sections after initial onboarding. Sections: `agents`, `rules`, `workspace`, `path`, `skills`. Supports `--section <name>` for targeted reconfiguration. Use `--projects-base-dir <path>` to set the workspace base directory and `--orchestrator-id <agentId>` to override orchestrator ownership.
 
 ### `zigrix task dispatch`
-Replaces `dev_dispatch.py`. Creates task with full orchestration metadata (workPackages, executionUnits, selectionHints), generates boot prompt for pro-zig, and writes dispatch prompt file.
+Replaces `dev_dispatch.py`. Creates task with full orchestration metadata (workPackages, executionUnits, selectionHints), resolves required/optional roles to enabled agents, generates `orchestratorPrompt` for the configured `orchestratorId`, and writes dispatch prompt file.
 
 ### `zigrix task finalize`
 Replaces `dev_finalize.py`. Merges evidence, checks execution unit completeness, auto-closes completed units, optionally auto-reports. Handles sec/qa issue flags.
 
 ### `zigrix task create`
-Lower-level task creation without orchestration metadata enrichment. Use `dispatch` for full orchestration flow.
+Lower-level manual task creation without dispatch-time role resolution. Use `task dispatch` for the standard orchestration flow.
 
 ### `zigrix doctor`
 Inspects Node version, config, base dir, rules dir, OpenClaw readiness.
