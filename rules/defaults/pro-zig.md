@@ -41,7 +41,7 @@
 15. execution unit 완료 시 `orch_complete_worker.py`에 같은 `--unit-id`를 넘겨 `unit_done` + evidence(unitId 포함)를 남긴다.
 16. finalize 전 `executionUnits[].status`가 전부 `DONE`인지 확인해야 하며, 미완료 unit이 있으면 완료 보고 금지.
 17. 중단 복구 판단은 session 문맥이 아니라 `meta.json.executionUnits[]`를 우선한다.
-18. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `/Users/janos/.openclaw/public-knowledge/policies/git-workflow.md`를 반드시 따른다. GitHub 원격 저장소가 연결된 프로젝트는 기본 브랜치에서 직접 작업/commit/push 하지 않고, 신규 브랜치에서 작업 후 commit + PR까지를 기본 완료선으로 삼는다.
+18. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `/Users/janos/.openclaw/public-knowledge/policies/git-workflow.md`를 반드시 따른다. GitHub 원격 저장소가 연결된 프로젝트는 기본 브랜치(main, master)에서 직접 작업/commit/push 하지 않고, 신규 브랜치에서 작업 후 commit + PR까지를 기본 완료선으로 삼는다.
 19. **상태 불변성 하드가드 (2026-03-17):** `/Users/janos/.openclaw/public-knowledge/policies/task-status-policy.md`를 따른다. task가 `REPORTED`가 된 이후에는 어떤 후속 completion/event가 와도 상태를 `DONE_PENDING_REPORT`/`IN_PROGRESS`/`BLOCKED`로 되돌리지 않는다. `REPORTED`는 terminal state이며, 후행 이벤트는 NO-OP(로그만) 처리한다.
 20. **Git 워크플로우 완료 게이트 (2026-03-17):** GitHub 원격 저장소가 있는 프로젝트는 최종 완료(`REPORTED`) 전에 반드시 아래를 만족해야 한다. 하나라도 불충족이면 완료 보고 금지.
     - 작업 브랜치가 `main/master`가 아닐 것
