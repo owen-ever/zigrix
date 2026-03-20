@@ -60,9 +60,11 @@ export interface OnboardResult {
   skillsSkipped: string[];
   skillsFailed: string[];
   pathStabilized: PathStabilizeResult;
+  openclawPathStabilized: PathStabilizeResult;
   warnings: string[];
   checks: {
     zigrixInPath: boolean;
+    openclawInPath: boolean;
     openclawSkillsDir: boolean;
   };
 }
@@ -483,6 +485,128 @@ export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | nul
   return { alreadyInPath: false, symlinkCreated: true, symlinkPath, warning };
 }
 
+// ─── OpenClaw PATH check and stabilization ────────────────────────────────────
+
+export function checkOpenClawInPath(opts?: { _overrideStablePaths?: string[] }): boolean {
+  const dirs = opts?._overrideStablePaths ?? STABLE_SHELL_PATHS;
+  for (const dir of dirs) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const entries = fs.readdirSync(dir);
+      if (entries.includes('openclaw')) {
+        return true;
+      }
+    } catch {
+      // skip unreadable dirs
+    }
+  }
+  return false;
+}
+
+/**
+ * Ensure openclaw is reachable from PATH.
+ * Same strategy as ensureZigrixInPath():
+ *   1. /usr/local/bin — stable path, accessible from non-login shells
+ *   2. ~/.local/bin   — user-local fallback
+ *
+ * @param opts._overrideSystemBinDir - Override system bin dir selection (for testing)
+ * @param opts._overrideStablePaths  - Override stable paths list (for testing)
+ */
+export function ensureOpenClawInPath(opts?: { _overrideSystemBinDir?: string | null; _overrideStablePaths?: string[] }): PathStabilizeResult {
+  if (checkOpenClawInPath({ _overrideStablePaths: opts?._overrideStablePaths })) {
+    return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
+  }
+
+  const binPath = resolveOpenClawBin();
+  if (!binPath) {
+    return {
+      alreadyInPath: false,
+      symlinkCreated: false,
+      symlinkPath: null,
+      warning: 'Could not locate openclaw binary. Ensure openclaw is installed via npm.',
+    };
+  }
+
+  // ── Strategy 1: system bin dir (accessible from non-login shells) ──────────
+  const systemBinDir =
+    opts !== undefined && '_overrideSystemBinDir' in opts
+      ? opts._overrideSystemBinDir
+      : findSystemBinDir();
+
+  if (systemBinDir) {
+    const symlinkPath = path.join(systemBinDir, 'openclaw');
+    try {
+      // Remove stale entry if present
+      try {
+        if (fs.existsSync(symlinkPath) || fs.lstatSync(symlinkPath).isSymbolicLink()) {
+          fs.unlinkSync(symlinkPath);
+        }
+      } catch {
+        // doesn't exist — fine
+      }
+      fs.symlinkSync(binPath, symlinkPath);
+      fs.chmodSync(symlinkPath, 0o755);
+      return { alreadyInPath: false, symlinkCreated: true, symlinkPath, warning: null };
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'EACCES') {
+        return {
+          alreadyInPath: false,
+          symlinkCreated: false,
+          symlinkPath: null,
+          warning: `Cannot write to ${systemBinDir} (permission denied). Run:\n  sudo ln -sfn ${binPath} ${symlinkPath}`,
+        };
+      }
+      // Fall through to user bin dir
+    }
+  }
+
+  // ── Strategy 2: user-local bin dir ────────────────────────────────────────
+  const userBinDir = findUserBinDir();
+  try {
+    fs.mkdirSync(userBinDir, { recursive: true });
+  } catch {
+    return {
+      alreadyInPath: false,
+      symlinkCreated: false,
+      symlinkPath: null,
+      warning: `Could not create ${userBinDir}. Create it manually and add to PATH.`,
+    };
+  }
+
+  const symlinkPath = path.join(userBinDir, 'openclaw');
+
+  try {
+    // Remove existing if present (stale symlink)
+    if (fs.existsSync(symlinkPath) || fs.lstatSync(symlinkPath).isSymbolicLink()) {
+      fs.unlinkSync(symlinkPath);
+    }
+  } catch {
+    // doesn't exist, fine
+  }
+
+  try {
+    fs.symlinkSync(binPath, symlinkPath);
+    fs.chmodSync(symlinkPath, 0o755);
+  } catch (e) {
+    return {
+      alreadyInPath: false,
+      symlinkCreated: false,
+      symlinkPath: null,
+      warning: `Failed to create symlink at ${symlinkPath}: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
+  // Check if userBinDir is actually in PATH
+  const pathEnv = process.env.PATH ?? '';
+  const inPath = pathEnv.split(path.delimiter).some((d) => path.resolve(d) === path.resolve(userBinDir));
+
+  const warning: string | null = inPath
+    ? null
+    : `Created openclaw at ${symlinkPath}, but ${userBinDir} is not in your PATH. Add it:\n  export PATH="${userBinDir}:$PATH"`;
+
+  return { alreadyInPath: false, symlinkCreated: true, symlinkPath, warning };
+}
+
 // ─── OpenClaw skill registration ──────────────────────────────────────────────
 
 /**
@@ -871,7 +995,22 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     }
   }
 
-  // 7. Register OpenClaw skills (symlink skill packs)
+  // 7. Stabilize PATH — ensure openclaw is reachable from non-login shells
+  let openclawPathResult: PathStabilizeResult = { alreadyInPath: false, symlinkCreated: false, symlinkPath: null, warning: null };
+  if (openclawBinPath) {
+    openclawPathResult = ensureOpenClawInPath();
+    if (openclawPathResult.symlinkCreated) {
+      log(`✅ openclaw symlinked to ${openclawPathResult.symlinkPath}`);
+    } else if (openclawPathResult.alreadyInPath) {
+      log('✅ openclaw already in PATH');
+    }
+    if (openclawPathResult.warning) {
+      warnings.push(openclawPathResult.warning);
+      log(`⚠️  ${openclawPathResult.warning}`);
+    }
+  }
+
+  // 8. Register OpenClaw skills (symlink skill packs)
   let skillsRegistered: string[] = [];
   let skillsSkipped: string[] = [];
   let skillsFailed: string[] = [];
@@ -918,9 +1057,11 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     skillsSkipped,
     skillsFailed,
     pathStabilized: pathResult,
+    openclawPathStabilized: openclawPathResult,
     warnings,
     checks: {
       zigrixInPath: pathResult.alreadyInPath || pathResult.symlinkCreated,
+      openclawInPath: openclawPathResult.alreadyInPath || openclawPathResult.symlinkCreated,
       openclawSkillsDir: openclawSkillsDirExists,
     },
   };

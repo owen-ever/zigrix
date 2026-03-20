@@ -7,6 +7,7 @@ import { loadConfig, writeConfigFile } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import {
   detectOpenClawHome,
+  ensureOpenClawInPath,
   ensureZigrixInPath,
   filterAgents,
   loadOpenClawConfig,
@@ -35,6 +36,7 @@ export interface ConfigureResult {
   rulesSkipped: string[];
   skillsResult: SkillRegistrationResult | null;
   pathResult: PathStabilizeResult | null;
+  openclawPathResult: PathStabilizeResult | null;
   workspaceChanged: boolean;
   warnings: string[];
 }
@@ -83,6 +85,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
   let rulesSkipped: string[] = [];
   let skillsResult: SkillRegistrationResult | null = null;
   let pathResult: PathStabilizeResult | null = null;
+  let openclawPathResult: PathStabilizeResult | null = null;
   let workspaceChanged = false;
   let configDirty = false;
 
@@ -185,6 +188,17 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
       warnings.push(pathResult.warning);
       log(`⚠️  ${pathResult.warning}`);
     }
+
+    openclawPathResult = ensureOpenClawInPath();
+    if (openclawPathResult.symlinkCreated) {
+      log(`✅ openclaw symlinked to ${openclawPathResult.symlinkPath}`);
+    } else if (openclawPathResult.alreadyInPath) {
+      log('✅ openclaw already in PATH');
+    }
+    if (openclawPathResult.warning) {
+      warnings.push(openclawPathResult.warning);
+      log(`⚠️  ${openclawPathResult.warning}`);
+    }
   }
 
   // ─── skills ───────────────────────────────────────────────────────────
@@ -224,6 +238,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
     rulesSkipped,
     skillsResult,
     pathResult,
+    openclawPathResult,
     workspaceChanged,
     warnings,
   };
