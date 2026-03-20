@@ -2,6 +2,13 @@
 
 All notable changes to Zigrix will be documented in this file.
 
+## [0.1.0-alpha.10] — 2026-03-20
+
+### Fixed
+- `zigrix task finalize` now defaults to auto-report (`--no-auto-report` to opt out), fixing DONE_PENDING_REPORT stuck state
+- Worker prompt template now includes evidence collect step after unit completion, preventing orchestrator from proxy-generating worker evidence
+- `zigrix onboard` discovers OpenClaw binary path and persists it to config, resolving dashboard "OpenClaw 연동 필요" in non-login shells
+
 ## [Unreleased]
 
 ### Breaking Changes

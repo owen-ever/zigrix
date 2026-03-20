@@ -711,8 +711,8 @@ for (const [name, status] of Object.entries(STATUS_MAP)) {
 
 task
   .command('finalize <taskId>')
-  .description('Finalize a task: merge evidence, check units, optionally auto-report (replaces dev_finalize.py)')
-  .option('--auto-report', 'auto-transition to REPORTED if complete')
+  .description('Finalize a task: merge evidence, check units, auto-report by default (replaces dev_finalize.py)')
+  .option('--no-auto-report', 'skip auto-transition to REPORTED (default: auto-report enabled)')
   .option('--sec-issues', 'flag security issues (blocks auto-report)')
   .option('--qa-issues', 'flag QA issues (blocks auto-report)')
   .option('--config <path>')
@@ -722,7 +722,7 @@ task
     const loaded = loadRuntime({ baseDir: options.baseDir, config: options.config });
     const result = finalizeTask(loaded.paths, {
       taskId,
-      autoReport: Boolean(options.autoReport),
+      autoReport: options.autoReport !== false,
       secIssues: Boolean(options.secIssues),
       qaIssues: Boolean(options.qaIssues),
     });

@@ -124,6 +124,11 @@ export const zigrixConfigSchema = z.object({
     workerPrompt: templateSchema,
     finalReport: templateSchema,
   }),
+  openclaw: z.object({
+    home: z.string().default(''),
+    binPath: z.string().nullable().default(null),
+    gatewayUrl: z.string().default('http://127.0.0.1:18789'),
+  }).default({ home: '', binPath: null, gatewayUrl: 'http://127.0.0.1:18789' }),
   runtime: z.object({
     outputMode: z.enum(['text', 'json']),
     jsonIndent: z.number().int().min(0).max(8),
@@ -136,7 +141,7 @@ export const zigrixConfigJsonSchema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   title: 'ZigrixConfig',
   type: 'object',
-  required: ['paths', 'workspace', 'agents', 'rules', 'templates', 'runtime'],
+  required: ['paths', 'workspace', 'agents', 'rules', 'templates', 'openclaw', 'runtime'],
   properties: {
     paths: {
       type: 'object',
@@ -163,6 +168,15 @@ export const zigrixConfigJsonSchema = {
     agents: { type: 'object' },
     rules: { type: 'object' },
     templates: { type: 'object' },
+    openclaw: {
+      type: 'object',
+      properties: {
+        home: { type: 'string' },
+        binPath: { type: ['string', 'null'] },
+        gatewayUrl: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
     runtime: { type: 'object' },
   },
   additionalProperties: false,

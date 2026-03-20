@@ -69,7 +69,19 @@ function renderPrompt(params: {
   if (params.unitId || params.workPackage) {
     sections.push('', '### Execution Context', `- unitId: ${params.unitId ?? 'N/A'}`, `- workPackage: ${params.workPackage ?? 'N/A'}`);
   }
-  sections.push('', '### Completion', '작업 완료 후 결과와 근거를 명확히 보고하라.');
+  sections.push(
+    '',
+    '### Completion',
+    '작업 완료 후 다음 순서를 반드시 따르라:',
+    '',
+    '1. **증적(evidence) 수집** — 작업 결과 증적을 먼저 기록한다:',
+    '   ```bash',
+    `   zigrix evidence collect --task-id ${params.task.taskId} --agent-id ${params.agentId} --summary "<작업 결과 요약>"`,
+    '   ```',
+    '2. **결과 보고** — 증적 수집 완료 후 결과와 근거를 명확히 보고하라.',
+    '',
+    '⚠️ 증적 없이 완료하면 finalize에서 incomplete 판정된다.',
+  );
   return sections.join('\n');
 }
 
