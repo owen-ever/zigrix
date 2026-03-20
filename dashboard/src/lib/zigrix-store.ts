@@ -14,6 +14,31 @@ const DEFAULT_OPENCLAW_CONFIG_PATH = path.join(os.homedir(), '.openclaw', 'openc
 const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
 const DEFAULT_SESSIONS_HISTORY_LIMIT = 200;
 
+// ─── Zigrix config openclaw section reader ────────────────────────────────────
+
+function readZigrixOpenClawConfig(zigrixHome: string): {
+  home: string;
+  binPath: string | null;
+  gatewayUrl: string;
+} | null {
+  const configPath = path.join(zigrixHome, 'zigrix.config.json');
+  try {
+    if (!fs.existsSync(configPath)) return null;
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isObject(parsed)) return null;
+    const oc = parsed.openclaw;
+    if (!isObject(oc)) return null;
+    return {
+      home: typeof oc.home === 'string' && oc.home ? oc.home : '',
+      binPath: typeof oc.binPath === 'string' && oc.binPath ? oc.binPath : null,
+      gatewayUrl: typeof oc.gatewayUrl === 'string' && oc.gatewayUrl ? oc.gatewayUrl : DEFAULT_GATEWAY_URL,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type LooseRecord = Record<string, unknown>;
@@ -1004,24 +1029,32 @@ export function createZigrixStore(options?: {
 }) {
   const zigrixHome = options?.zigrixHome || getZigrixHome();
 
+  // Read openclaw integration config from zigrix config (set during onboard)
+  const zigrixOcConfig = readZigrixOpenClawConfig(zigrixHome);
+  const resolvedOpenClawHome = zigrixOcConfig?.home || process.env.OPENCLAW_HOME || path.join(os.homedir(), '.openclaw');
+  const resolvedAgentsDir = options?.agentsStateDir || process.env.OPENCLAW_AGENTS_DIR || path.join(resolvedOpenClawHome, 'agents');
+
   const paths = {
     zigrixHome,
     indexPath: path.join(zigrixHome, 'index.json'),
     eventsPath: path.join(zigrixHome, 'tasks.jsonl'),
     specsDir: path.join(zigrixHome, 'tasks'),
     evidenceDir: path.join(zigrixHome, 'evidence'),
-    agentsStateDir:
-      options?.agentsStateDir || process.env.OPENCLAW_AGENTS_DIR || DEFAULT_OPENCLAW_AGENTS_DIR,
+    agentsStateDir: resolvedAgentsDir,
     subagentRunsPath:
       options?.subagentRunsPath || process.env.OPENCLAW_SUBAGENT_RUNS_PATH || DEFAULT_SUBAGENT_RUNS_PATH,
     openclawConfigPath:
-      options?.openclawConfigPath || process.env.OPENCLAW_CONFIG_PATH || DEFAULT_OPENCLAW_CONFIG_PATH,
+      options?.openclawConfigPath || process.env.OPENCLAW_CONFIG_PATH || path.join(resolvedOpenClawHome, 'openclaw.json'),
+    openclawBinPath: zigrixOcConfig?.binPath || null,
   };
+
+  // Use gateway URL from zigrix config (set during onboard) as fallback
+  const resolvedGatewayUrl = options?.gatewayUrl || process.env.OPENCLAW_GATEWAY_URL || zigrixOcConfig?.gatewayUrl || DEFAULT_GATEWAY_URL;
 
   const invokeTool =
     options?.invokeTool ||
     buildGatewayInvoker({
-      gatewayUrl: options?.gatewayUrl,
+      gatewayUrl: resolvedGatewayUrl,
       gatewayToken: options?.gatewayToken,
       fetchImpl: options?.fetchImpl,
     });

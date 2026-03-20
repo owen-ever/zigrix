@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +51,7 @@ export interface OnboardResult {
   paths: ZigrixPaths;
   openclawDetected: boolean;
   openclawHome: string;
+  openclawBinPath: string | null;
   agentsRegistered: string[];
   agentsSkipped: string[];
   rulesCopied: string[];
@@ -90,6 +92,73 @@ export function loadOpenClawConfig(openclawHome: string): OpenClawConfig | null 
     return null;
   }
 }
+
+/**
+ * Discover the openclaw binary path.
+ * Strategy order:
+ *   1. `which openclaw` — available in current PATH
+ *   2. Common nvm/volta/fnm managed paths
+ *   3. Well-known locations: /usr/local/bin, ~/.local/bin
+ *   4. Walk node_modules/.bin from openclaw home
+ *
+ * Returns the resolved absolute path or null.
+ */
+export function resolveOpenClawBin(openclawHome?: string): string | null {
+  // Strategy 1: which/where
+  try {
+    const result = execSync('which openclaw', { encoding: 'utf8', timeout: 3000 }).trim();
+    if (result && fs.existsSync(result)) return path.resolve(result);
+  } catch {
+    // not in PATH
+  }
+
+  // Strategy 2: nvm/volta/fnm managed global bin dirs
+  const home = process.env.HOME ?? '';
+  const nodeVersion = process.versions.node;
+  const majorMinorPatch = nodeVersion; // e.g., "25.5.0"
+  const nvmCandidate = path.join(home, '.nvm', 'versions', 'node', `v${majorMinorPatch}`, 'bin', 'openclaw');
+  if (fs.existsSync(nvmCandidate)) return path.resolve(nvmCandidate);
+
+  // Also try nvm current symlink
+  const nvmCurrent = path.join(home, '.nvm', 'current', 'bin', 'openclaw');
+  if (fs.existsSync(nvmCurrent)) return path.resolve(nvmCurrent);
+
+  // Volta
+  const voltaCandidate = path.join(home, '.volta', 'bin', 'openclaw');
+  if (fs.existsSync(voltaCandidate)) return path.resolve(voltaCandidate);
+
+  // fnm
+  const fnmCandidate = path.join(home, '.fnm', 'node-versions', `v${majorMinorPatch}`, 'installation', 'bin', 'openclaw');
+  if (fs.existsSync(fnmCandidate)) return path.resolve(fnmCandidate);
+
+  // Strategy 3: well-known system paths
+  for (const dir of ['/usr/local/bin', path.join(home, '.local', 'bin')]) {
+    const candidate = path.join(dir, 'openclaw');
+    if (fs.existsSync(candidate)) return path.resolve(candidate);
+  }
+
+  // Strategy 4: node global lib path (npm root -g)
+  try {
+    const globalRoot = execSync('npm root -g', { encoding: 'utf8', timeout: 3000 }).trim();
+    if (globalRoot) {
+      const candidate = path.join(path.dirname(globalRoot), 'bin', 'openclaw');
+      if (fs.existsSync(candidate)) return path.resolve(candidate);
+    }
+  } catch {
+    // npm not available or timed out
+  }
+
+  // Strategy 5: from openclaw home
+  if (openclawHome) {
+    // Some installations place a bin reference inside the home dir
+    const homeBin = path.join(openclawHome, 'bin', 'openclaw');
+    if (fs.existsSync(homeBin)) return path.resolve(homeBin);
+  }
+
+  return null;
+}
+
+
 
 // ─── Agent filtering ──────────────────────────────────────────────────────────
 
@@ -778,7 +847,31 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     log(`⚠️  ${pathResult.warning}`);
   }
 
-  // 6. Register OpenClaw skills (symlink skill packs)
+  // 6. Detect and persist openclaw binary path
+  let openclawBinPath: string | null = null;
+  if (openclawExists) {
+    openclawBinPath = resolveOpenClawBin(openclawHome);
+    if (openclawBinPath) {
+      log(`✅ OpenClaw binary found: ${openclawBinPath}`);
+    } else {
+      warnings.push('openclaw binary not found. Dashboard conversation features may be limited.');
+      log(`⚠️  ${warnings[warnings.length - 1]}`);
+    }
+
+    // Persist openclaw integration config
+    const currentConfig = loadConfig({ configPath }).config;
+    const needsUpdate =
+      currentConfig.openclaw.home !== openclawHome ||
+      currentConfig.openclaw.binPath !== openclawBinPath;
+    if (needsUpdate) {
+      currentConfig.openclaw.home = openclawHome;
+      currentConfig.openclaw.binPath = openclawBinPath;
+      writeConfigFile(configPath, currentConfig);
+      log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'})`);
+    }
+  }
+
+  // 7. Register OpenClaw skills (symlink skill packs)
   let skillsRegistered: string[] = [];
   let skillsSkipped: string[] = [];
   let skillsFailed: string[] = [];
@@ -816,6 +909,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     paths,
     openclawDetected: openclawExists,
     openclawHome,
+    openclawBinPath,
     agentsRegistered,
     agentsSkipped,
     rulesCopied,

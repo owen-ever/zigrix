@@ -43,9 +43,9 @@ export const defaultConfig = {
   templates: {
     workerPrompt: {
       format: 'markdown',
-      version: 1,
+      version: 2,
       placeholders: ['taskId', 'title', 'scale', 'agentId', 'description'],
-      body: '## Worker Assignment: {{taskId}}\n- title: {{title}}\n- scale: {{scale}}\n- agent: {{agentId}}\n- description: {{description}}',
+      body: '## Worker Assignment: {{taskId}}\n- title: {{title}}\n- scale: {{scale}}\n- agent: {{agentId}}\n- description: {{description}}\n\n### Completion\n작업 완료 후 반드시 증적을 먼저 수집하라:\n```bash\nzigrix evidence collect --task-id {{taskId}} --agent-id {{agentId}} --summary "<결과 요약>"\n```\n⚠️ 증적 없이 완료하면 finalize에서 incomplete 판정된다.',
     },
     finalReport: {
       format: 'markdown',
@@ -53,6 +53,11 @@ export const defaultConfig = {
       placeholders: ['taskId', 'title', 'status', 'summary'],
       body: '## Final Report: {{taskId}}\n- title: {{title}}\n- status: {{status}}\n- summary: {{summary}}',
     },
+  },
+  openclaw: {
+    home: '',
+    binPath: null,
+    gatewayUrl: 'http://127.0.0.1:18789',
   },
   runtime: {
     outputMode: 'text',

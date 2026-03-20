@@ -66,6 +66,7 @@ function summarizeUnits(task: ZigrixTask): {
 
 export function finalizeTask(paths: ZigrixPaths, params: {
   taskId: string;
+  /** Auto-transition to REPORTED when complete. Defaults to true. */
   autoReport?: boolean;
   secIssues?: boolean;
   qaIssues?: boolean;

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import type { LoadedConfig } from './config/load.js';
+import type { ZigrixConfig } from './config/schema.js';
 import type { ZigrixPaths } from './state/paths.js';
 
 function existsWritable(targetPath: string): boolean {
@@ -77,7 +78,7 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
     binaries: {
       node: process.execPath,
       npm: process.env.npm_execpath ?? null,
-      openclaw: null,
+      openclaw: (loaded.config as ZigrixConfig).openclaw?.binPath ?? null,
     },
     openclaw: {
       home: openclawHome,
