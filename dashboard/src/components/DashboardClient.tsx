@@ -50,6 +50,11 @@ export function DashboardClient({
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sourceRef = useRef<EventSource | null>(null);
 
+  const filteredEvents = useMemo(() => {
+    if (selectedTaskId === null) return [];
+    return overview.recentEvents.filter((e) => e.taskId === selectedTaskId);
+  }, [overview.recentEvents, selectedTaskId]);
+
   const tasks = useMemo<TaskListItem[]>(() => {
     const activeById = new Map(overview.activeTasks.map((row) => [row.taskId, row]));
     const ids = new Set<string>([
@@ -261,7 +266,7 @@ export function DashboardClient({
             {activeTab === 'detail' && (
               <TaskDetailTab detail={taskDetail} onCancelTask={cancelTask} cancelling={cancelling} />
             )}
-            {activeTab === 'events' && <EventLogTab events={overview.recentEvents} />}
+            {activeTab === 'events' && <EventLogTab events={filteredEvents} />}
             {activeTab === 'conversation' && <ConversationTab conversation={conversation} />}
           </div>
         </section>

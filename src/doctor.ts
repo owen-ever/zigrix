@@ -44,6 +44,21 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
     }
   }) ?? null;
 
+  const openclawInNonLoginPath = nonLoginShellPaths.some((dir) => {
+    try {
+      return fs.existsSync(path.join(dir, 'openclaw'));
+    } catch {
+      return false;
+    }
+  });
+  const openclawNonLoginLocation = nonLoginShellPaths.find((dir) => {
+    try {
+      return fs.existsSync(path.join(dir, 'openclaw'));
+    } catch {
+      return false;
+    }
+  }) ?? null;
+
   const payload = {
     node: {
       executable: process.execPath,
@@ -90,6 +105,8 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
       nonLoginShellPaths,
       zigrixInNonLoginPath,
       zigrixNonLoginLocation,
+      openclawInNonLoginPath,
+      openclawNonLoginLocation,
     },
   };
 
@@ -103,6 +120,12 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
     warnings.push(
       'zigrix is not reachable from non-login shell PATH (checked: /usr/local/bin, /usr/bin). ' +
       'Run `zigrix onboard` or manually: sudo ln -sfn $(which zigrix) /usr/local/bin/zigrix',
+    );
+  }
+  if (!payload.pathReach.openclawInNonLoginPath) {
+    warnings.push(
+      'openclaw is not reachable from non-login shell PATH (checked: /usr/local/bin, /usr/bin). ' +
+      'Run `zigrix onboard` or manually: sudo ln -sfn $(which openclaw) /usr/local/bin/openclaw',
     );
   }
 
@@ -123,7 +146,8 @@ export function renderDoctorText(payload: Record<string, any>): string {
     `- Config: ${payload.paths.configPath ?? 'missing'}`,
     `- Rules dir: ${payload.rules.dir} (${payload.rules.count} files)`,
     `- OpenClaw home: ${payload.openclaw.home} (${payload.openclaw.exists ? 'present' : 'missing'})`,
-    `- Non-login PATH reach: ${payload.pathReach.zigrixInNonLoginPath ? `yes (${payload.pathReach.zigrixNonLoginLocation})` : 'no'}`,
+    `- Non-login PATH reach (zigrix): ${payload.pathReach.zigrixInNonLoginPath ? `yes (${payload.pathReach.zigrixNonLoginLocation})` : 'no'}`,
+    `- Non-login PATH reach (openclaw): ${payload.pathReach.openclawInNonLoginPath ? `yes (${payload.pathReach.openclawNonLoginLocation})` : 'no'}`,
     `- Ready: ${payload.summary.ready ? 'yes' : 'no'}`,
   ];
   for (const warning of payload.summary.warnings as string[]) {
