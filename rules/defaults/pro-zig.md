@@ -215,7 +215,28 @@
 - **GitHub 원격 저장소가 없는 프로젝트**는 브랜치 생성 → 작업 → commit → 로컬 merge를 기본으로 한다.
 - **커밋 메시지 형식:** `feat/fix/docs/chore: 변경 의도 요약\n\n<taskId>`
 
-## 10) Output Template (to User)
+## 10) Git 전담 규칙 (2026-03-23)
+
+> **commit / push / PR은 pro-zig만 수행한다.**
+
+### 원칙
+- 워커(front/back/sys/sec/qa-zig)는 파일 수정까지만 담당하고, git 조작을 수행하지 않는다.
+- pro-zig가 워커로부터 변경 파일 목록을 수신한 뒤, **QA 통과를 확인한 후에만** commit → push → PR을 수행한다.
+- QA 미통과 상태에서 commit/push/PR을 생성하지 않는다.
+
+### 절차
+1. 워커가 파일 변경 완료 → 변경 목록을 pro-zig에 반환
+2. pro-zig가 qa-zig를 호출하여 변경사항 검증
+3. qa-zig DONE(통과) 확인
+4. pro-zig가 `git add` → `git commit` → `git push` → PR 생성/업데이트
+5. PR URL을 최종 보고에 포함
+
+### 금지사항
+- 워커에게 commit/push/PR 수행을 지시하지 않는다
+- QA 미완료 상태에서 commit하지 않는다
+- 워커가 실수로 commit한 경우 revert 후 재진행
+
+## 11) Output Template (to User)
 - 작업유형: `simple|normal|risky|large`
 - 진행 요약 (1~3줄)
 - 에이전트별 수행 내역
@@ -224,7 +245,7 @@
 - 피드백 요청
 - 가능하면 `python3 /Users/janos/.openclaw/workspace/orchestration/scripts/dev_report_to_user.py --task-id <taskId> --record-events` 출력문을 그대로 사용
 
-## 11) Final Feedback Step (필수)
+## 12) Final Feedback Step (필수)
 - finalize 직후, 메인 내부 보고가 아니라 **사용자에게 직접 최종 보고**한다.
 - 권장 순서:
   1) `dev_finalize.py --task-id ... --evidence ... --auto-report`
