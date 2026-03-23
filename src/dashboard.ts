@@ -4,6 +4,8 @@ import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { detectOpenClawHome } from './onboard.js';
+
 /** Default port for zigrix dashboard */
 export const DASHBOARD_DEFAULT_PORT = 3838;
 
@@ -49,6 +51,53 @@ export interface RunDashboardOptions {
 }
 
 /**
+ * Read openclaw.json and extract gateway connection env vars.
+ * Only sets vars that are not already present in process.env,
+ * so explicit user overrides are always respected.
+ */
+function resolveGatewayEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  try {
+    const openclawHome = detectOpenClawHome();
+    const configPath = path.join(openclawHome, 'openclaw.json');
+    if (!fs.existsSync(configPath)) return env;
+
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const gateway = raw?.gateway;
+    if (!gateway) return env;
+
+    // OPENCLAW_GATEWAY_URL — derive from gateway.port (loopback assumed)
+    if (!process.env.OPENCLAW_GATEWAY_URL && !process.env.ORCH_GATEWAY_URL) {
+      const port = Number(gateway.port);
+      if (port > 0) {
+        env.OPENCLAW_GATEWAY_URL = `http://localhost:${port}`;
+      }
+    }
+
+    // OPENCLAW_GATEWAY_TOKEN — from gateway.auth.token
+    if (!process.env.OPENCLAW_GATEWAY_TOKEN && !process.env.ORCH_GATEWAY_TOKEN) {
+      const token = gateway.auth?.token;
+      if (typeof token === 'string' && token.length > 0) {
+        env.OPENCLAW_GATEWAY_TOKEN = token;
+      }
+    }
+
+    // OPENCLAW_AGENTS_DIR — agents runtime directory
+    if (!process.env.OPENCLAW_AGENTS_DIR) {
+      const agentsDir = path.join(openclawHome, 'agents');
+      if (fs.existsSync(agentsDir)) {
+        env.OPENCLAW_AGENTS_DIR = agentsDir;
+      }
+    }
+  } catch {
+    // Non-fatal: dashboard will work without gateway features
+  }
+
+  return env;
+}
+
+/**
  * Main entry point for `zigrix dashboard`.
  *
  * Runs the pre-built Next.js standalone server bundled in dist/dashboard/.
@@ -86,6 +135,9 @@ export async function runDashboard(options: RunDashboardOptions = {}): Promise<v
     );
   }
 
+  // --- Resolve OpenClaw gateway env from openclaw.json ---
+  const gatewayEnv = resolveGatewayEnv();
+
   // --- Launch pre-built Next.js standalone server ---
   console.log(`🚀 Starting zigrix dashboard on http://localhost:${port}`);
 
@@ -94,6 +146,7 @@ export async function runDashboard(options: RunDashboardOptions = {}): Promise<v
     stdio: 'inherit',
     env: {
       ...process.env,
+      ...gatewayEnv,
       PORT: String(port),
       HOSTNAME: '0.0.0.0',
     },
