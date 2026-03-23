@@ -217,18 +217,18 @@
 
 ## 10) Git 전담 규칙 (2026-03-23)
 
-> **commit / push / PR은 pro-zig만 수행한다.**
+> **commit / push / PR은 orchestrator 역할만 수행한다.**
 
 ### 원칙
-- 워커(front/back/sys/sec/qa-zig)는 파일 수정까지만 담당하고, git 조작을 수행하지 않는다.
-- pro-zig가 워커로부터 변경 파일 목록을 수신한 뒤, **QA 통과를 확인한 후에만** commit → push → PR을 수행한다.
+- non-orchestrator 역할 워커(frontend/backend/system/security/qa)는 파일 수정까지만 담당하고, git 조작을 수행하지 않는다.
+- orchestrator가 워커로부터 변경 파일 목록을 수신한 뒤, **QA 통과를 확인한 후에만** commit → push → PR을 수행한다.
 - QA 미통과 상태에서 commit/push/PR을 생성하지 않는다.
 
 ### 절차
-1. 워커가 파일 변경 완료 → 변경 목록을 pro-zig에 반환
-2. pro-zig가 qa-zig를 호출하여 변경사항 검증
-3. qa-zig DONE(통과) 확인
-4. pro-zig가 `git add` → `git commit` → `git push` → PR 생성/업데이트
+1. 워커가 파일 변경 완료 → 변경 목록을 orchestrator에 반환
+2. orchestrator가 qa 역할 워커를 호출하여 변경사항 검증
+3. qa 역할 워커 DONE(통과) 확인
+4. orchestrator가 `git add` → `git commit` → `git push` → PR 생성/업데이트
 5. PR URL을 최종 보고에 포함
 
 ### 금지사항

@@ -15,7 +15,7 @@
 8. **스크립트 체인 정합 (2026-03-11):** 구 worker lifecycle 스크립트(`dev_worker_dispatch.py`, `dev_worker_start.py`, `dev_worker_done.py`)는 제거됐다. 워커 lifecycle 기록(`worker_dispatched`/`worker_done`/`worker_skipped`)은 pro-zig가 `orch_prepare_worker.py → orch_register_worker.py → orch_complete_worker.py` 체인으로 처리한다.
 9. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `/Users/janos/.openclaw/public-knowledge/policies/git-workflow.md`를 반드시 따른다. 기본 브랜치(main, master) 직접 작업/commit/push 금지, GitHub 원격이 있으면 브랜치 작업 후 PR 제출이 기본이다.
 10. **완료 상태 불변성 (2026-03-17):** `/Users/janos/.openclaw/public-knowledge/policies/task-status-policy.md`를 따른다. `REPORTED` task에 대한 후행 completion/event는 상태 전이를 만들지 않는다. 워커는 중복 완료 알림이 와도 추가 상태 변경 시도를 하지 않고 NO-OP로 처리한다.
-11. **Git 조작 금지 (2026-03-23):** 워커(front/back/sys/sec/qa-zig)는 `git commit`, `git push`, `git branch`, `git checkout -b`, PR 생성 등 **Git 상태를 변경하는 모든 조작을 수행하지 않는다.** 워커의 역할은 파일 수정/생성/삭제까지이며, 작업 완료 시 **변경된 파일 목록**을 pro-zig에 반환한다. commit/push/PR은 pro-zig가 QA 통과 확인 후 전담한다.
+11. **Git 조작 금지 (2026-03-23):** non-orchestrator 역할 워커(frontend/backend/system/security/qa)는 `git commit`, `git push`, `git branch`, `git checkout -b`, PR 생성 등 **Git 상태를 변경하는 모든 조작을 수행하지 않는다.** 워커의 역할은 파일 수정/생성/삭제까지이며, 작업 완료 시 **변경된 파일 목록**을 orchestrator 역할에 반환한다. commit/push/PR은 orchestrator가 QA 통과 확인 후 전담한다.
 
 ## 3) Project Path Policy (고정)
 - 개발 프로젝트 경로는 항상 `/Users/janos/.openclaw/workspace-pro-zig/projects` 기준으로 참조
