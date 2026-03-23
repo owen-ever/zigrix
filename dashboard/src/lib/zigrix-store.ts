@@ -306,7 +306,11 @@ function readAgentIds(zigrixHome: string): string[] {
   }
 
   if (isObject(agents)) {
-    // registry object: { "pro-zig": {...}, "back-zig": {...} }
+    // New config structure: { registry: { "pro-zig": {...}, ... }, orchestration: {...} }
+    if (isObject(agents.registry)) {
+      return Object.keys(agents.registry);
+    }
+    // Legacy flat map: { "pro-zig": {...}, "back-zig": {...} }
     return Object.keys(agents);
   }
 
@@ -736,6 +740,32 @@ function resolveSessionIdMap(
       // skip
     }
   }
+
+  // Fallback: for unresolved session keys, check deleted session files
+  // Deleted files follow the pattern: <sessionId>.jsonl.deleted.*
+  const unresolvedKeys = sessionKeys.filter((sk) => !result.has(sk));
+  if (unresolvedKeys.length > 0) {
+    for (const sessionKey of unresolvedKeys) {
+      const parsed = parseAgentSubagentSessionKey(sessionKey);
+      if (!parsed) continue;
+      // The sessionId from the key itself is a valid candidate
+      const candidateSessionId = parsed.sessionId;
+      const sessionsDir = path.join(agentsStateDir, parsed.agentId, 'sessions');
+      try {
+        if (!fs.existsSync(sessionsDir)) continue;
+        const prefix = `${candidateSessionId}.jsonl`;
+        // Check for active file or any deleted variant
+        const hasFile = fs.existsSync(path.join(sessionsDir, prefix)) ||
+          fs.readdirSync(sessionsDir).some((name) => name.startsWith(`${prefix}.deleted.`));
+        if (hasFile) {
+          result.set(sessionKey, candidateSessionId);
+        }
+      } catch {
+        // skip
+      }
+    }
+  }
+
   return result;
 }
 

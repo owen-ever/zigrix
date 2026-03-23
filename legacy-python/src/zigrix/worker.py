@@ -100,6 +100,13 @@ def prepare_worker(
 
 
 
+def _parse_session_id_from_key(session_key: str) -> str | None:
+    """Extract sessionId from a sessionKey of the form ``agent:<agentId>:subagent:<sessionId>``."""
+    import re
+    m = re.match(r"^agent:[^:]+:subagent:([^:\s]+)$", session_key)
+    return m.group(1) if m else None
+
+
 def register_worker(
     paths: ZigrixPaths,
     *,
@@ -116,6 +123,9 @@ def register_worker(
     if not task:
         return None
 
+    # Resolve sessionId: use provided value, or fall back to parsing it from sessionKey
+    resolved_session_id = session_id or _parse_session_id_from_key(session_key) or ""
+
     workers = task.setdefault("workerSessions", {})
     entry = workers.setdefault(agent_id, {})
     entry.update(
@@ -123,7 +133,7 @@ def register_worker(
             "status": "dispatched",
             "sessionKey": session_key,
             "runId": run_id,
-            "sessionId": session_id or None,
+            "sessionId": resolved_session_id or None,
             "unitId": unit_id,
             "workPackage": work_package,
             "reason": reason,
@@ -145,7 +155,7 @@ def register_worker(
             "targetAgent": agent_id,
             "status": "IN_PROGRESS",
             "sessionKey": session_key,
-            "sessionId": session_id or None,
+            "sessionId": resolved_session_id or None,
             "unitId": unit_id,
             "workPackage": work_package,
             "payload": {
@@ -161,7 +171,7 @@ def register_worker(
         "agentId": agent_id,
         "sessionKey": session_key,
         "runId": run_id,
-        "sessionId": session_id or None,
+        "sessionId": resolved_session_id or None,
         "unitId": unit_id,
         "workPackage": work_package,
         "status": "dispatched",

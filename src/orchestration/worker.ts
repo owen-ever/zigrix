@@ -126,6 +126,15 @@ export function prepareWorker(paths: ZigrixPaths, params: {
   return { ok: true, taskId: params.taskId, agentId: params.agentId, promptPath, prompt, unitId: params.unitId, workPackage: params.workPackage };
 }
 
+/**
+ * Extract sessionId from a sessionKey of the form `agent:<agentId>:subagent:<sessionId>`.
+ * Returns null if the sessionKey does not match the expected pattern.
+ */
+function parseSessionIdFromKey(sessionKey: string): string | null {
+  const matched = sessionKey.match(/^agent:[^:]+:subagent:([^:\s]+)$/);
+  return matched?.[1] ?? null;
+}
+
 export function registerWorker(paths: ZigrixPaths, params: {
   taskId: string;
   agentId: string;
@@ -138,12 +147,14 @@ export function registerWorker(paths: ZigrixPaths, params: {
 }): Record<string, unknown> | null {
   const task = loadTask(paths, params.taskId);
   if (!task) return null;
+  // Resolve sessionId: use provided value, or fall back to parsing it from sessionKey
+  const resolvedSessionId = params.sessionId || parseSessionIdFromKey(params.sessionKey) || null;
   task.workerSessions[params.agentId] = {
     ...(task.workerSessions[params.agentId] as Record<string, unknown> ?? {}),
     status: 'dispatched',
     sessionKey: params.sessionKey,
     runId: params.runId ?? '',
-    sessionId: params.sessionId ?? null,
+    sessionId: resolvedSessionId,
     unitId: params.unitId,
     workPackage: params.workPackage,
     reason: params.reason ?? '',
@@ -154,10 +165,10 @@ export function registerWorker(paths: ZigrixPaths, params: {
   saveTask(paths, task);
   appendEvent(paths.eventsFile, {
     event: 'worker_dispatched', taskId: params.taskId, phase: 'execution', actor: 'zigrix', targetAgent: params.agentId, status: 'IN_PROGRESS',
-    sessionKey: params.sessionKey, sessionId: params.sessionId ?? null, unitId: params.unitId, workPackage: params.workPackage,
+    sessionKey: params.sessionKey, sessionId: resolvedSessionId, unitId: params.unitId, workPackage: params.workPackage,
     payload: { agentId: params.agentId, runId: params.runId ?? '', reason: params.reason ?? '' },
   });
-  return { ok: true, taskId: params.taskId, agentId: params.agentId, sessionKey: params.sessionKey, runId: params.runId ?? '', sessionId: params.sessionId ?? null, unitId: params.unitId, workPackage: params.workPackage, status: 'dispatched' };
+  return { ok: true, taskId: params.taskId, agentId: params.agentId, sessionKey: params.sessionKey, runId: params.runId ?? '', sessionId: resolvedSessionId, unitId: params.unitId, workPackage: params.workPackage, status: 'dispatched' };
 }
 
 export function completeWorker(paths: ZigrixPaths, params: {
