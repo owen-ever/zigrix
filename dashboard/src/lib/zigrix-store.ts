@@ -1350,6 +1350,15 @@ export function createZigrixStore(options?: {
     };
     fs.appendFileSync(paths.eventsPath, JSON.stringify(blockedEvent) + '\n', 'utf-8');
 
+    // Update meta.json status to BLOCKED
+    const metaFilePath = path.join(paths.specsDir, `${taskId}.meta.json`);
+    const meta = readJson(metaFilePath, {});
+    if (Object.keys(meta).length > 0) {
+      meta.status = 'BLOCKED';
+      meta.updatedAt = new Date().toISOString();
+      fs.writeFileSync(metaFilePath, JSON.stringify(meta, null, 2) + '\n', 'utf-8');
+    }
+
     return { ok: true, killedSessions };
   }
 
