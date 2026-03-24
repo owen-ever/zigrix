@@ -12,6 +12,18 @@
   "bugs": {
     "url": "https://github.com/owen-ever/zigrix/issues"
   },
+  "author": "Chanho Jeon",
+  "keywords": [
+    "zigrix",
+    "cli",
+    "openclaw",
+    "multi-agent",
+    "agent-orchestration",
+    "task-orchestration",
+    "agent-matrix",
+    "task-matrix",
+    "workflow"
+  ],
   "bin": {
     "zigrix": "./dist/index.js"
   },
