@@ -4,6 +4,14 @@
   "type": "module",
   "description": "Multi-project parallel task orchestration CLI for agent-assisted development",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/owen-ever/zigrix.git"
+  },
+  "homepage": "https://github.com/owen-ever/zigrix",
+  "bugs": {
+    "url": "https://github.com/owen-ever/zigrix/issues"
+  },
   "bin": {
     "zigrix": "./dist/index.js"
   },
