@@ -5,119 +5,126 @@
 </p>
 
 <p align="center">
-  Zigrix turns ad-hoc agent delegation into a tracked, inspectable workflow<br>
-  with specialist routing, evidence collection, final reporting, and a built-in dashboard.
+  Zigrix turns ad-hoc delegation into a visible workflow with specialist routing,
+  evidence collection, and reportable finalization.
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/zigrix"><img src="https://img.shields.io/npm/v/zigrix?color=cb3837" alt="npm version"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white" alt="Node >=22">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/OpenClaw-first-6f42c1" alt="OpenClaw-first">
-  <img src="https://img.shields.io/badge/stage-alpha-orange" alt="Alpha">
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> ·
   <a href="#why-zigrix">Why Zigrix</a> ·
-  <a href="#what-zigrix-does">What It Does</a> ·
-  <a href="docs/architecture.md">Architecture</a> ·
-  <a href="docs/openclaw-integration.md">OpenClaw Integration</a> ·
-  <a href="#documentation">Docs</a>
+  <a href="#is-zigrix-for-you">Is Zigrix for you?</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#core-workflow">Core Workflow</a> ·
+  <a href="#openclaw-integration">OpenClaw Integration</a> ·
+  <a href="#dashboard--docs">Dashboard / Docs</a>
 </p>
 
 ---
 
 ## Why Zigrix
 
-Most agent workflows break down at the same point:
+Most agent-heavy workflows break down in the same places:
 
-- work gets delegated in chat, but **not tracked**
-- follow-up lives in memory, not in **runtime state**
-- specialist routing is **inconsistent**
-- results arrive without **evidence** or a reliable **final report**
+- work gets delegated, but not consistently tracked
+- specialist routing depends on memory, not policy
+- outputs arrive without structured evidence
+- final reporting is manual and hard to audit
 
-Zigrix gives that work a control surface — visible, recoverable, and inspectable from dispatch to finalization.
+Zigrix gives that flow a control surface: dispatch, worker lifecycle, evidence, and finalization in one runtime.
 
 ---
 
-## What Zigrix does
+## Is Zigrix for you?
 
-| Capability | Description |
-|---|---|
-| **Task dispatch** | Tracked tasks with full orchestration metadata |
-| **Specialist routing** | Role-based dispatch maps work to standard roles (`orchestrator`, `qa`, `security`, `frontend`, `backend`, `system`) |
-| **Evidence collection** | Workers contribute evidence before finalization |
-| **Final reporting** | Inspectable reports with execution unit checks |
-| **Built-in dashboard** | Web UI for runtime visibility (`zigrix dashboard`) |
-| **OpenClaw integration** | Agent import, skill registration, PATH stabilization |
-| **Recovery-first** | Reset, re-seed, re-onboard — recoverable by default |
+Zigrix is a strong fit if you want:
 
-**Best with OpenClaw. Still usable as a standalone orchestration CLI.**
+- **one-time operator setup, then agent-driven execution**
+- **repeatable orchestration rules** instead of ad-hoc delegation
+- **recoverable local runtime state** for task progress and reports
+- **OpenClaw compatibility** without requiring a plugin-based architecture
+
+Zigrix may be a poor fit if your main goal is a hosted, multi-tenant control plane.
+
+---
+
+## Supported environments
+
+- **Operating systems:** macOS, Linux
+- **Runtime:** Node.js (current LTS recommended)
+- **Package manager:** npm
+- **OpenClaw:** optional, but recommended for full orchestration flow
+
+Zigrix still works as a standalone CLI when OpenClaw is not installed.
 
 ---
 
 ## Quick Start
 
-### Step 1 — Install
+### 1) Install
 
 ```bash
 npm install -g zigrix
 ```
 
-### Step 2 — Onboard
+From source:
+
+```bash
+./install.sh
+```
+
+### 2) Onboard
 
 ```bash
 zigrix onboard
 ```
 
-### Step 3 — Verify
+### 3) Verify
 
 ```bash
 zigrix doctor
 zigrix dashboard
 ```
 
-That's it. `onboard` handles config, agent import, skill registration, and PATH setup.
+That is the intended entry flow: **install → onboard → done**.
 
-> **From source?** Clone this repo, run `./install.sh`, then `zigrix onboard`.
-> See [docs/install.md](docs/install.md) for details.
+---
 
-### Prerequisites
+## Usage model: human vs agent
 
-- **Node.js 22+** — verify with `node --version`
-- **macOS or Linux** — Windows is not yet supported
+| Role | Primary responsibility |
+|---|---|
+| **Human operator** | Install Zigrix, run `zigrix onboard`, verify readiness (`zigrix doctor`), then step out of day-to-day orchestration |
+| **OpenClaw / automation agents** | Run task/worker/evidence/report commands to execute and complete orchestration work |
+| **Human (maintenance mode)** | Use `zigrix configure` or `zigrix reset` only when reconfiguration or recovery is needed |
 
-If you use **nvm**, make sure the correct version is active before installing:
-
-```bash
-nvm use 22
-node --version   # confirm v22+
-```
+This split keeps normal operation agent-driven while keeping setup and governance human-controlled.
 
 ---
 
 ## Core Workflow
 
-A typical Zigrix flow:
+Typical operational flow:
 
 ```text
-Human installs → zigrix onboard → runtime ready
+Human setup
+  install -> zigrix onboard -> doctor check
 
-  zigrix task dispatch --title "..." --description "..." --scale normal
-    → specialist agents contribute evidence
-    → zigrix task finalize merges evidence + checks execution units
-    → reportable result
-
-  zigrix dashboard
-    → inspect task state, progress, and reports
+Agent execution
+  zigrix task dispatch
+    -> worker prepare/register/complete
+    -> evidence collect/merge
+    -> task finalize + report
 ```
 
-### Key commands
+Common commands:
 
 ```bash
-# Dispatch a new task (role-based selection)
+# Dispatch orchestration work
 zigrix task dispatch --title "Implement auth module" --description "..." --scale normal --json
 
 # Check runtime health
@@ -126,160 +133,56 @@ zigrix doctor
 # Launch dashboard
 zigrix dashboard --port 3838
 
-# Reconfigure after changes
+# Maintenance surfaces
 zigrix configure --section agents
 zigrix configure --section skills
-
-# Recovery
-zigrix template reset workerPrompt --yes
-zigrix reset config --yes
 zigrix reset state --yes
 ```
 
-### Standard roles and orchestrator selection
-
-Zigrix dispatch uses a closed set of normalized roles:
-
-- `orchestrator`
-- `qa`
-- `security`
-- `frontend`
-- `backend`
-- `system`
-
-At dispatch time, Zigrix resolves `requiredRoles` / `optionalRoles` from scale rules and maps them to enabled agents in the registry.
-
-- `agents.orchestration.orchestratorId` selects the orchestrator owner agent
-- if multiple orchestrator-role agents exist, `orchestratorId` is the source of truth
-- dispatch output includes orchestration fields such as `orchestratorId`, `qaAgentId`, `baselineRequiredAgents`, `candidateAgents`, `roleAgentMap`, and `orchestratorPrompt`
-
 ---
 
-## What `zigrix onboard` does
+## What onboard does
 
-`onboard` prepares the runtime for actual orchestration work:
+`zigrix onboard` prepares runtime and integration in one pass:
 
-1. Creates `~/.zigrix/` with default config
-2. Seeds rule files from bundled templates
-3. Stabilizes PATH reachability
-4. Detects OpenClaw when present
-5. Imports agents from `openclaw.json`
-6. Registers Zigrix skill packs into `~/.openclaw/skills/`
-
-If OpenClaw is not present, Zigrix still initializes its own runtime and remains usable in standalone mode.
+1. creates `~/.zigrix/` and default config/state structure
+2. seeds rule files from bundled templates
+3. ensures `zigrix` is reachable from the runtime-visible PATH
+4. detects OpenClaw and imports agents from `openclaw.json`
+5. registers bundled `skills/zigrix-*` into `~/.openclaw/skills/`
+6. leaves the environment ready for agent-led orchestration
 
 ---
 
 ## OpenClaw Integration
 
-Zigrix is **OpenClaw-first** in intended use.
+When OpenClaw is present, Zigrix is optimized for this model:
 
-When OpenClaw is available, Zigrix:
+- import agent definitions and normalize roles
+- establish orchestrator ownership for task execution
+- register Zigrix skill packs for agent readiness checks
+- keep CLI reachability stable for OpenClaw runtime
 
-- **imports agent definitions** from `openclaw.json` — filters `main`, normalizes agent roles, and sets/validates `orchestratorId`
-- **registers skill packs** — symlinks `skills/zigrix-*` into `~/.openclaw/skills/`
-- **stabilizes CLI visibility** — ensures `zigrix` is reachable from the OpenClaw gateway-visible PATH
-- **inspects readiness** — `zigrix doctor` reports OpenClaw detection, skill dir presence, and PATH reachability
-
-The intended operator experience is strongest when OpenClaw is part of the stack.
-
-See [docs/openclaw-integration.md](docs/openclaw-integration.md) for the full integration spec.
+Read the full integration contract in [docs/openclaw-integration.md](docs/openclaw-integration.md).
 
 ---
 
-## Built-in Dashboard
+## Dashboard / Docs
 
-Zigrix ships with a bundled web dashboard for runtime visibility.
+Start dashboard:
 
 ```bash
 zigrix dashboard --port 3838
 ```
 
-Use it to inspect:
-- active task state and orchestration progress
-- agent participation and evidence flow
-- finalization and report status
+Key docs:
 
-<!-- TODO: dashboard screenshot -->
-
----
-
-## Intended User Model
-
-| Role | What they do |
-|---|---|
-| **Human operator** | Install, run `zigrix onboard`, verify with `zigrix doctor`, then stop |
-| **OpenClaw agents** | Use operational commands: `task dispatch`, `task finalize`, `worker`, `evidence`, `report` |
-| **Advanced maintenance** | `zigrix configure` for reconfiguration, `zigrix reset` for recovery |
-
-See [docs/onboarding-ownership-model.md](docs/onboarding-ownership-model.md) for the ownership model.
-
----
-
-## Product Stance
-
-Zigrix is:
-
-- **local-first** — runtime state lives in `~/.zigrix/`, not a cloud service
-- **runtime-visible** — tasks, evidence, and reports are inspectable, not hidden
-- **recoverable by default** — reset templates, config, or state independently
-- **OpenClaw-first** — best with OpenClaw, still usable standalone
-- **operator-friendly** — `onboard` + `doctor` + `dashboard` cover the human path
-
-### Non-goals right now
-
-- hosted control plane or multi-user UI
-- generalized plugin SDK
-- Windows-first support
-- speculative expansion before core workflow is stable
-
----
-
-## Repository Layout
-
-```text
-zigrix/
-├─ src/                # Node/TypeScript implementation
-├─ tests/              # test suite
-├─ skills/             # OpenClaw skill packs
-├─ dashboard/          # bundled Next.js dashboard
-├─ rules/              # default rule/template files
-├─ examples/           # example workflows
-├─ scripts/            # smoke / release helpers
-├─ docs/               # product + architecture docs
-├─ legacy-python/      # reference prototype (not active)
-└─ install.sh          # source-based install script
-```
-
----
-
-## Documentation
-
-| Doc | What it covers |
-|---|---|
-| [Quick Start](docs/quickstart.md) | First-time setup walk-through |
-| [Install](docs/install.md) | Install paths, prerequisites, nvm notes |
-| [OpenClaw Integration](docs/openclaw-integration.md) | Agent import, skill registration, PATH |
-| [Config Schema](docs/config-schema.md) | Config contract including role model and `orchestratorId` |
-| [Orchestrator/Role Guide](docs/orchestrator-role-guide.md) | Role normalization, dispatch mapping, and orchestrator selection |
-| [Architecture](docs/architecture.md) | System design and runtime layout |
-| [CLI Spec](docs/cli-spec.md) | Full command reference |
-| [Runtime Flow](docs/runtime-flow.md) | Task lifecycle from dispatch to report |
-| [State Layout](docs/state-layout.md) | `~/.zigrix/` directory structure |
-| [Concepts](docs/concepts.md) | Core abstractions and terminology |
-| [Troubleshooting](docs/troubleshooting.md) | Common issues and recovery |
-| [Main Agent Skill Guide](skills/zigrix-main-agent-guide/SKILL.md) | Dispatch → orchestrator spawn → worker/evidence/finalize chain |
-| [Product Decisions](docs/product-decisions.md) | Why things are the way they are |
-
----
-
-## Current Status
-
-- **Stage:** alpha — productization in progress
-- **Implementation:** Node/TypeScript (repository root)
-- **Published:** [`zigrix` on npm](https://www.npmjs.com/package/zigrix)
-- **Supported platforms:** macOS, Linux
-- **Legacy:** Python prototype under `legacy-python/` (reference only)
+- [Quickstart](docs/quickstart.md)
+- [Install](docs/install.md)
+- [OpenClaw Integration](docs/openclaw-integration.md)
+- [CLI Spec](docs/cli-spec.md)
+- [Architecture](docs/architecture.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
 ---
 
