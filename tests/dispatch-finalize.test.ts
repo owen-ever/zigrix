@@ -59,8 +59,8 @@ describe('dispatch and finalize', () => {
 
     expect(result.ok).toBe(true);
     expect(result.taskId).toBeTruthy();
-    expect(result.proZigPrompt).toBeTruthy();
-    expect(String(result.proZigPrompt)).toContain('zigrix task start');
+    expect(result.orchestratorPrompt).toBeTruthy();
+    expect(String(result.orchestratorPrompt)).toContain('zigrix task start');
     expect(result.orchestratorId).toBe('pro-zig');
     expect(result.qaAgentId).toBe('qa-zig');
 
@@ -171,7 +171,7 @@ describe('dispatch and finalize', () => {
 
     expect(result.orchestratorId).toBe('custom-orch');
     expect(result.qaAgentId).toBe('custom-qa');
-    expect(String(result.proZigPrompt)).toContain('custom-qa');
+    expect(String(result.orchestratorPrompt)).toContain('custom-qa');
 
     const taskId = String(result.taskId);
     const metaFile = path.join(paths.tasksDir, `${taskId}.meta.json`);

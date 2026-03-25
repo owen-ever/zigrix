@@ -10,7 +10,7 @@ Accepted unless superseded here.
 ## D-002 Implementation language
 - Decision: the primary implementation is **Node/TypeScript at the repository root**.
 - Why: that is the live product path today.
-- Note: `legacy-python/` and `orchestration/scripts/*.py` are the migration source. Zigrix CLI replaces them.
+- Note: legacy Python follow-up paths are deprecated; Zigrix CLI is the active implementation.
 
 ## D-003 Primary distribution
 - Decision: first-class distribution is **GitHub Releases + install.sh**.

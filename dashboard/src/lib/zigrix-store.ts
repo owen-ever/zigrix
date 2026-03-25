@@ -4,39 +4,100 @@ import os from 'node:os';
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-function getZigrixHome(): string {
-  return process.env.ZIGRIX_HOME || path.join(os.homedir(), '.zigrix');
+function expandTilde(input: string): string {
+  if (!input) return input;
+  if (input === '~') return os.homedir();
+  if (input.startsWith('~/')) return path.join(os.homedir(), input.slice(2));
+  return input;
 }
 
-const DEFAULT_OPENCLAW_AGENTS_DIR = path.join(os.homedir(), '.openclaw', 'agents');
+function toAbsolute(input: string, baseDir: string): string {
+  const expanded = expandTilde(input);
+  return path.isAbsolute(expanded) ? path.resolve(expanded) : path.resolve(baseDir, expanded);
+}
+
+function getZigrixHome(): string {
+  const configured = process.env.ZIGRIX_HOME?.trim();
+  return configured ? toAbsolute(configured, os.homedir()) : path.join(os.homedir(), '.zigrix');
+}
+
 const DEFAULT_SUBAGENT_RUNS_PATH = path.join(os.homedir(), '.openclaw', 'subagents', 'runs.json');
-const DEFAULT_OPENCLAW_CONFIG_PATH = path.join(os.homedir(), '.openclaw', 'openclaw.json');
 const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
 const DEFAULT_SESSIONS_HISTORY_LIMIT = 200;
 
-// ─── Zigrix config openclaw section reader ────────────────────────────────────
+type ZigrixConfigSnapshot = {
+  paths?: {
+    baseDir?: string;
+    tasksDir?: string;
+    evidenceDir?: string;
+    promptsDir?: string;
+    eventsFile?: string;
+    indexFile?: string;
+    runsDir?: string;
+    rulesDir?: string;
+  };
+  openclaw?: {
+    home?: string;
+    binPath?: string | null;
+    gatewayUrl?: string;
+  };
+  agents?: unknown;
+};
 
-function readZigrixOpenClawConfig(zigrixHome: string): {
-  home: string;
-  binPath: string | null;
-  gatewayUrl: string;
-} | null {
+function readZigrixConfigSnapshot(zigrixHome: string): ZigrixConfigSnapshot | null {
   const configPath = path.join(zigrixHome, 'zigrix.config.json');
   try {
     if (!fs.existsSync(configPath)) return null;
     const raw = fs.readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(raw) as unknown;
-    if (!isObject(parsed)) return null;
-    const oc = parsed.openclaw;
-    if (!isObject(oc)) return null;
-    return {
-      home: typeof oc.home === 'string' && oc.home ? oc.home : '',
-      binPath: typeof oc.binPath === 'string' && oc.binPath ? oc.binPath : null,
-      gatewayUrl: typeof oc.gatewayUrl === 'string' && oc.gatewayUrl ? oc.gatewayUrl : DEFAULT_GATEWAY_URL,
-    };
+    return isObject(parsed) ? (parsed as ZigrixConfigSnapshot) : null;
   } catch {
     return null;
   }
+}
+
+function resolveZigrixStatePaths(zigrixHome: string, snapshot: ZigrixConfigSnapshot | null): {
+  baseDir: string;
+  indexPath: string;
+  eventsPath: string;
+  specsDir: string;
+  evidenceDir: string;
+} {
+  const baseDir = snapshot?.paths?.baseDir
+    ? toAbsolute(String(snapshot.paths.baseDir), zigrixHome)
+    : zigrixHome;
+
+  const indexPath = snapshot?.paths?.indexFile
+    ? toAbsolute(String(snapshot.paths.indexFile), baseDir)
+    : path.join(baseDir, 'index.json');
+  const eventsPath = snapshot?.paths?.eventsFile
+    ? toAbsolute(String(snapshot.paths.eventsFile), baseDir)
+    : path.join(baseDir, 'tasks.jsonl');
+  const specsDir = snapshot?.paths?.tasksDir
+    ? toAbsolute(String(snapshot.paths.tasksDir), baseDir)
+    : path.join(baseDir, 'tasks');
+  const evidenceDir = snapshot?.paths?.evidenceDir
+    ? toAbsolute(String(snapshot.paths.evidenceDir), baseDir)
+    : path.join(baseDir, 'evidence');
+
+  return { baseDir, indexPath, eventsPath, specsDir, evidenceDir };
+}
+
+// ─── Zigrix config openclaw section reader ────────────────────────────────────
+
+function readZigrixOpenClawConfig(snapshot: ZigrixConfigSnapshot | null): {
+  home: string;
+  binPath: string | null;
+  gatewayUrl: string;
+} | null {
+  const oc = snapshot?.openclaw;
+  if (!oc || typeof oc !== 'object') return null;
+
+  return {
+    home: typeof oc.home === 'string' && oc.home ? toAbsolute(oc.home, os.homedir()) : '',
+    binPath: typeof oc.binPath === 'string' && oc.binPath ? toAbsolute(oc.binPath, os.homedir()) : null,
+    gatewayUrl: typeof oc.gatewayUrl === 'string' && oc.gatewayUrl ? oc.gatewayUrl : DEFAULT_GATEWAY_URL,
+  };
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -290,12 +351,8 @@ function toPositiveInteger(value: unknown, fallback: number): number {
 
 // ─── Agent list from zigrix.config.json ──────────────────────────────────────
 
-function readAgentIds(zigrixHome: string): string[] {
-  const configPath = path.join(zigrixHome, 'zigrix.config.json');
-  const config = readJson(configPath, {});
-
-  // agents may be array or registry object
-  const agents = config.agents;
+function readAgentIds(config: ZigrixConfigSnapshot | null): string[] {
+  const agents = config?.agents;
   if (Array.isArray(agents)) {
     return agents
       .map((a) => {
@@ -307,11 +364,11 @@ function readAgentIds(zigrixHome: string): string[] {
   }
 
   if (isObject(agents)) {
-    // New config structure: { registry: { "pro-zig": {...}, ... }, orchestration: {...} }
+    // New config structure: { registry: { "agent-a": {...}, ... }, orchestration: {...} }
     if (isObject(agents.registry)) {
       return Object.keys(agents.registry);
     }
-    // Legacy flat map: { "pro-zig": {...}, "back-zig": {...} }
+    // Legacy flat map: { "agent-a": {...}, "agent-b": {...} }
     return Object.keys(agents);
   }
 
@@ -685,6 +742,7 @@ function parseTaskMetaSessionMap(
   const sessionKeys = new Set<string>();
   const sessionToAgent = new Map<string, string>();
   const metaSessionIdMap = new Map<string, string>();
+  const orchestratorId = toNonEmptyString(meta.orchestratorId);
 
   const bindSession = (sessionKey: unknown, agentId?: string | null, sessionId?: string | null) => {
     const normalizedSessionKey = toNonEmptyString(sessionKey);
@@ -696,7 +754,7 @@ function parseTaskMetaSessionMap(
     if (sessionId) metaSessionIdMap.set(normalizedSessionKey, sessionId);
   };
 
-  bindSession(meta.orchestratorSessionKey, 'pro-zig', toNonEmptyString(meta.orchestratorSessionId));
+  bindSession(meta.orchestratorSessionKey, orchestratorId, toNonEmptyString(meta.orchestratorSessionId));
 
   if (isObject(meta.workerSessions)) {
     for (const [agentId, raw] of Object.entries(meta.workerSessions)) {
@@ -945,8 +1003,7 @@ function extractMessageText(content: unknown): string {
     .join('\n');
 }
 
-function isDuplicateWorkerCompletionAnnounce(sessionKey: string, message: LooseRecord): boolean {
-  if (getAgentFromSessionKey(sessionKey) !== 'pro-zig') return false;
+function isDuplicateWorkerCompletionAnnounce(_sessionKey: string, message: LooseRecord): boolean {
   const role = toNonEmptyString(message.role);
   const text = extractMessageText(message.content).trim();
   if (!text) return false;
@@ -1093,18 +1150,20 @@ export function createZigrixStore(options?: {
   fetchImpl?: typeof fetch;
 }) {
   const zigrixHome = options?.zigrixHome || getZigrixHome();
+  const zigrixConfig = readZigrixConfigSnapshot(zigrixHome);
+  const statePaths = resolveZigrixStatePaths(zigrixHome, zigrixConfig);
 
   // Read openclaw integration config from zigrix config (set during onboard)
-  const zigrixOcConfig = readZigrixOpenClawConfig(zigrixHome);
+  const zigrixOcConfig = readZigrixOpenClawConfig(zigrixConfig);
   const resolvedOpenClawHome = zigrixOcConfig?.home || process.env.OPENCLAW_HOME || path.join(os.homedir(), '.openclaw');
   const resolvedAgentsDir = options?.agentsStateDir || process.env.OPENCLAW_AGENTS_DIR || path.join(resolvedOpenClawHome, 'agents');
 
   const paths = {
-    zigrixHome,
-    indexPath: path.join(zigrixHome, 'index.json'),
-    eventsPath: path.join(zigrixHome, 'tasks.jsonl'),
-    specsDir: path.join(zigrixHome, 'tasks'),
-    evidenceDir: path.join(zigrixHome, 'evidence'),
+    zigrixHome: statePaths.baseDir,
+    indexPath: statePaths.indexPath,
+    eventsPath: statePaths.eventsPath,
+    specsDir: statePaths.specsDir,
+    evidenceDir: statePaths.evidenceDir,
     agentsStateDir: resolvedAgentsDir,
     subagentRunsPath:
       options?.subagentRunsPath || process.env.OPENCLAW_SUBAGENT_RUNS_PATH || DEFAULT_SUBAGENT_RUNS_PATH,
@@ -1131,7 +1190,7 @@ export function createZigrixStore(options?: {
 
   // Dynamically read agent IDs from config
   function getAgentIds(): string[] {
-    return readAgentIds(zigrixHome);
+    return readAgentIds(zigrixConfig);
   }
 
   function loadOverview(): ZigrixOverviewData {

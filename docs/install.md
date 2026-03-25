@@ -56,7 +56,7 @@ Note: `zigrix onboard` now handles skill registration automatically when OpenCla
 ## What onboard does
 
 `zigrix onboard` covers:
-1. Creates `~/.zigrix/` base directory and default config
+1. Creates `paths.baseDir` (default concept: `~/.zigrix`) and default config
 2. Detects OpenClaw (`~/.openclaw/`) and reads `openclaw.json`
 3. Imports agents (filters out `main`, registers with roles)
 4. Seeds rule files from `orchestration/rules/`
@@ -90,7 +90,7 @@ zigrix configure --section skills   # just skills
 
 ## Legacy Python note
 
-The previous Python implementation remains under `legacy-python/` for migration reference only.
+Legacy Python follow-up references are deprecated and not part of installation/runtime contracts.
 It is no longer the default install path.
 
 ## Future release install path

@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { addAgent, removeAgent } from './agents/registry.js';
+import { resolveAbsolutePath } from './config/defaults.js';
 import { loadConfig, writeConfigFile } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import {
@@ -62,7 +63,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
 
   // Resolve base dir at runtime (not from the static ZIGRIX_HOME constant)
   const runtimeBaseDir = process.env.ZIGRIX_HOME
-    ? path.resolve(process.env.ZIGRIX_HOME)
+    ? resolveAbsolutePath(process.env.ZIGRIX_HOME)
     : path.join(os.homedir(), '.zigrix');
 
   const loaded = loadConfig({ baseDir: runtimeBaseDir });
@@ -151,7 +152,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
 
   // ─── workspace ────────────────────────────────────────────────────────
   if (sections.includes('workspace') && options.projectsBaseDir) {
-    const resolved = path.resolve(options.projectsBaseDir);
+    const resolved = resolveAbsolutePath(options.projectsBaseDir);
     if (config.workspace.projectsBaseDir !== resolved) {
       config.workspace.projectsBaseDir = resolved;
       configDirty = true;

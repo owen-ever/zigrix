@@ -1,6 +1,6 @@
 # Migration Plan: Python Prototype → Node Zigrix
 
-> Repository structure note: Node/TypeScript is now the root implementation. Python source lives under `legacy-python/` as the migration reference.
+> Repository structure note: Node/TypeScript is the root implementation. Legacy Python follow-up references are deprecated.
 
 ## 목적
 현재 Python 구현을 어떻게 취급할지 경계를 명확히 한다.

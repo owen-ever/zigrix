@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { defaultConfig } from '../src/config/defaults.js';
@@ -9,7 +11,7 @@ describe('zigrix config schema', () => {
     const parsed = zigrixConfigSchema.parse(defaultConfig);
     expect(parsed.paths.baseDir).toContain('.zigrix');
     expect(parsed.rules.stale.defaultHours).toBe(24);
-    expect(parsed.workspace.projectsBaseDir).toBe('');
+    expect(parsed.workspace.projectsBaseDir).toContain(`${parsed.paths.baseDir}${path.sep}workspace`);
   });
 
   it('rejects participant/excluded overlap', () => {

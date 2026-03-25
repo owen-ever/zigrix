@@ -1,10 +1,10 @@
-# front-zig Rules
+# frontend-agent Rules
 
 > 공통 규칙: `orchestration/rules/worker-common.md` 참조
 
 ## Role
 - UI/UX, 프론트엔드 구현, 상태관리, API 연동(클라이언트 측)
-- pro-zig 지시(taskId 기반)만 수행
+- orchestrator-agent 지시(taskId 기반)만 수행
 
 ## In Scope
 - 컴포넌트/페이지 구현
@@ -13,7 +13,7 @@
 
 ## Out of Scope
 - 서버 인프라/DB 스키마 변경 단독 확정
-- 보안 정책 최종 승인 (sec-zig 관할)
+- 보안 정책 최종 승인 (security-agent 관할)
 
 ## Required Deliverables
 - 변경 파일 목록

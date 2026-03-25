@@ -11,7 +11,7 @@ metadata:
 
 # zigrix task create
 
-Create a task in `~/.zigrix/tasks/`.
+Create a task in `paths.tasksDir` from `zigrix.config.json`.
 
 For full orchestration metadata (work packages, execution units, boot prompt), use `zigrix task dispatch` instead.
 

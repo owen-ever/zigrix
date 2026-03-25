@@ -7,7 +7,7 @@ _Last updated: 2026-03-14_
 ## What landed
 
 A first working Node/TypeScript bootstrap now exists at the **repository root**.
-The previous Python implementation has been moved under `legacy-python/` as a reference prototype.
+The previous Python follow-up references are deprecated; Node/TypeScript is the only active implementation path.
 
 Included in the current Node bootstrap:
 - `config validate/get/schema/set/diff/reset`
@@ -44,10 +44,7 @@ zigrix/
 │  └─ hello-workflow.json
 ├─ package.json
 ├─ tsconfig.json
-└─ legacy-python/
-   ├─ src/
-   ├─ tests/
-   └─ pyproject.toml
+└─ (legacy python paths removed from active contracts)
 ```
 
 ## Why this matters
@@ -58,7 +55,7 @@ It is a **Phase 1 bootstrap** that proves:
 - config-first loading/validation works
 - local run persistence contract can exist independently of Python
 - the repository can now treat Node as the default product path
-- runtime migration can proceed incrementally with Python kept as a reference
+- runtime migration proceeds on Node/TypeScript contracts only
 
 ## Not done yet
 
@@ -75,3 +72,4 @@ It is a **Phase 1 bootstrap** that proves:
 3. Add template placeholder validation/render preview.
 4. Start parity migration for task/evidence/report commands.
 5. Replace remaining Python-first docs/workflows with Node-first ones.
+with Node-first ones.

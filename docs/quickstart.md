@@ -28,7 +28,7 @@ zigrix onboard --yes
 ```
 
 This:
-- Creates `~/.zigrix/` with default config and directories
+- Creates `paths.baseDir` from `zigrix.config.json` (default concept: `~/.zigrix`) with default directories
 - Detects OpenClaw and imports agents from `openclaw.json`
 - Seeds rule files from `orchestration/rules/`
 - Ensures `zigrix` is reachable from PATH (creates symlink if needed)
@@ -66,7 +66,7 @@ zigrix task dispatch \
   --json
 ```
 
-This returns an `orchestratorPrompt` (plus `proZigPrompt` compatibility alias) for spawning the orchestrator agent.
+This returns an `orchestratorPrompt` for spawning the orchestrator agent.
 
 ## 5) Low-level task flow (agent usage)
 ```bash
@@ -80,7 +80,7 @@ zigrix task dispatch \
 # Collect evidence (example: QA agent)
 zigrix evidence collect \
   --task-id DEV-YYYYMMDD-001 \
-  --agent-id qa-zig \
+  --agent-id <qaAgentId> \
   --summary "Smoke passed"
 
 # Merge and report

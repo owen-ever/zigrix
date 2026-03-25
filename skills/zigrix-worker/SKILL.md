@@ -14,9 +14,9 @@ metadata:
 Use worker lifecycle commands to bridge agent execution and global orchestration state.
 
 ```bash
-zigrix worker prepare --task-id DEV-20260316-001 --agent-id qa-zig --description "Run QA checks" --json
-zigrix worker register --task-id DEV-20260316-001 --agent-id qa-zig --session-key agent:test:qa --run-id run-001 --json
-zigrix worker complete --task-id DEV-20260316-001 --agent-id qa-zig --session-key agent:test:qa --run-id run-001 --json
+zigrix worker prepare --task-id DEV-20260316-001 --agent-id <workerAgentId> --description "Run role-specific checks" --json
+zigrix worker register --task-id DEV-20260316-001 --agent-id <workerAgentId> --session-key agent:test:worker --run-id run-001 --json
+zigrix worker complete --task-id DEV-20260316-001 --agent-id <workerAgentId> --session-key agent:test:worker --run-id run-001 --json
 ```
 
 These commands intentionally avoid hard-coding OpenClaw internals into the Zigrix core.

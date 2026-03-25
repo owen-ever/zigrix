@@ -20,8 +20,10 @@ function autoCloseCompletedUnits(task: ZigrixTask): boolean {
     const s = session as Record<string, unknown>;
     if (s.status === 'done') doneAgents.add(agentId);
   }
-  // orchestrator is always "done" at finalize time
-  doneAgents.add(task.orchestratorId ?? 'pro-zig');
+  // orchestrator is always "done" at finalize time when identifiable
+  if (typeof task.orchestratorId === 'string' && task.orchestratorId.trim().length > 0) {
+    doneAgents.add(task.orchestratorId.trim());
+  }
 
   let changed = false;
   for (const unit of units) {
@@ -158,7 +160,7 @@ export function finalizeTask(paths: ZigrixPaths, params: {
   };
 
   if (complete) {
-    result.nextAction = 'sessions_send(sessionKey: "agent:main:main", message: "<taskId> 완료: <요약>")';
+    result.nextAction = 'send final task report to the requesting channel/thread';
   }
 
   return result;

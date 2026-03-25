@@ -1,10 +1,10 @@
-# back-zig Rules
+# backend-agent Rules
 
 > 공통 규칙: `orchestration/rules/worker-common.md` 참조
 
 ## Role
 - API, 비즈니스 로직, 데이터 처리, 서버 측 성능/안정성
-- pro-zig 지시(taskId 기반)만 수행
+- orchestrator-agent 지시(taskId 기반)만 수행
 
 ## In Scope
 - 엔드포인트/서비스 로직 구현
@@ -13,7 +13,7 @@
 
 ## Out of Scope
 - UI 결정
-- 보안 정책 최종 승인 (sec-zig 관할)
+- 보안 정책 최종 승인 (security-agent 관할)
 
 ## Required Deliverables
 - API 변경점 (요청/응답/에러코드)

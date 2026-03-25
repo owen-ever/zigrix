@@ -112,9 +112,9 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
 
   if (!payload.node.ok) warnings.push('Node.js 22+ is required.');
   if (!payload.files.configExists) warnings.push('zigrix.config.json not found. Run `zigrix onboard`.');
-  if (!payload.files.baseDirExists) warnings.push('~/.zigrix not found. Run `zigrix onboard`.');
+  if (!payload.files.baseDirExists) warnings.push(`${paths.baseDir} not found. Run \`zigrix onboard\`.`);
   if (!payload.writeAccess.baseDir) warnings.push('Base directory is not writable.');
-  if (!payload.openclaw.exists) warnings.push('~/.openclaw not found. OpenClaw integration remains optional.');
+  if (!payload.openclaw.exists) warnings.push(`${openclawHome} not found. OpenClaw integration remains optional.`);
   if (payload.rules.count === 0) warnings.push('No rule files found in rules directory. Seed from orchestration/rules/.');
   if (!payload.pathReach.zigrixInNonLoginPath) {
     warnings.push(

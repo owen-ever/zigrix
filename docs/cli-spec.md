@@ -1,13 +1,13 @@
 # CLI Specification
 
 > Zigrix is a multi-project parallel task orchestration CLI.
-> Global state lives in `~/.zigrix/` (override: `ZIGRIX_HOME` env).
+> Runtime paths come from `zigrix.config.json` (`paths.*`). Default base is `~/.zigrix` via `ZIGRIX_HOME`.
 
 ## Design goals
 - predictable command groups
 - low surprise text UX
 - strict `--json` support for automation
-- global state in `~/.zigrix/`
+- global state in `paths.baseDir` from `zigrix.config.json` (default concept: `~/.zigrix`)
 - recoverable mutation flows
 - clear split between human onboarding and agent operations
 
@@ -100,7 +100,7 @@ zigrix
 ## Key commands
 
 ### `zigrix onboard`
-Creates `~/.zigrix/`, writes default config, seeds directories, stabilizes PATH (symlink if needed), registers skill packs into OpenClaw, and initializes agent/orchestrator defaults. Primary human entrypoint.
+Creates `paths.baseDir` from `zigrix.config.json` (default `~/.zigrix`), writes default config, seeds directories, stabilizes PATH (symlink if needed), registers skill packs into OpenClaw, and initializes role-based agent/orchestrator defaults. Primary human entrypoint.
 
 ### `zigrix configure`
 Reconfigures one or more sections after initial onboarding. Sections: `agents`, `rules`, `workspace`, `path`, `skills`. Supports `--section <name>` for targeted reconfiguration. Use `--projects-base-dir <path>` to set the workspace base directory and `--orchestrator-id <agentId>` to override orchestrator ownership.

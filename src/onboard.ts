@@ -1,10 +1,12 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
 import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
+import { resolveAbsolutePath } from './config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { ensureBaseState, resolvePaths, type ZigrixPaths } from './state/paths.js';
@@ -79,9 +81,10 @@ export interface RunOnboardOptions {
 // ─── OpenClaw detection ───────────────────────────────────────────────────────
 
 export function detectOpenClawHome(): string {
+  const fallbackHome = process.env.HOME ?? os.homedir();
   return process.env.OPENCLAW_HOME
-    ? path.resolve(process.env.OPENCLAW_HOME)
-    : path.join(process.env.HOME ?? '~', '.openclaw');
+    ? resolveAbsolutePath(process.env.OPENCLAW_HOME)
+    : path.join(fallbackHome, '.openclaw');
 }
 
 export function loadOpenClawConfig(openclawHome: string): OpenClawConfig | null {
@@ -848,7 +851,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     if (!silent) console.log(msg);
   };
 
-  // 1. Ensure ~/.zigrix base state (idempotent)
+  // 1. Ensure config.paths.baseDir state (idempotent)
   const { configPath } = ensureConfig();
   const loaded = loadConfig({ configPath });
   const paths = resolvePaths(loaded.config);

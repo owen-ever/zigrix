@@ -5,25 +5,40 @@ import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { loadTask, saveTask, type ZigrixTask } from '../state/tasks.js';
 
-export const DEFAULT_REQUIRED_AGENTS = ['orchestrator', 'qa'] as const;
+export const DEFAULT_REQUIRED_ROLES = ['orchestrator', 'qa'] as const;
 
-const DEFAULT_ORCHESTRATOR_ID = 'pro-zig';
-const DEFAULT_QA_AGENT_ID = 'qa-zig';
+function firstNonEmpty(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function roleFallback(task: Partial<ZigrixTask> & Record<string, unknown>, role: (typeof DEFAULT_REQUIRED_ROLES)[number]): string | null {
+  const roleMap = task.roleAgentMap;
+  if (roleMap && typeof roleMap === 'object') {
+    const mapped = (roleMap as Record<string, unknown>)[role];
+    if (Array.isArray(mapped) && mapped.length > 0) {
+      const first = firstNonEmpty(mapped[0]);
+      if (first) return first;
+    }
+  }
+  return null;
+}
 
 function resolveDefaultRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
-  const orchestratorId = typeof task.orchestratorId === 'string' && task.orchestratorId.trim().length > 0
-    ? task.orchestratorId
-    : DEFAULT_ORCHESTRATOR_ID;
-  const qaAgentId = typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0
-    ? task.qaAgentId
-    : DEFAULT_QA_AGENT_ID;
-
-  const resolvedByRole: Record<(typeof DEFAULT_REQUIRED_AGENTS)[number], string> = {
-    orchestrator: orchestratorId,
-    qa: qaAgentId,
+  const resolvedByRole: Record<(typeof DEFAULT_REQUIRED_ROLES)[number], string | null> = {
+    orchestrator: firstNonEmpty(task.orchestratorId) ?? roleFallback(task, 'orchestrator'),
+    qa: firstNonEmpty(task.qaAgentId) ?? roleFallback(task, 'qa'),
   };
 
-  return [...new Set(DEFAULT_REQUIRED_AGENTS.map((role) => resolvedByRole[role]))];
+  const resolved = DEFAULT_REQUIRED_ROLES
+    .map((role) => resolvedByRole[role])
+    .filter((item): item is string => Boolean(item && item.length > 0));
+
+  return [...new Set(resolved)];
 }
 
 export function resolveRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {

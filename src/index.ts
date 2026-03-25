@@ -127,7 +127,7 @@ const pipeline = program.command('pipeline').description('High-level orchestrati
 
 program
   .command('onboard')
-  .description('Set up Zigrix for first use (creates ~/.zigrix, seeds rules, registers agents)')
+  .description('Set up Zigrix for first use (creates config.paths.baseDir state, seeds rules, registers agents)')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')

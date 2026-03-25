@@ -1,16 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import YAML from 'yaml';
 
-import { defaultConfig, ZIGRIX_HOME } from './defaults.js';
+import { buildDefaultConfig, expandTilde, resolveAbsolutePath, ZIGRIX_HOME, resolveDefaultWorkspaceDir } from './defaults.js';
 import { type ZigrixConfig, zigrixConfigSchema } from './schema.js';
 
-const CONFIG_CANDIDATES = [
-  'zigrix.config.json',
-  'zigrix.config.yaml',
-  'zigrix.config.yml',
-] as const;
+const CONFIG_FILENAME = 'zigrix.config.json';
 
 export type LoadedConfig = {
   config: ZigrixConfig;
@@ -41,24 +36,69 @@ function deepMerge<T>(base: T, override: unknown): T {
 
 function parseConfigFile(filePath: string): unknown {
   const raw = fs.readFileSync(filePath, 'utf8');
-  if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
-    return YAML.parse(raw);
-  }
   return JSON.parse(raw);
 }
 
 function resolveConfigPath(baseDir: string, explicitPath?: string): string | null {
   if (explicitPath) {
-    return path.resolve(explicitPath);
+    return resolveAbsolutePath(explicitPath);
   }
 
-  for (const candidate of CONFIG_CANDIDATES) {
-    const fullPath = path.join(baseDir, candidate);
-    if (fs.existsSync(fullPath)) {
-      return fullPath;
-    }
+  const fullPath = path.join(baseDir, CONFIG_FILENAME);
+  if (fs.existsSync(fullPath)) {
+    return fullPath;
   }
   return null;
+}
+
+function resolvePathLike(value: unknown, baseDir: string, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  const expanded = expandTilde(trimmed);
+  if (path.isAbsolute(expanded)) return path.resolve(expanded);
+  return path.resolve(baseDir, expanded);
+}
+
+function normalizeConfigPaths(config: ZigrixConfig): ZigrixConfig {
+  const copy = structuredClone(config);
+
+  const resolvedBaseDir = resolvePathLike(copy.paths.baseDir, ZIGRIX_HOME, ZIGRIX_HOME);
+  copy.paths.baseDir = resolvedBaseDir;
+  copy.paths.tasksDir = resolvePathLike(copy.paths.tasksDir, resolvedBaseDir, path.join(resolvedBaseDir, 'tasks'));
+  copy.paths.evidenceDir = resolvePathLike(copy.paths.evidenceDir, resolvedBaseDir, path.join(resolvedBaseDir, 'evidence'));
+  copy.paths.promptsDir = resolvePathLike(copy.paths.promptsDir, resolvedBaseDir, path.join(resolvedBaseDir, 'prompts'));
+  copy.paths.eventsFile = resolvePathLike(copy.paths.eventsFile, resolvedBaseDir, path.join(resolvedBaseDir, 'tasks.jsonl'));
+  copy.paths.indexFile = resolvePathLike(copy.paths.indexFile, resolvedBaseDir, path.join(resolvedBaseDir, 'index.json'));
+  copy.paths.runsDir = resolvePathLike(copy.paths.runsDir, resolvedBaseDir, path.join(resolvedBaseDir, 'runs'));
+  copy.paths.rulesDir = resolvePathLike(copy.paths.rulesDir, resolvedBaseDir, path.join(resolvedBaseDir, 'rules'));
+
+  const configuredWorkspace = typeof copy.workspace.projectsBaseDir === 'string'
+    ? copy.workspace.projectsBaseDir.trim()
+    : '';
+  copy.workspace.projectsBaseDir = configuredWorkspace.length > 0
+    ? resolvePathLike(configuredWorkspace, resolvedBaseDir, resolveDefaultWorkspaceDir(resolvedBaseDir))
+    : resolveDefaultWorkspaceDir(resolvedBaseDir);
+
+  if (typeof copy.openclaw.home === 'string' && copy.openclaw.home.trim().length > 0) {
+    copy.openclaw.home = resolveAbsolutePath(copy.openclaw.home);
+  }
+  if (typeof copy.openclaw.binPath === 'string' && copy.openclaw.binPath.trim().length > 0) {
+    copy.openclaw.binPath = resolveAbsolutePath(copy.openclaw.binPath);
+  }
+
+  return copy;
+}
+
+function resolveBaseDirHint(parsed: unknown, fallback: string): string {
+  if (isObject(parsed) && isObject(parsed.paths) && typeof parsed.paths.baseDir === 'string') {
+    const configured = parsed.paths.baseDir.trim();
+    if (configured.length > 0) {
+      const expanded = expandTilde(configured);
+      return path.isAbsolute(expanded) ? path.resolve(expanded) : path.resolve(fallback, expanded);
+    }
+  }
+  return fallback;
 }
 
 function applyEnvOverrides(config: ZigrixConfig): ZigrixConfig {
@@ -75,31 +115,39 @@ function applyEnvOverrides(config: ZigrixConfig): ZigrixConfig {
   return copy;
 }
 
+export function normalizeConfig(input: ZigrixConfig): ZigrixConfig {
+  const normalized = normalizeConfigPaths(input);
+  return zigrixConfigSchema.parse(normalized);
+}
+
 export function loadConfig(options?: { baseDir?: string; configPath?: string }): LoadedConfig {
-  const baseDir = path.resolve(options?.baseDir ?? ZIGRIX_HOME);
-  const configPath = resolveConfigPath(baseDir, options?.configPath);
+  const baseDirCandidate = resolveAbsolutePath(options?.baseDir ?? ZIGRIX_HOME);
+  const configPath = resolveConfigPath(baseDirCandidate, options?.configPath);
   const parsed = configPath ? parseConfigFile(configPath) : {};
-  const merged = deepMerge(structuredClone(defaultConfig) as unknown as ZigrixConfig, parsed);
+  const defaultBaseDir = resolveBaseDirHint(parsed, baseDirCandidate);
+  const defaults = buildDefaultConfig(defaultBaseDir) as unknown as ZigrixConfig;
+  const merged = deepMerge(structuredClone(defaults), parsed);
   const withEnv = applyEnvOverrides(merged);
-  const result = zigrixConfigSchema.parse(withEnv);
-  return { config: result, configPath, baseDir };
+  const result = normalizeConfig(withEnv);
+  return { config: result, configPath, baseDir: result.paths.baseDir };
 }
 
 export function writeConfigFile(targetPath: string, config: ZigrixConfig): string {
-  const resolvedPath = path.resolve(targetPath);
+  const resolvedPath = resolveAbsolutePath(targetPath);
   fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
-  fs.writeFileSync(resolvedPath, `${JSON.stringify(zigrixConfigSchema.parse(config), null, 2)}\n`, 'utf8');
+  const normalized = normalizeConfig(config);
+  fs.writeFileSync(resolvedPath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
   return resolvedPath;
 }
 
 export function writeDefaultConfig(baseDir?: string, force = false): string {
-  const resolvedBase = path.resolve(baseDir ?? ZIGRIX_HOME);
-  const targetPath = path.join(resolvedBase, 'zigrix.config.json');
+  const resolvedBase = resolveAbsolutePath(baseDir ?? ZIGRIX_HOME);
+  const targetPath = path.join(resolvedBase, CONFIG_FILENAME);
   if (fs.existsSync(targetPath) && !force) {
     throw new Error(`config already exists: ${targetPath}`);
   }
   fs.mkdirSync(resolvedBase, { recursive: true });
-  return writeConfigFile(targetPath, structuredClone(defaultConfig) as unknown as ZigrixConfig);
+  return writeConfigFile(targetPath, buildDefaultConfig(resolvedBase) as unknown as ZigrixConfig);
 }
 
 export function getConfigValue(config: ZigrixConfig, dottedPath?: string): unknown {
