@@ -30,6 +30,7 @@ export type ZigrixOverviewData = {
     event: string | null;
     status: string | null;
     scale: string | null;
+    title: string | null;
     actor: string | null;
   }>;
   openclawAvailable: boolean;

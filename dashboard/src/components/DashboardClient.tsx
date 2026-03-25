@@ -6,6 +6,7 @@ import { TaskList } from './TaskList';
 import { TaskDetailTab } from './TaskDetailTab';
 import { EventLogTab } from './EventLogTab';
 import { ConversationTab } from './ConversationTab';
+import { buildTaskListItems } from '../lib/task-list';
 import styles from './DashboardClient.module.css';
 
 type Props = {
@@ -55,26 +56,7 @@ export function DashboardClient({
     return overview.recentEvents.filter((e) => e.taskId === selectedTaskId);
   }, [overview.recentEvents, selectedTaskId]);
 
-  const tasks = useMemo<TaskListItem[]>(() => {
-    const activeById = new Map(overview.activeTasks.map((row) => [row.taskId, row]));
-    const ids = new Set<string>([
-      ...overview.taskHistory.map((row) => row.taskId),
-      ...overview.activeTasks.map((row) => row.taskId),
-    ]);
-
-    return Array.from(ids).map((taskId) => {
-      const history = overview.taskHistory.find((row) => row.taskId === taskId);
-      const active = activeById.get(taskId);
-      return {
-        taskId,
-        status: history?.status || active?.status || null,
-        title: active?.title || null,
-        scale: history?.scale || active?.scale || null,
-        actor: history?.actor || null,
-        updatedAt: history?.ts || active?.updatedAt || null,
-      };
-    });
-  }, [overview]);
+  const tasks = useMemo<TaskListItem[]>(() => buildTaskListItems(overview), [overview]);
 
   const loadTaskPanels = useCallback(async (taskId: string) => {
     const [detail, conv] = await Promise.all([
