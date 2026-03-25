@@ -21,12 +21,13 @@
 ## Release flow
 1. merge release-ready changes
 2. run CI on supported matrix (includes `npm pack --dry-run` + smoke)
-3. `npm ci && npm run test && npm run build && npm run build:dashboard && npm run smoke`
-4. `bash scripts/release-smoke.sh` (full 10-step e2e)
-5. create Git tag
-6. publish GitHub Release with assets (`zigrix-release.tgz`, `zigrix-dist.tgz`, `install.sh`, `checksums.txt`)
-7. run fresh-install smoke test from release artifacts
-8. update changelog/release notes
+3. set npm auth via `NPM_TOKEN` env or `scripts/local/.env.npm` (gitignored)
+4. run `npm run release -- <version>`
+   - preflight: version/tag validation, `publish:check`, npm/gh auth checks
+   - publish: git tag push, npm publish, GitHub release create/update
+   - verify: package version + dist-tags (`latest` drift guard)
+5. run fresh-install smoke test from release artifacts
+6. update changelog/release notes
 
 ## Guardrails
 - release installer should target tagged assets, not mutable branch files
