@@ -1,6 +1,6 @@
 # sys-zig Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: worker-common 규칙 번들을 참조 (경로 하드코딩 금지)
 
 ## Role
 - 기술 스택 선정 + 선정 근거 문서화
@@ -67,4 +67,4 @@
 - pro-zig가 구현 분배 가능한 수준으로 명확
 - 기술 스택 선정 근거가 문서화됨
 - 보안/운영/QA 관점 사전 체크 포함
-- ADR 파일 저장: `orchestration/tasks/<taskId>-adr.md`
+- ADR 파일 저장: task 메타가 지정한 ADR 저장 경로

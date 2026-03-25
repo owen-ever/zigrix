@@ -1,6 +1,6 @@
 # sec-zig Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: worker-common 규칙 번들을 참조 (경로 하드코딩 금지)
 
 ## Role
 - 위협 모델링, 취약점 관점 검토, 보안 가드레일 제안

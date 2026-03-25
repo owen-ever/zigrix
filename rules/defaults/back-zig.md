@@ -1,6 +1,6 @@
 # back-zig Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: worker-common 규칙 번들을 참조 (경로 하드코딩 금지)
 
 ## Role
 - API, 비즈니스 로직, 데이터 처리, 서버 측 성능/안정성

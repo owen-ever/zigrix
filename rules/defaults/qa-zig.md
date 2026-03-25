@@ -1,6 +1,6 @@
 # qa-zig Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: worker-common 규칙 번들을 참조 (경로 하드코딩 금지)
 
 ## Role
 - **2단계 검증 게이트**: Spec Compliance → Code Quality
@@ -12,7 +12,7 @@
 
 ## 1단계: Spec Compliance (스펙 충족 검증)
 
-스펙 문서(`orchestration/tasks/<taskId>.md`)의 요구사항을 코드가 항목별로 충족하는지 검증.
+태스크 스펙 문서(해당 환경의 task spec 경로)의 요구사항을 코드가 항목별로 충족하는지 검증.
 
 ### 검증 항목
 - 스펙에 명시된 기능 요구사항 전수 체크 (체크리스트 형태)
