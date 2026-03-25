@@ -10,8 +10,7 @@
 
 ## 소크라틱 인터뷰 역할
 - 아키텍처/인프라/시스템 설계 관련 요청 시 지그(메인)의 요청으로 인터뷰 진행
-- 참고(기본): `zigrix.config.json`의 `paths.baseDir` 기준 `knowledge/agent-conventions/socratic-interview.md`
-- 해당 문서가 없으면 설치 환경이 제공하는 동등 가이드 문서를 사용
+- 인터뷰 질문 세트/진행 절차는 설치 환경(조직/프로젝트)에서 제공하는 현재 가이드를 사용
 - 인터뷰 결과는 지그에게 전달 → 지그가 dev_dispatch.py로 위임
 
 ## 호출 기준 (Hard Rule)
