@@ -73,6 +73,7 @@ export type ZigrixTaskHistoryRow = {
   event: string | null;
   status: string | null;
   scale: string | null;
+  title: string | null;
   actor: string | null;
 };
 
@@ -369,6 +370,34 @@ function resolveTaskStatus(taskId: string, events: ZigrixEvent[], specsDir: stri
   return inferTaskStatus(taskEvents);
 }
 
+function resolveTaskDisplayFields(
+  taskId: string,
+  taskEvents: ZigrixEvent[],
+  specsDir: string,
+): { scale: string | null; title: string | null } {
+  const metaPath = path.join(specsDir, `${taskId}.meta.json`);
+  const meta = readJson(metaPath, {});
+
+  const metaScale = toNonEmptyString(meta.scale);
+  const metaTitle = toNonEmptyString(meta.title);
+
+  let eventScale: string | null = null;
+  let eventTitle: string | null = null;
+
+  for (const event of taskEvents) {
+    const payload = isObject(event.payload) ? event.payload : null;
+    const scale = toNonEmptyString(event.scale) || toNonEmptyString(payload?.scale);
+    const title = toNonEmptyString(event.title) || toNonEmptyString(payload?.title);
+    if (scale) eventScale = scale;
+    if (title) eventTitle = title;
+  }
+
+  return {
+    scale: metaScale || eventScale,
+    title: metaTitle || eventTitle,
+  };
+}
+
 // ─── Lightweight merge comparison ─────────────────────────────────────────────
 
 export type EventSignature = {
@@ -434,8 +463,6 @@ function buildTaskSnapshot(
   const taskEvents = events.filter((e) => e.taskId === taskId);
 
   let latest: (ZigrixEvent & { __idx: number }) | null = null;
-  let latestScale: string | null = null;
-  let latestTitle: string | null = null;
 
   for (let i = 0; i < taskEvents.length; i++) {
     const candidate = taskEvents[i];
@@ -445,14 +472,9 @@ function buildTaskSnapshot(
     if (!latest || candidateTs > latestTs || (candidateTs === latestTs && i >= latest.__idx)) {
       latest = { ...candidate, __idx: i };
     }
-
-    if (typeof candidate.scale === 'string' && candidate.scale) latestScale = candidate.scale;
-    if (typeof candidate.title === 'string' && candidate.title) latestTitle = candidate.title;
-    if (!latestScale && isObject(candidate.payload) && typeof candidate.payload.scale === 'string')
-      latestScale = candidate.payload.scale as string;
-    if (!latestTitle && isObject(candidate.payload) && typeof candidate.payload.title === 'string')
-      latestTitle = candidate.payload.title as string;
   }
+
+  const display = resolveTaskDisplayFields(taskId, taskEvents, specsDir);
 
   const indices = taskEvents.map((_, i) => i);
   indices.sort((a, b) => {
@@ -465,8 +487,8 @@ function buildTaskSnapshot(
   return {
     taskId,
     status: resolveTaskStatus(taskId, events, specsDir),
-    scale: latestScale || latest?.scale || null,
-    title: latestTitle || latest?.title || null,
+    scale: display.scale || latest?.scale || null,
+    title: display.title || latest?.title || null,
     updatedAt: latest?.ts || null,
     latestEvent: latest?.event || null,
     events: sortedEvents.slice(0, 50),
@@ -483,21 +505,18 @@ function buildTaskHistory(events: ZigrixEvent[], specsDir: string): ZigrixTaskHi
     const taskId = event.taskId;
     if (!taskId || tasks.has(taskId)) continue;
 
-    const statusEvent = sorted.find(
-      (candidate) => candidate.taskId === taskId && !!toTaskHistoryStatusEvent(candidate),
-    );
+    const taskEvents = events.filter((candidate) => candidate.taskId === taskId);
+    const display = resolveTaskDisplayFields(taskId, taskEvents, specsDir);
 
     tasks.set(taskId, {
       taskId,
       ts: event.ts || null,
       event: event.event || event.action || null,
       status: resolveTaskStatus(taskId, events, specsDir),
-      scale: event.scale || null,
+      scale: display.scale || null,
+      title: display.title || null,
       actor: event.actor || event.agentId || null,
     });
-
-    // Suppress unused variable warning
-    void statusEvent;
   }
 
   return Array.from(tasks.values());
@@ -831,6 +850,26 @@ function resolveTaskSessionKeys(
   return { sessionKeys: Array.from(merged), sessionToAgent, sessionIdMap };
 }
 
+function listDeletedSessionFiles(
+  agentsStateDir: string,
+  agentId: string,
+  sessionId: string,
+): string[] {
+  const sessionsDir = path.join(agentsStateDir, agentId, 'sessions');
+  if (!fs.existsSync(sessionsDir)) return [];
+
+  const prefix = `${sessionId}.jsonl.deleted.`;
+  try {
+    return fs
+      .readdirSync(sessionsDir)
+      .filter((name) => name.startsWith(prefix))
+      .sort((a, b) => b.localeCompare(a))
+      .map((name) => path.join(sessionsDir, name));
+  } catch {
+    return [];
+  }
+}
+
 function findSessionFile(
   agentsStateDir: string,
   agentId: string,
@@ -842,14 +881,10 @@ function findSessionFile(
   const activePath = path.join(sessionsDir, `${sessionId}.jsonl`);
   if (fs.existsSync(activePath)) return { filePath: activePath, source: 'active' };
 
-  const prefix = `${sessionId}.jsonl.deleted.`;
-  const matched = fs
-    .readdirSync(sessionsDir)
-    .filter((name) => name.startsWith(prefix))
-    .sort((a, b) => b.localeCompare(a));
+  const deletedFiles = listDeletedSessionFiles(agentsStateDir, agentId, sessionId);
+  if (deletedFiles.length === 0) return null;
 
-  if (matched.length === 0) return null;
-  return { filePath: path.join(sessionsDir, matched[0]), source: 'deleted' };
+  return { filePath: deletedFiles[0], source: 'deleted' };
 }
 
 function readJsonlMessages(filePath: string): LooseRecord[] {
@@ -1198,11 +1233,9 @@ export function createZigrixStore(options?: {
     const sessionKeys = sessionMeta.sessionKeys;
     const recentEvents = buildTaskRecentEvents(taskId, events);
 
-    let openclawAvailable = true;
-
     const sessionFetchResults = await Promise.all(
       sessionKeys.map(async (sessionKey) => {
-        let activeError: string | null = null;
+        let gatewayError: string | null = null;
 
         // Try gateway first
         try {
@@ -1230,11 +1263,11 @@ export function createZigrixStore(options?: {
               messageCount: messages.length,
               error: null,
               messages,
+              gatewayError,
             };
           }
         } catch (error) {
-          activeError = String((error as Error)?.message || error);
-          openclawAvailable = false;
+          gatewayError = String((error as Error)?.message || error);
         }
 
         // Fallback: read session file directly
@@ -1243,10 +1276,11 @@ export function createZigrixStore(options?: {
           if (!parsed) {
             return {
               sessionKey,
-              ok: activeError ? false : true,
+              ok: gatewayError ? false : true,
               messageCount: 0,
-              error: activeError,
+              error: gatewayError,
               messages: [] as LooseRecord[],
+              gatewayError,
             };
           }
 
@@ -1260,29 +1294,31 @@ export function createZigrixStore(options?: {
           if (!matched) {
             return {
               sessionKey,
-              ok: activeError ? false : true,
+              ok: gatewayError ? false : true,
               messageCount: 0,
-              error: activeError,
+              error: gatewayError,
               messages: [] as LooseRecord[],
+              gatewayError,
             };
           }
 
           const messages = readJsonlMessages(matched.filePath);
-          openclawAvailable = true; // file fallback succeeded
           return {
             sessionKey,
             ok: true,
             messageCount: messages.length,
             error: null,
             messages,
+            gatewayError,
           };
         } catch (error) {
           return {
             sessionKey,
             ok: false,
             messageCount: 0,
-            error: activeError || String((error as Error)?.message || error),
+            error: gatewayError || String((error as Error)?.message || error),
             messages: [] as LooseRecord[],
+            gatewayError,
           };
         }
       }),
@@ -1295,6 +1331,10 @@ export function createZigrixStore(options?: {
       messageCount: item.messageCount,
       error: item.error,
     }));
+
+    const openclawAvailable =
+      sessionFetchResults.some((item) => item.ok) ||
+      sessionFetchResults.every((item) => item.gatewayError === null);
 
     return {
       generatedAt: new Date().toISOString(),
@@ -1374,19 +1414,25 @@ export function createZigrixStore(options?: {
       agentIds,
     );
 
-    return sessionKeys
-      .map((sessionKey) => {
-        const parsed = parseAgentSubagentSessionKey(sessionKey);
-        if (!parsed) return null;
-        const resolvedSessionId = sessionIdMap.get(sessionKey) ?? parsed.sessionId;
-        return path.join(
-          paths.agentsStateDir,
-          parsed.agentId,
-          'sessions',
-          `${resolvedSessionId}.jsonl`,
-        );
-      })
-      .filter((p): p is string => p !== null);
+    const filePaths = new Set<string>();
+
+    for (const sessionKey of sessionKeys) {
+      const parsed = parseAgentSubagentSessionKey(sessionKey);
+      if (!parsed) continue;
+
+      const candidateSessionIds = [sessionIdMap.get(sessionKey), parsed.sessionId]
+        .filter((sessionId): sessionId is string => Boolean(sessionId));
+
+      for (const sessionId of new Set(candidateSessionIds)) {
+        const activePath = path.join(paths.agentsStateDir, parsed.agentId, 'sessions', `${sessionId}.jsonl`);
+        filePaths.add(activePath);
+        for (const deletedPath of listDeletedSessionFiles(paths.agentsStateDir, parsed.agentId, sessionId)) {
+          filePaths.add(deletedPath);
+        }
+      }
+    }
+
+    return Array.from(filePaths);
   }
 
   return {
