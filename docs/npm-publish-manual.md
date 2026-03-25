@@ -46,9 +46,10 @@ git tag
 ```
 Create the intended tag only after the above checks pass.
 
-## 5) Publish
+## 5) Publish (automated entrypoint)
 ```bash
-npm publish --access public
+# NPM_TOKEN env or scripts/local/.env.npm must be set first
+npm run release -- <version>
 ```
 
 ## 6) Verify after publish
