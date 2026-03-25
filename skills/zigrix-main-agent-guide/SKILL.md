@@ -96,23 +96,15 @@ zigrix task finalize <taskId> --auto-report --json
 
 ## 6) Python 스크립트 체인 → Zigrix CLI 전환 가이드
 
-기존(레거시 Python):
-- `dev_dispatch.py`
-- `dev_start.py`
-- `orch_prepare_worker.py`
-- `orch_register_worker.py`
-- `orch_complete_worker.py`
-- `dev_finalize.py`
+## Standard CLI chain
 
-신규(권장 Zigrix CLI):
-- `zigrix task dispatch`
-- `zigrix task start`
-- `zigrix worker prepare`
-- `zigrix worker register`
-- `zigrix worker complete`
-- `zigrix task finalize`
+| Step | Command |
+|------|---------|
+| Dispatch | `zigrix task dispatch` |
+| Start | `zigrix task start` |
+| Worker prepare | `zigrix worker prepare` |
+| Worker register | `zigrix worker register` |
+| Worker complete | `zigrix worker complete` |
+| Finalize | `zigrix task finalize` |
 
-전환 원칙:
-- 신규 자동화는 CLI 우선
-- Python 스크립트는 호환/과도기용
 - JSON 출력(`--json`)을 기본으로 파이프라인에서 파싱

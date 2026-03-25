@@ -12,7 +12,7 @@
 5. BLOCKED 상태는 즉시 보고 (원인/필요입력/우회안)
 6. **모든 문제는 근본적인 해결을 원칙으로 한다. 임시방편(workaround) 금지.**
 7. **오케스트레이션 필수 (owner 고정, 2026-03-04):** 오케스트레이션에 등록(`orchestration/tasks/<taskId>.md` 존재)되지 않은 작업은 수행 거부. taskId가 있더라도 오케스트레이션 미등록이면 orchestrator-agent에 확인 요청.
-8. **스크립트 체인 정합 (2026-03-11):** 구 worker lifecycle 스크립트(`dev_worker_dispatch.py`, `dev_worker_start.py`, `dev_worker_done.py`)는 제거됐다. 워커 lifecycle 기록(`worker_dispatched`/`worker_done`/`worker_skipped`)은 orchestrator-agent가 `orch_prepare_worker.py → orch_register_worker.py → orch_complete_worker.py` 체인으로 처리한다.
+8. **CLI 체인 정합:** 워커 lifecycle 기록(`worker_dispatched`/`worker_done`/`worker_skipped`)은 orchestrator-agent가 `zigrix worker prepare → zigrix worker register → zigrix worker complete` 체인으로 처리한다.
 9. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `<OPENCLAW_HOME>/public-knowledge/policies/git-workflow.md`를 반드시 따른다. 기본 브랜치(main, master) 직접 작업/commit/push 금지, GitHub 원격이 있으면 브랜치 작업 후 PR 제출이 기본이다.
 10. **완료 상태 불변성 (2026-03-17):** `<OPENCLAW_HOME>/public-knowledge/policies/task-status-policy.md`를 따른다. `REPORTED` task에 대한 후행 completion/event는 상태 전이를 만들지 않는다. 워커는 중복 완료 알림이 와도 추가 상태 변경 시도를 하지 않고 NO-OP로 처리한다.
 11. **Git 조작 금지 (2026-03-23):** non-orchestrator 역할 워커(frontend/backend/system/security/qa)는 `git commit`, `git push`, `git branch`, `git checkout -b`, PR 생성 등 **Git 상태를 변경하는 모든 조작을 수행하지 않는다.** 워커의 역할은 파일 수정/생성/삭제까지이며, 작업 완료 시 **변경된 파일 목록**을 orchestrator 역할에 반환한다. commit/push/PR은 orchestrator가 QA 통과 확인 후 전담한다.
@@ -28,7 +28,7 @@
 - Evidence output: `<OPENCLAW_HOME>/workspace/orchestration/evidence/<taskId>/<agentId>.json`
 
 ## 5) Worker Prompt Contract (필수)
-`orch_prepare_worker.py`가 생성한 worker prompt를 작업 지시서로 간주한다.
+`zigrix worker prepare`가 생성한 worker prompt를 작업 지시서로 간주한다.
 워커는 prompt에 포함된 아래 항목을 확인하고 그 범위만 수행한다.
 
 - `taskId`
@@ -46,8 +46,8 @@
 - 반환 내용에는 자신의 `sessionKey` / `runId` / 증적 / 리스크를 포함
 
 ### 워커가 하지 않는 것
-- `orch_register_worker.py` 호출
-- `orch_complete_worker.py` 호출
+- `zigrix worker register` 호출
+- `zigrix worker complete` 호출
 - task 상태를 직접 `REPORTED`로 전이
 - 제거된 구 worker lifecycle 스크립트 호출 시도
 

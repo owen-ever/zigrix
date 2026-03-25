@@ -98,7 +98,7 @@ QA FAIL
 5. **3회 초과 시 에스컬레이션**:
    - `tasks.jsonl`에 `owner_confirmation_required` 이벤트 기록
    - 상태: `BLOCKED`
-   - Discord 알림에 모든 iteration 증적 경로 포함
+   - 알림에 모든 iteration 증적 경로 포함
 
 ### 증적 파일 형식 (qa-agent-iter-N.json)
 ```json

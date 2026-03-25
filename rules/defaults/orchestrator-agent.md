@@ -20,25 +20,23 @@
 8. 증적 없는 완료 보고 금지 (`sessionKey`, `runId` 필수)
 9. 작업 중단 시 `nextAction`/`resumeHint` 업데이트 필수
 10. **배포 순서 고정 (Hard Rule):** 코드 수정 → QA → QA 통과 확인 → 배포. 배포 후 QA 금지.
-11. **오케스트레이션 파이프라인 필수 경유 (owner 고정, 2026-03-04):**
-    - 작업은 메인(지그)이 `dev_dispatch.py`로 등록한 상태에서만 수신
+11. **오케스트레이션 파이프라인 필수 경유:**
+    - 작업은 `zigrix task dispatch`로 등록한 상태에서만 수신
     - 오케스트레이션 미등록(taskId/spec 미존재) 작업은 수행 거부
-12. **스크립트 체인 워크플로우 (필수, 2026-03-11):**
-    - orchestrator-agent의 task prompt(boot prompt)는 **`dev_start.py` 실행 지시**만 포함한다.
-    - **dev_start.py 출력이 태스크 브리핑이자 작업 지시서**이다.
-    - 모든 상태 추적은 스크립트 체인을 통해 자동 기록된다.
-    - **스크립트를 건너뛰면 다음 지시를 받을 수 없다.**
+12. **CLI 체인 워크플로우 (필수):**
+    - orchestrator-agent의 task prompt(boot prompt)는 **`zigrix task start` 실행 지시**만 포함한다.
+    - **태스크 메타 및 dispatch prompt가 태스크 브리핑이자 작업 지시서**이다.
+    - 모든 상태 추적은 CLI 체인을 통해 자동 기록된다.
+    - **체인을 건너뛰면 다음 지시를 받을 수 없다.**
     - 아래 체인을 순서대로 따른다:
-      1. **착수:** `dev_start.py --task-id <taskId>` → 브리핑 + 워커 절차 출력
-      2. **워커 prompt 생성:** `orch_prepare_worker.py --task-id <taskId> --agent-id <workerId> --description "..."` → sessions_spawn에 전달할 prompt 출력
-      3. **워커 등록:** `orch_register_worker.py --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 다음 행동 출력
-      4. **워커 완료:** `orch_complete_worker.py --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 완료 여부 + 다음 행동 출력
-      5. **최종 보고:** `dev_finalize.py --task-id <taskId> --auto-report`
-    - 스크립트 경로: `<OPENCLAW_HOME>/workspace/orchestration/scripts/`
-    - **구 worker lifecycle 스크립트(`dev_worker_dispatch.py`, `dev_worker_start.py`, `dev_worker_done.py`)는 제거됨.** worker 추적은 `orch_prepare_worker.py → orch_register_worker.py → orch_complete_worker.py` 체인만 사용한다.
+      1. **착수:** `zigrix task start <taskId> --json`
+      2. **워커 prompt 생성:** `zigrix worker prepare --task-id <taskId> --agent-id <workerId> --description "..."` → sessions_spawn에 전달할 prompt 출력
+      3. **워커 등록:** `zigrix worker register --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 다음 행동 출력
+      4. **워커 완료:** `zigrix worker complete --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 완료 여부 + 다음 행동 출력
+      5. **최종 보고:** `zigrix task finalize <taskId> --auto-report`
 13. task는 크게 유지하고 내부 실행은 `workPackages[]` + `executionUnits[]`로 세분화한다.
-14. execution unit를 실제로 시작할 때는 `orch_prepare_worker.py`에 `--unit-id`를 넘겨 `unit_started` + meta status 전이를 남긴다.
-15. execution unit 완료 시 `orch_complete_worker.py`에 같은 `--unit-id`를 넘겨 `unit_done` + evidence(unitId 포함)를 남긴다.
+14. execution unit를 실제로 시작할 때는 `zigrix worker prepare`에 `--unit-id`를 넘겨 `unit_started` + meta status 전이를 남긴다.
+15. execution unit 완료 시 `zigrix worker complete`에 같은 `--unit-id`를 넘겨 `unit_done` + evidence(unitId 포함)를 남긴다.
 16. finalize 전 `executionUnits[].status`가 전부 `DONE`인지 확인해야 하며, 미완료 unit이 있으면 완료 보고 금지.
 17. 중단 복구 판단은 session 문맥이 아니라 `meta.json.executionUnits[]`를 우선한다.
 18. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `<OPENCLAW_HOME>/public-knowledge/policies/git-workflow.md`를 반드시 따른다. GitHub 원격 저장소가 연결된 프로젝트는 기본 브랜치(main, master)에서 직접 작업/commit/push 하지 않고, 신규 브랜치에서 작업 후 commit + PR까지를 기본 완료선으로 삼는다.
@@ -109,9 +107,8 @@
 ```
 
 ### 완료 후 종료 절차 (Hard Rule)
-1. `dev_finalize.py --auto-report` 실행
-2. 스크립트 출력의 `nextAction`에 따라 main 세션에 결과 전달:
-   `sessions_send(sessionKey: "agent:main:main", message: "<taskId> 완료: <요약>")`
+1. `zigrix task finalize <taskId> --auto-report` 실행
+2. CLI 출력의 `nextAction`에 따라 결과 전달
 3. 결과 전달 후 **더 이상 응답하지 않는다** (세션 종료 대기)
 
 ⚠️ main에 결과를 전달하지 않으면 owner에게 완료 보고가 안 된다.
@@ -243,13 +240,13 @@
 - QA 결과
 - 남은 리스크/후속 액션
 - 피드백 요청
-- 가능하면 `python3 <OPENCLAW_HOME>/workspace/orchestration/scripts/dev_report_to_user.py --task-id <taskId> --record-events` 출력문을 그대로 사용
+- 가능하면 `zigrix report render --task-id <taskId> --json` 출력문을 그대로 사용
 
 ## 12) Final Feedback Step (필수)
 - finalize 직후, 메인 내부 보고가 아니라 **사용자에게 직접 최종 보고**한다.
 - 권장 순서:
-  1) `dev_finalize.py --task-id ... --evidence ... --auto-report`
-  2) `python3 <OPENCLAW_HOME>/workspace/orchestration/scripts/dev_report_to_user.py --task-id <taskId> --record-events`
+  1) `zigrix task finalize <taskId> --auto-report`
+  2) `zigrix report render --task-id <taskId> --json`
   3) 출력된 보고문을 그대로 사용자에게 전달
 - 최종 보고 직후 아래 질문으로 피드백을 요청한다.
   1) 만족도(1~5)

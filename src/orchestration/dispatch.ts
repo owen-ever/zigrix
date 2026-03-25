@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ROLE_HINTS, type StandardAgentRole } from '../agents/roles.js';
+import { resolveAbsolutePath } from '../config/defaults.js';
 import type { ZigrixConfig } from '../config/schema.js';
 import { appendEvent } from '../state/events.js';
 import { type ExecutionUnit, type WorkPackage, type ZigrixTask, createTask, rebuildIndex, saveTask } from '../state/tasks.js';
@@ -130,6 +131,20 @@ function resolveAgentSelection(config: ZigrixConfig, scale: string): {
   };
 }
 
+export function resolveConfiguredProjectDir(config: ZigrixConfig, explicitProjectDir?: string): string | undefined {
+  const explicit = explicitProjectDir?.trim();
+  if (explicit) {
+    return resolveAbsolutePath(explicit);
+  }
+
+  const configured = config.workspace.projectsBaseDir?.trim();
+  if (configured && configured.length > 0) {
+    return resolveAbsolutePath(configured);
+  }
+
+  return undefined;
+}
+
 function defaultWorkPackages(scale: string): WorkPackage[] {
   return [
     { id: 'WP1', key: 'planning', title: 'planning', parallel: false },
@@ -209,13 +224,14 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
   ensureBaseState(paths);
 
   const selection = resolveAgentSelection(config, params.scale);
+  const projectDir = resolveConfiguredProjectDir(config, params.projectDir);
 
   const task = createTask(paths, {
     title: params.title,
     description: params.description,
     scale: params.scale,
     requiredAgents: [...selection.requiredAgents],
-    projectDir: params.projectDir,
+    projectDir,
     requestedBy: params.requestedBy,
   });
 
@@ -246,7 +262,7 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
     `- **Candidate Agents:** ${selection.candidateAgents.length > 0 ? selection.candidateAgents.join(', ') : '(none)'}`,
     `- **Required Roles:** ${selection.requiredRoles.join(', ')}`,
     `- **Optional Roles:** ${selection.optionalRoles.length > 0 ? selection.optionalRoles.join(', ') : '(none)'}`,
-    params.projectDir ? `- **Project Dir:** ${params.projectDir}` : '',
+    projectDir ? `- **Project Dir:** ${projectDir}` : '',
     '',
     '### 요청 내용',
     params.description,
@@ -281,7 +297,7 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
       requiredRoles: selection.requiredRoles,
       optionalRoles: selection.optionalRoles,
       roleAgentMap: selection.roleAgentMap,
-      projectDir: params.projectDir ?? null,
+      projectDir: projectDir ?? null,
     },
   });
   rebuildIndex(paths);
@@ -302,6 +318,6 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
     metaPath: path.join(paths.tasksDir, `${task.taskId}.meta.json`),
     promptPath,
     orchestratorPrompt,
-    projectDir: params.projectDir ?? null,
+    projectDir: projectDir ?? null,
   };
 }

@@ -106,10 +106,10 @@ Creates `paths.baseDir` from `zigrix.config.json` (default `~/.zigrix`), writes 
 Reconfigures one or more sections after initial onboarding. Sections: `agents`, `rules`, `workspace`, `path`, `skills`. Supports `--section <name>` for targeted reconfiguration. Use `--projects-base-dir <path>` to set the workspace base directory and `--orchestrator-id <agentId>` to override orchestrator ownership.
 
 ### `zigrix task dispatch`
-Replaces `dev_dispatch.py`. Creates task with full orchestration metadata (workPackages, executionUnits, selectionHints), resolves required/optional roles to enabled agents, generates `orchestratorPrompt` for the configured `orchestratorId`, and writes dispatch prompt file.
+Creates task with full orchestration metadata (workPackages, executionUnits, selectionHints), resolves required/optional roles to enabled agents, generates `orchestratorPrompt` for the configured `orchestratorId`, and writes dispatch prompt file.
 
 ### `zigrix task finalize`
-Replaces `dev_finalize.py`. Merges evidence, checks execution unit completeness, auto-closes completed units, optionally auto-reports. Handles sec/qa issue flags.
+Merges evidence, checks execution unit completeness, auto-closes completed units, optionally auto-reports. Handles sec/qa issue flags.
 
 ### `zigrix task create`
 Lower-level manual task creation without dispatch-time role resolution. Use `task dispatch` for the standard orchestration flow.

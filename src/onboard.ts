@@ -49,6 +49,7 @@ export interface OnboardResult {
   ok: boolean;
   action: string;
   baseDir: string;
+  workspaceBaseDir: string;
   configPath: string;
   paths: ZigrixPaths;
   openclawDetected: boolean;
@@ -74,6 +75,7 @@ export interface OnboardResult {
 export interface RunOnboardOptions {
   yes?: boolean;
   projectDir?: string;
+  projectsBaseDir?: string;
   orchestratorId?: string;
   silent?: boolean;
 }
@@ -776,6 +778,24 @@ export async function promptAgentRoleAssignments(
   }
 }
 
+export async function promptWorkspaceBaseDir(defaultPath: string): Promise<string> {
+  try {
+    const { input } = await import('@inquirer/prompts');
+    const answer = await input({
+      message: 'Workspace directory',
+      default: defaultPath,
+      validate: (value: string) => {
+        if (!value || value.trim().length === 0) return 'Workspace directory is required';
+        return true;
+      },
+    });
+    return resolveAbsolutePath((answer || defaultPath).trim());
+  } catch {
+    console.log('ℹ️  Non-interactive mode — using configured workspace directory.');
+    return resolveAbsolutePath(defaultPath);
+  }
+}
+
 export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string): {
   config: ZigrixConfig;
   changed: boolean;
@@ -854,7 +874,22 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   // 1. Ensure config.paths.baseDir state (idempotent)
   const { configPath } = ensureConfig();
   const loaded = loadConfig({ configPath });
-  const paths = resolvePaths(loaded.config);
+  let nextConfig = structuredClone(loaded.config);
+
+  const configuredWorkspace = nextConfig.workspace.projectsBaseDir?.trim() || path.join(nextConfig.paths.baseDir, 'workspace');
+  const desiredWorkspace = options.projectsBaseDir
+    ? resolveAbsolutePath(options.projectsBaseDir)
+    : options.yes
+      ? resolveAbsolutePath(configuredWorkspace)
+      : await promptWorkspaceBaseDir(configuredWorkspace);
+
+  if (nextConfig.workspace.projectsBaseDir !== desiredWorkspace) {
+    nextConfig.workspace.projectsBaseDir = desiredWorkspace;
+    writeConfigFile(configPath, nextConfig);
+    log(`✅ Workspace base dir set to: ${desiredWorkspace}`);
+  }
+
+  const paths = resolvePaths(nextConfig);
   ensureBaseState(paths);
   rebuildIndex(paths);
 
@@ -895,8 +930,6 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       selectedAgents = await promptAgentSelection(allAgents);
     }
 
-    let nextConfig = loaded.config;
-
     if (selectedAgents.length > 0) {
       const roleAssignments = options.yes
         ? Object.fromEntries(selectedAgents.map((agent) => [agent.id, inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null })])) as AgentRoleAssignments
@@ -931,7 +964,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   }
 
   if (!openclawConfig && options.orchestratorId) {
-    const orchResult = ensureOrchestratorId(loaded.config, options.orchestratorId);
+    const orchResult = ensureOrchestratorId(nextConfig, options.orchestratorId);
     if (orchResult.warning) {
       warnings.push(orchResult.warning);
       log(`⚠️  ${orchResult.warning}`);
@@ -1047,6 +1080,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     ok: true,
     action: 'onboard',
     baseDir: paths.baseDir,
+    workspaceBaseDir: nextConfig.workspace.projectsBaseDir,
     configPath,
     paths,
     openclawDetected: openclawExists,

@@ -45,8 +45,7 @@ Global runtime state:
 - Global state avoids scattering `.zigrix/` across unrelated repos
 - `meta.json` records `projectDir` per task when relevant
 
-## Future boundary
-The existing `orchestration/scripts/*.py` are the migration source. Zigrix CLI replaces them:
-- `dev_dispatch.py` → `zigrix task dispatch`
-- `dev_finalize.py` → `zigrix task finalize`
-- Worker scripts → `zigrix worker prepare/register/complete`
+## CLI chain
+- `zigrix task dispatch` — creates task with full orchestration metadata
+- `zigrix task finalize` — merges evidence, checks units, auto-reports
+- `zigrix worker prepare/register/complete` — worker lifecycle management

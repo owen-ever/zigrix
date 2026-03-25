@@ -50,8 +50,8 @@ Optional:
 ## Current integrated surface (agent-facing)
 
 ### Task orchestration
-- `zigrix task dispatch` — creates task with full orchestration metadata, resolves roles to agents, and emits `orchestratorPrompt` for the configured orchestrator (replaces `dev_dispatch.py`)
-- `zigrix task finalize` — merges evidence, checks execution units, auto-reports (replaces `dev_finalize.py`)
+- `zigrix task dispatch` — creates task with full orchestration metadata, resolves roles to agents, and emits `orchestratorPrompt` for the configured orchestrator
+- `zigrix task finalize` — merges evidence, checks execution units, auto-reports
 - `zigrix task create/status/list/events/progress/stale/start/report`
 
 ### Worker lifecycle

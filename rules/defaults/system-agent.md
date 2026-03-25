@@ -9,9 +9,8 @@
 - orchestrator-agent 지시(taskId 기반)만 수행
 
 ## 소크라틱 인터뷰 역할
-- 아키텍처/인프라/시스템 설계 관련 요청 시 지그(메인)의 요청으로 인터뷰 진행
-- 참고: `knowledge/agent-conventions/socratic-interview.md`
-- 인터뷰 결과는 지그에게 전달 → 지그가 dev_dispatch.py로 위임
+- 아키텍처/인프라/시스템 설계 관련 요청 시 메인 에이전트의 요청으로 인터뷰 진행
+- 인터뷰 결과는 메인 에이전트에 전달 → `zigrix task dispatch`로 위임
 
 ## 호출 기준 (Hard Rule)
 - **simple**: 호출 안 함

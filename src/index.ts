@@ -14,13 +14,13 @@ import {
 } from './agents/registry.js';
 import { runConfigure } from './configure.js';
 import { diffValues, getValueAtPath, parseConfigInput, resetValueAtPath, setValueAtPath } from './config/mutate.js';
-import { defaultConfig } from './config/defaults.js';
+import { defaultConfig, resolveAbsolutePath } from './config/defaults.js';
 import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
 import { gatherDoctor, renderDoctorText } from './doctor.js';
 import { runOnboard } from './onboard.js';
-import { dispatchTask } from './orchestration/dispatch.js';
+import { dispatchTask, resolveConfiguredProjectDir } from './orchestration/dispatch.js';
 import { collectEvidence, mergeEvidence } from './orchestration/evidence.js';
 import { finalizeTask } from './orchestration/finalize.js';
 import { runPipeline } from './orchestration/pipeline.js';
@@ -127,15 +127,17 @@ const pipeline = program.command('pipeline').description('High-level orchestrati
 
 program
   .command('onboard')
-  .description('Set up Zigrix for first use (creates config.paths.baseDir state, seeds rules, registers agents)')
+  .description('Set up Zigrix for first use (creates config.paths.baseDir state, seeds rules, registers agents, and captures workspace defaults)')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--projects-base-dir <path>', 'workspace base directory to persist in zigrix.config.json')
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .action(async (options) => {
     const result = await runOnboard({
       yes: Boolean(options.yes),
       projectDir: options.projectDir,
+      projectsBaseDir: options.projectsBaseDir,
       orchestratorId: options.orchestratorId,
       silent: Boolean(options.json),
     });
@@ -599,7 +601,7 @@ program
 
 task
   .command('dispatch')
-  .description('Create a task with full orchestration metadata and boot prompt (replaces dev_dispatch.py)')
+  .description('Create a task with full orchestration metadata and boot prompt')
   .requiredOption('--title <title>')
   .requiredOption('--description <description>')
   .requiredOption('--scale <scale>', 'simple|normal|risky|large')
@@ -636,7 +638,18 @@ task
   .option('--json')
   .action((options) => {
     const loaded = loadRuntime({ baseDir: options.baseDir, config: options.config });
-    const created = createTask(loaded.paths, { title: options.title, description: options.description, scale: options.scale, requiredAgents: options.requiredAgent, projectDir: options.projectDir, requestedBy: options.requestedBy, prefix: options.prefix });
+    const projectDir = options.projectDir
+      ? resolveAbsolutePath(options.projectDir)
+      : resolveConfiguredProjectDir(loaded.config);
+    const created = createTask(loaded.paths, {
+      title: options.title,
+      description: options.description,
+      scale: options.scale,
+      requiredAgents: options.requiredAgent,
+      projectDir,
+      requestedBy: options.requestedBy,
+      prefix: options.prefix,
+    });
     printValue(created, true);
   });
 
@@ -711,7 +724,7 @@ for (const [name, status] of Object.entries(STATUS_MAP)) {
 
 task
   .command('finalize <taskId>')
-  .description('Finalize a task: merge evidence, check units, auto-report by default (replaces dev_finalize.py)')
+  .description('Finalize a task: merge evidence, check units, and auto-report by default')
   .option('--no-auto-report', 'skip auto-transition to REPORTED (default: auto-report enabled)')
   .option('--sec-issues', 'flag security issues (blocks auto-report)')
   .option('--qa-issues', 'flag QA issues (blocks auto-report)')
