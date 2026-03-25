@@ -64,6 +64,7 @@ describe('release script helpers', () => {
         versionArg: '0.1.0-alpha.16',
         dryRun: true,
         distTagOverride: 'alpha',
+        latest: false,
         help: false,
       });
     });
@@ -72,6 +73,16 @@ describe('release script helpers', () => {
       expect(parseReleaseArgs(['--dist-tag=next'])).toEqual({
         dryRun: false,
         distTagOverride: 'next',
+        latest: false,
+        help: false,
+      });
+    });
+
+    it('parses explicit latest promotion flag', () => {
+      expect(parseReleaseArgs(['0.1.0-alpha.16', '--latest'])).toEqual({
+        versionArg: '0.1.0-alpha.16',
+        dryRun: false,
+        latest: true,
         help: false,
       });
     });

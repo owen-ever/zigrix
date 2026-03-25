@@ -10,6 +10,7 @@ type ReleaseCliArgs = {
   versionArg?: string;
   dryRun: boolean;
   distTagOverride?: string;
+  latest: boolean;
   help: boolean;
 };
 
@@ -38,6 +39,7 @@ type ReleaseContext = {
   tag: string;
   distTag: string;
   isPrerelease: boolean;
+  promoteLatest: boolean;
 };
 
 type NpmAuthConfig = {
@@ -52,6 +54,7 @@ const SEMVER_REGEX =
 export function parseReleaseArgs(argv: string[]): ReleaseCliArgs {
   const args: ReleaseCliArgs = {
     dryRun: false,
+    latest: false,
     help: false,
   };
 
@@ -65,6 +68,11 @@ export function parseReleaseArgs(argv: string[]): ReleaseCliArgs {
 
     if (token === '--dry-run') {
       args.dryRun = true;
+      continue;
+    }
+
+    if (token === '--latest') {
+      args.latest = true;
       continue;
     }
 
@@ -160,10 +168,19 @@ export function parseNpmTokenFromEnvFile(content: string): string | undefined {
 
 function usage(): string {
   return [
-    'Usage: npm run release -- [version] [--dry-run] [--dist-tag <tag>]',
+    'Usage: npm run release -- [version] [--dry-run] [--dist-tag <tag>] [--latest]',
+    '',
+    'Options:',
+    '  --dry-run       Run all preflight checks without publishing',
+    '  --dist-tag <t>  Override the npm dist-tag (default: inferred from version)',
+    '  --latest        Also promote this version to the "latest" npm dist-tag',
+    '                  and mark the GitHub release as latest. Useful for',
+    '                  prereleases that should also be the default install.',
+    '  -h, --help      Show this help message',
     '',
     'Examples:',
     '  npm run release -- 0.1.0-alpha.16',
+    '  npm run release -- 0.1.0-alpha.16 --latest',
     '  npm run release -- 0.1.0 --dist-tag latest',
     '  npm run release -- --dry-run',
     '',
@@ -226,13 +243,26 @@ function resolveReleaseContext(repoRoot: string, args: ReleaseCliArgs): ReleaseC
     throw new Error(`Invalid dist-tag: ${distTag || '(empty)'}`);
   }
 
+  const isPrerelease = version.includes('-');
+  const normalizedDistTag = distTag.toLowerCase();
+
+  if (isPrerelease && normalizedDistTag === 'latest' && !args.latest) {
+    throw new Error(
+      'For prerelease versions, use --latest to explicitly promote latest instead of --dist-tag latest.'
+    );
+  }
+
+  // Stable releases are latest by default; --latest only changes prerelease behavior.
+  const promoteLatest = args.latest && isPrerelease;
+
   return {
     repoRoot,
     packageJson,
     version,
     tag,
     distTag,
-    isPrerelease: version.includes('-'),
+    isPrerelease,
+    promoteLatest,
   };
 }
 
@@ -366,7 +396,7 @@ function upsertGithubRelease(ctx: ReleaseContext): void {
   if (releaseExists) {
     const args = ['release', 'edit', ctx.tag, '--title', ctx.tag];
     if (ctx.isPrerelease) {
-      args.push('--prerelease');
+      args.push('--prerelease', ctx.promoteLatest ? '--latest' : '--latest=false');
     } else {
       args.push('--latest');
     }
@@ -389,7 +419,7 @@ function upsertGithubRelease(ctx: ReleaseContext): void {
   ];
 
   if (ctx.isPrerelease) {
-    createArgs.push('--prerelease', '--latest=false');
+    createArgs.push('--prerelease', ctx.promoteLatest ? '--latest' : '--latest=false');
   } else {
     createArgs.push('--latest');
   }
@@ -431,11 +461,11 @@ function verifyDistTags(ctx: ReleaseContext, env: NodeJS.ProcessEnv): void {
   }
 
   const latest = distTags.latest;
-  if (ctx.distTag === 'latest' && latest !== ctx.version) {
+  if ((ctx.distTag === 'latest' || ctx.promoteLatest) && latest !== ctx.version) {
     throw new Error(`latest dist-tag mismatch: latest=${latest ?? '(missing)'}, expected ${ctx.version}`);
   }
 
-  if (ctx.distTag !== 'latest' && latest === ctx.version) {
+  if (ctx.distTag !== 'latest' && !ctx.promoteLatest && latest === ctx.version) {
     throw new Error(
       `latest dist-tag drift detected: prerelease ${ctx.version} should not become latest`
     );
@@ -467,7 +497,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
   try {
     console.log(`=== Zigrix release ${ctx.version} (${parsed.dryRun ? 'dry-run' : 'publish'}) ===`);
-    console.log(`tag=${ctx.tag} dist-tag=${ctx.distTag}`);
+    console.log(`tag=${ctx.tag} dist-tag=${ctx.distTag} promote-latest=${ctx.promoteLatest}`);
     console.log(`npm auth source=${npmAuth.source}`);
 
     assertGitReleasePreflight(ctx);
@@ -494,6 +524,15 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       env,
       inheritStdio: true,
     });
+
+    if (ctx.promoteLatest && ctx.distTag !== 'latest') {
+      console.log('--- npm dist-tag add (latest) ---');
+      runCommand('npm', ['dist-tag', 'add', `${ctx.packageJson.name}@${ctx.version}`, 'latest'], {
+        cwd: ctx.repoRoot,
+        env,
+        inheritStdio: true,
+      });
+    }
 
     console.log('--- GitHub release upsert ---');
     upsertGithubRelease(ctx);
