@@ -86,11 +86,11 @@ describe('filterAgents', () => {
     const agents: OpenClawAgent[] = [
       { id: 'main', default: true },
       { id: 'back-zig' },
-      { id: 'qa-zig' },
+      { id: 'qa-a' },
     ];
     const result = filterAgents(agents);
     expect(result).toHaveLength(2);
-    expect(result.map((a) => a.id)).toEqual(['back-zig', 'qa-zig']);
+    expect(result.map((a) => a.id)).toEqual(['back-zig', 'qa-a']);
   });
 
   it('returns empty array when only main exists', () => {
@@ -110,22 +110,22 @@ describe('registerAgents', () => {
     const config = structuredClone(defaultConfig) as any;
     config.agents = {
       registry: {},
-      orchestration: { participants: [], excluded: [], orchestratorId: 'pro-zig' },
+      orchestration: { participants: [], excluded: [], orchestratorId: 'orch-a' },
     };
 
     const agents: OpenClawAgent[] = [
       { id: 'back-zig', name: 'back-zig', identity: { theme: 'Backend Implementation Agent' } },
-      { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+      { id: 'qa-a', name: 'qa-a', identity: { theme: 'QA Agent' } },
     ];
 
     const result = registerAgents(config, agents);
-    expect(result.registered).toEqual(['back-zig', 'qa-zig']);
+    expect(result.registered).toEqual(['back-zig', 'qa-a']);
     expect(result.skipped).toHaveLength(0);
     expect(result.config.agents.registry['back-zig']).toBeDefined();
     expect(result.config.agents.registry['back-zig'].role).toBe('backend');
     expect(result.config.agents.registry['back-zig'].runtime).toBe('openclaw');
     expect(result.config.agents.orchestration.participants).toContain('back-zig');
-    expect(result.config.agents.registry['qa-zig'].role).toBe('qa');
+    expect(result.config.agents.registry['qa-a'].role).toBe('qa');
   });
 
   it('skips already-registered agents (idempotent)', () => {
@@ -140,7 +140,7 @@ describe('registerAgents', () => {
           metadata: {},
         },
       },
-      orchestration: { participants: ['back-zig'], excluded: [], orchestratorId: 'pro-zig' },
+      orchestration: { participants: ['back-zig'], excluded: [], orchestratorId: 'orch-a' },
     };
 
     const agents: OpenClawAgent[] = [
@@ -158,7 +158,7 @@ describe('registerAgents', () => {
     const config = structuredClone(defaultConfig) as any;
     config.agents = {
       registry: {},
-      orchestration: { participants: [], excluded: [], orchestratorId: 'pro-zig' },
+      orchestration: { participants: [], excluded: [], orchestratorId: 'orch-a' },
     };
 
     const agents: OpenClawAgent[] = [{ id: 'mystery-zig' }];
@@ -170,7 +170,7 @@ describe('registerAgents', () => {
     const config = structuredClone(defaultConfig) as any;
     config.agents = {
       registry: {},
-      orchestration: { participants: [], excluded: [], orchestratorId: 'pro-zig' },
+      orchestration: { participants: [], excluded: [], orchestratorId: 'orch-a' },
     };
 
     const agents: OpenClawAgent[] = [
@@ -188,13 +188,13 @@ describe('ensureOrchestratorId', () => {
     const config = structuredClone(defaultConfig) as any;
     config.agents = {
       registry: {
-        'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+        'orch-a': { label: 'orch-a', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
       },
-      orchestration: { participants: ['pro-zig'], excluded: [], orchestratorId: 'pro-zig' },
+      orchestration: { participants: ['orch-a'], excluded: [], orchestratorId: 'orch-a' },
     };
     const result = ensureOrchestratorId(config);
     expect(result.changed).toBe(false);
-    expect(result.config.agents.orchestration.orchestratorId).toBe('pro-zig');
+    expect(result.config.agents.orchestration.orchestratorId).toBe('orch-a');
   });
 
   it('auto-selects first eligible orchestrator when current is invalid', () => {
@@ -214,9 +214,9 @@ describe('ensureOrchestratorId', () => {
     const config = structuredClone(defaultConfig) as any;
     config.agents = {
       registry: {
-        'qa-zig': { label: 'qa-zig', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+        'qa-a': { label: 'qa-a', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
       },
-      orchestration: { participants: ['qa-zig'], excluded: [], orchestratorId: 'pro-zig' },
+      orchestration: { participants: ['qa-a'], excluded: [], orchestratorId: 'orch-a' },
     };
     const result = ensureOrchestratorId(config);
     expect(result.changed).toBe(false);

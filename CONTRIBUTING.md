@@ -7,8 +7,7 @@ Thanks for considering a contribution.
 - preserve machine-readable CLI contracts
 - keep destructive operations explicit and recoverable
 - prefer fewer, clearer commands over sprawling surface area
-- treat **Node/TypeScript** as the main implementation path
-- treat `legacy-python/` as reference-only unless parity work explicitly requires it
+- treat **Node/TypeScript** as the sole implementation path
 
 ## Development setup
 ```bash
@@ -46,7 +45,6 @@ node dist/index.js run examples/hello-workflow.json --json
 Good focused PRs:
 - config schema improvements
 - recovery/reset behavior improvements
-- runtime migration slices from `legacy-python/`
 - docs/quickstart/troubleshooting fixes
 - installer or release-safety improvements
 

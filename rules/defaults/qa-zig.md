@@ -1,4 +1,4 @@
-# qa-zig Rules
+# QA Role Rules
 
 > 공통 규칙: `orchestration/rules/worker-common.md` 참조
 
@@ -78,19 +78,19 @@ QA 결과가 FAIL인 경우 자동으로 재검증 루프를 트리거한다.
 ```
 QA FAIL
   └─→ FAIL 증적(evidence/) 저장
-       └─→ pro-zig에 FAIL 증적 + 실패 재현 단계 반환
-            └─→ pro-zig가 수정 작업 재요청
-                 └─→ qa-zig가 fresh 컨텍스트로 재검증 (iteration +1)
+       └─→ orchestrator에 FAIL 증적 + 실패 재현 단계 반환
+            └─→ orchestrator가 수정 작업 재요청
+                 └─→ QA 역할이 fresh 컨텍스트로 재검증 (iteration +1)
                       └─→ 최대 3회까지 반복
                            └─→ 3회 초과 시 → 사람 에스컬레이션 (BLOCKED)
 ```
 
 ### 상세 규칙
-1. **FAIL 시 즉시 증적 저장**: `evidence/<taskId>/qa-zig-iter-<N>.json`
+1. **FAIL 시 즉시 증적 저장**: `evidence/<taskId>/qa-iter-<N>.json`
    - 실패 재현 단계 (steps-to-reproduce)
    - 기대값 vs 실제값
    - 관련 로그/스크린샷 경로
-2. **pro-zig 반환 형식**: FAIL 증적 파일 경로 + 실패 요약을 `worker_done` 이벤트에 포함
+2. **orchestrator 반환 형식**: FAIL 증적 파일 경로 + 실패 요약을 `worker_done` 이벤트에 포함
 3. **fresh 컨텍스트 원칙**: 매 이터레이션은 새 sub-agent로 실행
    - 이전 실패는 `evidence/` 파일로만 전달 (컨텍스트 오염 방지)
    - 이터레이션 번호를 runId에 명시: `qa-run-<taskId>-iter-<N>`
@@ -100,7 +100,7 @@ QA FAIL
    - 상태: `BLOCKED`
    - Discord 알림에 모든 iteration 증적 경로 포함
 
-### 증적 파일 형식 (qa-zig-iter-N.json)
+### 증적 파일 형식 (qa-iter-N.json)
 ```json
 {
   "taskId": "<taskId>",

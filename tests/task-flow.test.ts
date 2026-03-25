@@ -39,20 +39,20 @@ describe('task parity flow', () => {
       title: 'Parity task',
       description: 'Check TS parity flow',
       scale: 'normal',
-      requiredAgents: ['qa-zig'],
+      requiredAgents: ['qa-a'],
     });
     updateTaskStatus(paths, task.taskId, 'IN_PROGRESS');
     const progress = recordTaskProgress(paths, { taskId: task.taskId, actor: 'zigrix', message: 'kickoff' });
     expect(progress?.event).toBe('progress_report');
 
-    const prepared = prepareWorker(paths, { taskId: task.taskId, agentId: 'qa-zig', description: 'Run QA' });
+    const prepared = prepareWorker(paths, { taskId: task.taskId, agentId: 'qa-a', description: 'Run QA' });
     expect(prepared?.ok).toBe(true);
-    const registered = registerWorker(paths, { taskId: task.taskId, agentId: 'qa-zig', sessionKey: 'agent:test:qa', runId: 'run-001' });
+    const registered = registerWorker(paths, { taskId: task.taskId, agentId: 'qa-a', sessionKey: 'agent:test:qa', runId: 'run-001' });
     expect(registered?.status).toBe('dispatched');
-    const completed = completeWorker(paths, { taskId: task.taskId, agentId: 'qa-zig', sessionKey: 'agent:test:qa', runId: 'run-001' });
+    const completed = completeWorker(paths, { taskId: task.taskId, agentId: 'qa-a', sessionKey: 'agent:test:qa', runId: 'run-001' });
     expect(completed?.allEvidenceCollected).toBe(false);
 
-    const evidence = collectEvidence(paths, { taskId: task.taskId, agentId: 'qa-zig', summary: 'QA passed' });
+    const evidence = collectEvidence(paths, { taskId: task.taskId, agentId: 'qa-a', summary: 'QA passed' });
     expect(evidence?.ok).toBe(true);
     const merged = mergeEvidence(paths, { taskId: task.taskId, requireQa: true });
     expect(merged?.complete).toBe(true);
@@ -70,8 +70,8 @@ describe('task parity flow', () => {
     const result = runPipeline(paths, {
       title: 'Pipeline task',
       description: 'Pipeline test',
-      requiredAgents: ['qa-zig'],
-      evidenceSummaries: ['qa-zig=Looks good'],
+      requiredAgents: ['qa-a'],
+      evidenceSummaries: ['qa-a=Looks good'],
       requireQa: true,
       autoReport: true,
       recordFeedback: true,

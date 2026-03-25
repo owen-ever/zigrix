@@ -9,7 +9,7 @@ describe('zigrix config schema', () => {
     const parsed = zigrixConfigSchema.parse(defaultConfig);
     expect(parsed.paths.baseDir).toContain('.zigrix');
     expect(parsed.rules.stale.defaultHours).toBe(24);
-    expect(parsed.workspace.projectsBaseDir).toBe('');
+    expect(parsed.workspace.projectsBaseDir).toContain('.zigrix');
   });
 
   it('rejects participant/excluded overlap', () => {
@@ -22,7 +22,7 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: ['qa-main'],
           excluded: ['qa-main'],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orchestrator',
         },
       },
     })).toThrow(/cannot be both participant and excluded/);
@@ -36,7 +36,7 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: ['ghost-agent'],
           excluded: [],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orchestrator',
         },
       },
     })).toThrow(/must exist in registry/);
@@ -75,11 +75,11 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: [],
           excluded: [],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orchestrator',
         },
       },
     });
-    expect(parsed.agents.orchestration.orchestratorId).toBe('pro-zig');
+    expect(parsed.agents.orchestration.orchestratorId).toBe('orchestrator');
   });
 
   it('rejects excluded orchestratorId', () => {
@@ -87,12 +87,12 @@ describe('zigrix config schema', () => {
       ...defaultConfig,
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+          'my-orch': { label: 'my-orch', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
         },
         orchestration: {
           participants: [],
-          excluded: ['pro-zig'],
-          orchestratorId: 'pro-zig',
+          excluded: ['my-orch'],
+          orchestratorId: 'my-orch',
         },
       },
     })).toThrow(/orchestratorId .* cannot be excluded/);

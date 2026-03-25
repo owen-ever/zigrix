@@ -7,7 +7,7 @@ _Last updated: 2026-03-14_
 ## What landed
 
 A first working Node/TypeScript bootstrap now exists at the **repository root**.
-The previous Python implementation has been moved under `legacy-python/` as a reference prototype.
+The previous Python implementation has been fully removed. Node/TypeScript is the sole implementation.
 
 Included in the current Node bootstrap:
 - `config validate/get/schema/set/diff/reset`
@@ -44,10 +44,6 @@ zigrix/
 │  └─ hello-workflow.json
 ├─ package.json
 ├─ tsconfig.json
-└─ legacy-python/
-   ├─ src/
-   ├─ tests/
-   └─ pyproject.toml
 ```
 
 ## Why this matters

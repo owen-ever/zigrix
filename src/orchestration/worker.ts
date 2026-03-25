@@ -7,23 +7,25 @@ import { loadTask, saveTask, type ZigrixTask } from '../state/tasks.js';
 
 export const DEFAULT_REQUIRED_AGENTS = ['orchestrator', 'qa'] as const;
 
-const DEFAULT_ORCHESTRATOR_ID = 'pro-zig';
-const DEFAULT_QA_AGENT_ID = 'qa-zig';
-
+/**
+ * Resolve default required agents from task metadata.
+ * Uses role-based lookup: the orchestratorId and qaAgentId fields
+ * from the task (or config) are the canonical source. No hardcoded agent ids.
+ */
 function resolveDefaultRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
+  const agents: string[] = [];
+
   const orchestratorId = typeof task.orchestratorId === 'string' && task.orchestratorId.trim().length > 0
-    ? task.orchestratorId
-    : DEFAULT_ORCHESTRATOR_ID;
+    ? task.orchestratorId.trim()
+    : null;
   const qaAgentId = typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0
-    ? task.qaAgentId
-    : DEFAULT_QA_AGENT_ID;
+    ? task.qaAgentId.trim()
+    : null;
 
-  const resolvedByRole: Record<(typeof DEFAULT_REQUIRED_AGENTS)[number], string> = {
-    orchestrator: orchestratorId,
-    qa: qaAgentId,
-  };
+  if (orchestratorId) agents.push(orchestratorId);
+  if (qaAgentId) agents.push(qaAgentId);
 
-  return [...new Set(DEFAULT_REQUIRED_AGENTS.map((role) => resolvedByRole[role]))];
+  return [...new Set(agents)];
 }
 
 export function resolveRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {

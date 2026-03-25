@@ -24,8 +24,8 @@ function setupOpenClawConfig(tmpRoot: string) {
     agents: {
       list: [
         { id: 'main', default: true },
-        { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
-        { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+        { id: 'orch-a', name: 'orch-a', identity: { theme: 'Orchestrator Agent' } },
+        { id: 'qa-a', name: 'qa-a', identity: { theme: 'QA Agent' } },
       ],
     },
   }));

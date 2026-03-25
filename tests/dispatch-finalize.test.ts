@@ -30,15 +30,15 @@ function makeTempSetup() {
     },
     agents: {
       registry: {
-        'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
-        'qa-zig': { label: 'qa-zig', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
-        'front-zig': { label: 'front-zig', role: 'frontend', runtime: 'openclaw', enabled: true, metadata: {} },
-        'back-zig': { label: 'back-zig', role: 'backend', runtime: 'openclaw', enabled: true, metadata: {} },
+        'orch-a': { label: 'orch-a', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+        'qa-a': { label: 'qa-a', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+        'front-a': { label: 'front-a', role: 'frontend', runtime: 'openclaw', enabled: true, metadata: {} },
+        'back-a': { label: 'back-a', role: 'backend', runtime: 'openclaw', enabled: true, metadata: {} },
       },
       orchestration: {
-        participants: ['pro-zig', 'qa-zig', 'front-zig', 'back-zig'],
+        participants: ['orch-a', 'qa-a', 'front-a', 'back-a'],
         excluded: [],
-        orchestratorId: 'pro-zig',
+        orchestratorId: 'orch-a',
       },
     },
   });
@@ -61,8 +61,8 @@ describe('dispatch and finalize', () => {
     expect(result.taskId).toBeTruthy();
     expect(result.proZigPrompt).toBeTruthy();
     expect(String(result.proZigPrompt)).toContain('zigrix task start');
-    expect(result.orchestratorId).toBe('pro-zig');
-    expect(result.qaAgentId).toBe('qa-zig');
+    expect(result.orchestratorId).toBe('orch-a');
+    expect(result.qaAgentId).toBe('qa-a');
 
     const taskId = String(result.taskId);
 
@@ -74,8 +74,8 @@ describe('dispatch and finalize', () => {
     expect(meta.requestedBy).toBe('test-user');
     expect(Array.isArray(meta.workPackages)).toBe(true);
     expect(Array.isArray(meta.executionUnits)).toBe(true);
-    expect(meta.orchestratorId).toBe('pro-zig');
-    expect(meta.qaAgentId).toBe('qa-zig');
+    expect(meta.orchestratorId).toBe('orch-a');
+    expect(meta.qaAgentId).toBe('qa-a');
 
     // Verify spec.md written
     const specFile = path.join(paths.tasksDir, `${taskId}.md`);
@@ -99,13 +99,13 @@ describe('dispatch and finalize', () => {
 
     // Simulate work
     updateTaskStatus(paths, taskId, 'IN_PROGRESS');
-    registerWorker(paths, { taskId, agentId: 'pro-zig', sessionKey: 'agent:test:pro', runId: 'r1' });
-    completeWorker(paths, { taskId, agentId: 'pro-zig', sessionKey: 'agent:test:pro', runId: 'r1' });
-    collectEvidence(paths, { taskId, agentId: 'pro-zig', summary: 'orchestrated' });
+    registerWorker(paths, { taskId, agentId: 'orch-a', sessionKey: 'agent:test:orch', runId: 'r1' });
+    completeWorker(paths, { taskId, agentId: 'orch-a', sessionKey: 'agent:test:orch', runId: 'r1' });
+    collectEvidence(paths, { taskId, agentId: 'orch-a', summary: 'orchestrated' });
 
-    registerWorker(paths, { taskId, agentId: 'qa-zig', sessionKey: 'agent:test:qa', runId: 'r2' });
-    completeWorker(paths, { taskId, agentId: 'qa-zig', sessionKey: 'agent:test:qa', runId: 'r2' });
-    collectEvidence(paths, { taskId, agentId: 'qa-zig', summary: 'QA passed' });
+    registerWorker(paths, { taskId, agentId: 'qa-a', sessionKey: 'agent:test:qa', runId: 'r2' });
+    completeWorker(paths, { taskId, agentId: 'qa-a', sessionKey: 'agent:test:qa', runId: 'r2' });
+    collectEvidence(paths, { taskId, agentId: 'qa-a', summary: 'QA passed' });
 
     const result = finalizeTask(paths, { taskId, autoReport: true }) as Record<string, unknown>;
     expect(result.ok).toBe(true);
@@ -126,8 +126,8 @@ describe('dispatch and finalize', () => {
     const taskId = String(dispatched.taskId);
 
     updateTaskStatus(paths, taskId, 'IN_PROGRESS');
-    // Only pro-zig evidence, no qa-zig
-    collectEvidence(paths, { taskId, agentId: 'pro-zig', summary: 'done' });
+    // Only orch-a evidence, no qa-a
+    collectEvidence(paths, { taskId, agentId: 'orch-a', summary: 'done' });
 
     const result = finalizeTask(paths, { taskId, autoReport: true }) as Record<string, unknown>;
     expect(result.ok).toBe(true);
@@ -185,7 +185,7 @@ describe('dispatch and finalize', () => {
     expect(orchUnits.length).toBeGreaterThan(0);
     expect(qaUnits.length).toBeGreaterThan(0);
 
-    // Verify dynamic QA evidence path (not hardcoded qa-zig)
+    // Verify dynamic QA evidence path (not hardcoded)
     updateTaskStatus(paths, taskId, 'IN_PROGRESS');
     registerWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:test:custom-orch', runId: 'r1' });
     completeWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:test:custom-orch', runId: 'r1' });

@@ -91,9 +91,9 @@ describe('configure', () => {
       agents: {
         list: [
           { id: 'main', default: true },
-          { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
+          { id: 'orch-a', name: 'orch-a', identity: { theme: 'Orchestrator Agent' } },
           { id: 'front-zig', name: 'front-zig', identity: { theme: 'Frontend Agent' } },
-          { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+          { id: 'qa-a', name: 'qa-a', identity: { theme: 'QA Agent' } },
         ],
       },
     }));
@@ -105,8 +105,8 @@ describe('configure', () => {
     });
     expect(result.ok).toBe(true);
     expect(result.agentsRegistered).toContain('front-zig');
-    expect(result.agentsRegistered).toContain('qa-zig');
-    expect(result.agentsRegistered).toContain('pro-zig');
+    expect(result.agentsRegistered).toContain('qa-a');
+    expect(result.agentsRegistered).toContain('orch-a');
     // main should not be registered
     expect(result.agentsRegistered).not.toContain('main');
   });

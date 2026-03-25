@@ -1,10 +1,12 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
 import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
+import { resolveAbsolutePath, resolveDefaultWorkspaceDir } from './config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { ensureBaseState, resolvePaths, type ZigrixPaths } from './state/paths.js';
@@ -48,6 +50,7 @@ export interface OnboardResult {
   action: string;
   baseDir: string;
   configPath: string;
+  workspaceBaseDir: string;
   paths: ZigrixPaths;
   openclawDetected: boolean;
   openclawHome: string;
@@ -73,6 +76,7 @@ export interface RunOnboardOptions {
   yes?: boolean;
   projectDir?: string;
   orchestratorId?: string;
+  workspaceDir?: string;
   silent?: boolean;
 }
 
@@ -827,6 +831,31 @@ export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string)
   return { config: next, changed: true };
 }
 
+// ─── Workspace path selection ──────────────────────────────────────────────────
+
+/**
+ * Prompt user for workspace directory path.
+ * Shows the default (~/.zigrix/workspace) and allows override.
+ * Always returns an absolute path (~ is expanded).
+ */
+export async function promptWorkspacePath(defaultPath: string): Promise<string> {
+  try {
+    const { input } = await import('@inquirer/prompts');
+
+    const answer = await input({
+      message: `Workspace directory (projects will be stored here):`,
+      default: defaultPath,
+    });
+
+    const trimmed = answer.trim();
+    return resolveAbsolutePath(trimmed || defaultPath);
+  } catch {
+    // Non-interactive fallback
+    console.log(`ℹ️  Non-interactive mode — using default workspace: ${defaultPath}`);
+    return defaultPath;
+  }
+}
+
 // ─── Ensure config (idempotent) ───────────────────────────────────────────────
 
 function ensureConfig(): { configPath: string; isNew: boolean } {
@@ -850,7 +879,33 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
 
   // 1. Ensure ~/.zigrix base state (idempotent)
   const { configPath } = ensureConfig();
-  const loaded = loadConfig({ configPath });
+  let loaded = loadConfig({ configPath });
+
+  // 1b. Workspace path selection
+  const defaultWorkspace = resolveDefaultWorkspaceDir(loaded.config.paths.baseDir);
+  let workspaceDir: string;
+
+  if (options.workspaceDir) {
+    workspaceDir = resolveAbsolutePath(options.workspaceDir);
+    log(`📁 Workspace directory set to: ${workspaceDir}`);
+  } else if (options.yes) {
+    workspaceDir = loaded.config.workspace.projectsBaseDir || defaultWorkspace;
+    log(`📁 Using workspace directory: ${workspaceDir} (--yes mode)`);
+  } else {
+    workspaceDir = await promptWorkspacePath(defaultWorkspace);
+    log(`📁 Workspace directory: ${workspaceDir}`);
+  }
+
+  // Persist workspace path if changed (always as absolute path)
+  if (loaded.config.workspace.projectsBaseDir !== workspaceDir) {
+    loaded.config.workspace.projectsBaseDir = workspaceDir;
+    writeConfigFile(configPath, loaded.config);
+    loaded = loadConfig({ configPath });
+  }
+
+  // Ensure workspace directory exists
+  fs.mkdirSync(workspaceDir, { recursive: true });
+
   const paths = resolvePaths(loaded.config);
   ensureBaseState(paths);
   rebuildIndex(paths);
@@ -1045,6 +1100,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     action: 'onboard',
     baseDir: paths.baseDir,
     configPath,
+    workspaceBaseDir: workspaceDir,
     paths,
     openclawDetected: openclawExists,
     openclawHome,

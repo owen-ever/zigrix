@@ -307,11 +307,11 @@ function readAgentIds(zigrixHome: string): string[] {
   }
 
   if (isObject(agents)) {
-    // New config structure: { registry: { "pro-zig": {...}, ... }, orchestration: {...} }
+    // Config structure: { registry: { "<agent-id>": {...}, ... }, orchestration: {...} }
     if (isObject(agents.registry)) {
       return Object.keys(agents.registry);
     }
-    // Legacy flat map: { "pro-zig": {...}, "back-zig": {...} }
+    // Legacy flat map: { "<agent-id>": {...}, ... }
     return Object.keys(agents);
   }
 
@@ -696,7 +696,8 @@ function parseTaskMetaSessionMap(
     if (sessionId) metaSessionIdMap.set(normalizedSessionKey, sessionId);
   };
 
-  bindSession(meta.orchestratorSessionKey, 'pro-zig', toNonEmptyString(meta.orchestratorSessionId));
+  const orchestratorId = toNonEmptyString(meta.orchestratorId) || 'orchestrator';
+  bindSession(meta.orchestratorSessionKey, orchestratorId, toNonEmptyString(meta.orchestratorSessionId));
 
   if (isObject(meta.workerSessions)) {
     for (const [agentId, raw] of Object.entries(meta.workerSessions)) {
@@ -945,8 +946,9 @@ function extractMessageText(content: unknown): string {
     .join('\n');
 }
 
-function isDuplicateWorkerCompletionAnnounce(sessionKey: string, message: LooseRecord): boolean {
-  if (getAgentFromSessionKey(sessionKey) !== 'pro-zig') return false;
+function isDuplicateWorkerCompletionAnnounce(sessionKey: string, message: LooseRecord, orchestratorId?: string): boolean {
+  const orchId = orchestratorId || 'orchestrator';
+  if (getAgentFromSessionKey(sessionKey) !== orchId) return false;
   const role = toNonEmptyString(message.role);
   const text = extractMessageText(message.content).trim();
   if (!text) return false;

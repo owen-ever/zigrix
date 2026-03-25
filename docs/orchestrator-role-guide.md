@@ -84,17 +84,17 @@ zigrix task dispatch \
 {
   "ok": true,
   "taskId": "ZIG-20260319-001",
-  "orchestratorId": "pro-zig",
-  "qaAgentId": "qa-zig",
-  "baselineRequiredAgents": ["pro-zig", "qa-zig"],
-  "candidateAgents": ["front-zig", "back-zig"],
+  "orchestratorId": "my-orchestrator",
+  "qaAgentId": "my-qa",
+  "baselineRequiredAgents": ["my-orchestrator", "my-qa"],
+  "candidateAgents": ["my-frontend", "my-backend"],
   "requiredRoles": ["orchestrator", "qa"],
   "optionalRoles": ["frontend", "backend"],
   "roleAgentMap": {
-    "orchestrator": ["pro-zig"],
-    "qa": ["qa-zig"],
-    "frontend": ["front-zig"],
-    "backend": ["back-zig"]
+    "orchestrator": ["my-orchestrator"],
+    "qa": ["my-qa"],
+    "frontend": ["my-frontend"],
+    "backend": ["my-backend"]
   }
 }
 ```
@@ -111,8 +111,8 @@ zigrix task dispatch \
 
 ## FAQ
 
-### Q: 기존에 하드코딩된 `pro-zig` / `qa-zig`는 어떻게 되나?
-A: 기본값으로 남아 있지만, 설정으로 오버라이드 가능. `orchestratorId`를 변경하면 실행 유닛의 owner, 부트 프롬프트, 필수 에이전트 목록이 모두 연동 변경된다.
+### Q: 에이전트 id에 제한이 있나?
+A: 없다. 어떤 id든 사용 가능하며, 역할(role)만 표준 6종 중 하나를 지정하면 된다. `orchestratorId`를 변경하면 실행 유닛의 owner, 부트 프롬프트, 필수 에이전트 목록이 모두 연동 변경된다.
 
 ### Q: 에이전트 하나가 여러 역할을 가질 수 있나?
 A: 현재는 에이전트당 하나의 역할만 지원. 한 에이전트가 여러 역할을 수행해야 하면 별도 에이전트로 등록.

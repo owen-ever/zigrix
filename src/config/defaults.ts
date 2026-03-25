@@ -1,7 +1,28 @@
 import path from 'node:path';
 import os from 'node:os';
 
-export const ZIGRIX_HOME = process.env.ZIGRIX_HOME ?? path.join(os.homedir(), '.zigrix');
+function expandTilde(input: string): string {
+  const homeDir = os.homedir();
+  if (!input) return homeDir;
+  if (input === '~') return homeDir;
+  if (input.startsWith('~/')) return path.join(homeDir, input.slice(2));
+  return input;
+}
+
+export function resolveAbsolutePath(input: string): string {
+  return path.resolve(expandTilde(input));
+}
+
+export function resolveZigrixHome(): string {
+  const configuredHome = process.env.ZIGRIX_HOME?.trim();
+  return resolveAbsolutePath(configuredHome && configuredHome.length > 0 ? configuredHome : path.join(os.homedir(), '.zigrix'));
+}
+
+export function resolveDefaultWorkspaceDir(baseDir = resolveZigrixHome()): string {
+  return path.join(baseDir, 'workspace');
+}
+
+export const ZIGRIX_HOME = resolveZigrixHome();
 
 export const defaultConfig = {
   paths: {
@@ -15,14 +36,14 @@ export const defaultConfig = {
     rulesDir: path.join(ZIGRIX_HOME, 'rules'),
   },
   workspace: {
-    projectsBaseDir: '',
+    projectsBaseDir: resolveDefaultWorkspaceDir(ZIGRIX_HOME),
   },
   agents: {
     registry: {},
     orchestration: {
       participants: [],
       excluded: [],
-      orchestratorId: 'pro-zig',
+      orchestratorId: 'orchestrator',
     },
   },
   rules: {

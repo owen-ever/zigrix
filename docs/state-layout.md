@@ -13,7 +13,7 @@
 │     ├─ <agent>.json
 │     └─ _merged.json
 ├─ rules/
-│  ├─ pro-zig.md
+│  ├─ orchestrator.md
 │  ├─ front-zig.md
 │  └─ ...
 ├─ runs/

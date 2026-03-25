@@ -31,7 +31,7 @@ All notable changes to Zigrix will be documented in this file.
 
 ### Changed
 - Promoted the Node/TypeScript implementation to the repository root
-- Moved the previous Python CLI into `legacy-python/` as a reference prototype
+- Removed the previous Python prototype entirely (legacy-python/ deleted)
 - Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
 - All documentation updated from per-project `.zigrix/` to global `~/.zigrix/` model
 - Release smoke script updated for onboard/global-base CLI surface

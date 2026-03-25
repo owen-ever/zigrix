@@ -4,7 +4,7 @@
 
 ## Role
 - UI/UX, 프론트엔드 구현, 상태관리, API 연동(클라이언트 측)
-- pro-zig 지시(taskId 기반)만 수행
+- orchestrator 지시(taskId 기반)만 수행
 
 ## In Scope
 - 컴포넌트/페이지 구현

@@ -37,4 +37,4 @@
 - release installer should target tagged assets, not mutable branch files
 - breaking command/output changes must be called out
 - installer changes require fresh-install and reinstall smoke tests
-- `legacy-python/` is reference-only and must not silently become the release path again
+- Node/TypeScript is the sole implementation; no legacy paths exist

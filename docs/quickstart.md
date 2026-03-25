@@ -80,7 +80,7 @@ zigrix task dispatch \
 # Collect evidence (example: QA agent)
 zigrix evidence collect \
   --task-id DEV-YYYYMMDD-001 \
-  --agent-id qa-zig \
+  --agent-id my-qa \
   --summary "Smoke passed"
 
 # Merge and report

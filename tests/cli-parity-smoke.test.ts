@@ -18,8 +18,8 @@ function setupOpenClawConfig(tmpBase: string) {
     agents: {
       list: [
         { id: 'main', default: true },
-        { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
-        { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+        { id: 'orch-a', name: 'orch-a', identity: { theme: 'Orchestrator Agent' } },
+        { id: 'qa-a', name: 'qa-a', identity: { theme: 'QA Agent' } },
       ],
     },
   }));
@@ -34,9 +34,9 @@ describe('cli parity smoke', () => {
     const env = { ...process.env, ZIGRIX_HOME: zigrixHome, OPENCLAW_HOME: openclawHome };
 
     execFileSync(nodeBin, ['dist/index.js', 'onboard', '--yes'], { cwd: repoRoot, env });
-    const createRaw = execFileSync(nodeBin, ['dist/index.js', 'task', 'create', '--title', 'CLI task', '--description', 'smoke', '--required-agent', 'qa-zig', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
+    const createRaw = execFileSync(nodeBin, ['dist/index.js', 'task', 'create', '--title', 'CLI task', '--description', 'smoke', '--required-agent', 'qa-a', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
     const created = JSON.parse(createRaw) as { taskId: string };
-    execFileSync(nodeBin, ['dist/index.js', 'evidence', 'collect', '--task-id', created.taskId, '--agent-id', 'qa-zig', '--summary', 'done'], { cwd: repoRoot, env });
+    execFileSync(nodeBin, ['dist/index.js', 'evidence', 'collect', '--task-id', created.taskId, '--agent-id', 'qa-a', '--summary', 'done'], { cwd: repoRoot, env });
     const mergedRaw = execFileSync(nodeBin, ['dist/index.js', 'evidence', 'merge', '--task-id', created.taskId, '--require-qa', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
     const merged = JSON.parse(mergedRaw) as { complete: boolean };
     expect(merged.complete).toBe(true);

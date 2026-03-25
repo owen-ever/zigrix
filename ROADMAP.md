@@ -44,5 +44,4 @@ Zigrix는 아래 조건을 만족할 때 `10/10 open-source CLI`로 본다.
 - `docs/implementation-bootstrap-node.md`
 
 구조 원칙:
-- repository root = **Node/TypeScript main implementation**
-- `legacy-python/` = **reference prototype only**
+- repository root = **Node/TypeScript sole implementation**

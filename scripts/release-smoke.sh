@@ -23,7 +23,7 @@ TASK_ID="$(echo "$TASK_RAW" | node -e "process.stdin.setEncoding('utf8');let d='
 echo "  taskId=$TASK_ID"
 
 echo "5. evidence collect"
-node dist/index.js evidence collect --task-id "$TASK_ID" --agent-id qa-zig --summary "smoke passed" --base-dir "$ZIGRIX_HOME" --json
+node dist/index.js evidence collect --task-id "$TASK_ID" --agent-id smoke-qa --summary "smoke passed" --base-dir "$ZIGRIX_HOME" --json
 
 echo "6. evidence merge"
 node dist/index.js evidence merge --task-id "$TASK_ID" --require-qa --base-dir "$ZIGRIX_HOME" --json

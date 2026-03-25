@@ -16,13 +16,13 @@ function createHome() {
   const config = {
     agents: {
       registry: {
-        'pro-zig': { label: 'pro-zig', role: 'orchestrator' },
+        'orch-a': { label: 'orch-a', role: 'orchestrator' },
         'back-zig': { label: 'back-zig', role: 'backend' },
-        'qa-zig': { label: 'qa-zig', role: 'qa' },
+        'qa-a': { label: 'qa-a', role: 'qa' },
       },
       orchestration: {
-        participants: ['pro-zig', 'back-zig', 'qa-zig'],
-        orchestratorId: 'pro-zig',
+        participants: ['orch-a', 'back-zig', 'qa-a'],
+        orchestratorId: 'orch-a',
       },
     },
   };
@@ -109,14 +109,14 @@ describe('dashboard completed-task behavior regressions', () => {
         ts: '2026-03-25T01:00:00.000Z',
         event: 'task_created',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
         payload: { title: 'Completed task with deleted session', scale: 'normal' },
       },
       {
         ts: '2026-03-25T01:30:00.000Z',
         event: 'reported',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
       },
     ]);
 
@@ -152,14 +152,14 @@ describe('dashboard completed-task behavior regressions', () => {
         ts: '2026-03-25T02:00:00.000Z',
         event: 'task_created',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
         payload: { title: 'Ephemeral title', scale: 'simple' },
       },
       {
         ts: '2026-03-25T02:30:00.000Z',
         event: 'reported',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
       },
     ]);
 
@@ -195,7 +195,7 @@ describe('dashboard completed-task behavior regressions', () => {
         ts: '2026-03-25T03:00:00.000Z',
         event: 'task_created',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
         payload: { title: 'Scale fallback task', scale: 'large' },
       },
       {
@@ -208,7 +208,7 @@ describe('dashboard completed-task behavior regressions', () => {
         ts: '2026-03-25T03:20:00.000Z',
         event: 'reported',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
       },
     ]);
 
@@ -235,7 +235,7 @@ describe('dashboard completed-task behavior regressions', () => {
     const fallbackSessionId = 'fallback-session';
     const missingSessionId = 'missing-session';
     const fallbackSessionKey = `agent:back-zig:subagent:${fallbackSessionId}`;
-    const missingSessionKey = `agent:qa-zig:subagent:${missingSessionId}`;
+    const missingSessionKey = `agent:qa-a:subagent:${missingSessionId}`;
 
     writeDeletedSession(home.agentsDir, 'back-zig', fallbackSessionId, '2026-03-25T04:00:00Z', [
       {
@@ -248,7 +248,7 @@ describe('dashboard completed-task behavior regressions', () => {
       },
     ]);
 
-    const qaSessionsDir = path.join(home.agentsDir, 'qa-zig', 'sessions');
+    const qaSessionsDir = path.join(home.agentsDir, 'qa-a', 'sessions');
     fs.mkdirSync(qaSessionsDir, { recursive: true });
     fs.writeFileSync(path.join(qaSessionsDir, 'sessions.json'), '{}');
 
@@ -258,7 +258,7 @@ describe('dashboard completed-task behavior regressions', () => {
       status: 'REPORTED',
       workerSessions: {
         'back-zig': { sessionKey: fallbackSessionKey, sessionId: null, status: 'done' },
-        'qa-zig': { sessionKey: missingSessionKey, sessionId: null, status: 'done' },
+        'qa-a': { sessionKey: missingSessionKey, sessionId: null, status: 'done' },
       },
     });
 
@@ -267,14 +267,14 @@ describe('dashboard completed-task behavior regressions', () => {
         ts: '2026-03-25T04:00:00.000Z',
         event: 'task_created',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
         payload: { title: 'Mixed fallback task', scale: 'normal' },
       },
       {
         ts: '2026-03-25T04:20:00.000Z',
         event: 'reported',
         taskId,
-        actor: 'pro-zig',
+        actor: 'orch-a',
       },
     ]);
 

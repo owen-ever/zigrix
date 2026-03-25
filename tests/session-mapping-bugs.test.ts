@@ -30,14 +30,14 @@ describe('registerWorker sessionId from sessionKey', () => {
       },
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
-          'qa-zig': { label: 'qa-zig', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+          'orch-a': { label: 'orch-a', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+          'qa-a': { label: 'qa-a', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
           'back-zig': { label: 'back-zig', role: 'backend', runtime: 'openclaw', enabled: true, metadata: {} },
         },
         orchestration: {
-          participants: ['pro-zig', 'qa-zig', 'back-zig'],
+          participants: ['orch-a', 'qa-a', 'back-zig'],
           excluded: [],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orch-a',
         },
       },
     });
@@ -161,13 +161,13 @@ describe('createZigrixStore: readAgentIds with nested registry', () => {
     const config = {
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator' },
+          'orch-a': { label: 'orch-a', role: 'orchestrator' },
           'back-zig': { label: 'back-zig', role: 'backend' },
-          'qa-zig': { label: 'qa-zig', role: 'qa' },
+          'qa-a': { label: 'qa-a', role: 'qa' },
         },
         orchestration: {
-          participants: ['pro-zig', 'back-zig', 'qa-zig'],
-          orchestratorId: 'pro-zig',
+          participants: ['orch-a', 'back-zig', 'qa-a'],
+          orchestratorId: 'orch-a',
         },
       },
     };
@@ -194,7 +194,7 @@ describe('createZigrixStore: readAgentIds with nested registry', () => {
   it('reads agent IDs from flat agents map (legacy config structure)', async () => {
     const config = {
       agents: {
-        'pro-zig': { label: 'pro-zig', role: 'orchestrator' },
+        'orch-a': { label: 'orch-a', role: 'orchestrator' },
         'back-zig': { label: 'back-zig', role: 'backend' },
       },
     };
@@ -244,7 +244,7 @@ describe('resolveSessionIdMap: deleted session file fallback', () => {
         registry: {
           [agentId]: { label: agentId, role: 'backend' },
         },
-        orchestration: { participants: [agentId], orchestratorId: 'pro-zig' },
+        orchestration: { participants: [agentId], orchestratorId: 'orch-a' },
       },
     };
     fs.writeFileSync(
@@ -305,7 +305,7 @@ describe('resolveSessionIdMap: deleted session file fallback', () => {
   });
 
   it('resolves sessionId from active session file as well', async () => {
-    const agentId = 'pro-zig';
+    const agentId = 'orch-a';
     const sessionId = 'active-sess-xyz';
     const sessionKey = `agent:${agentId}:subagent:${sessionId}`;
 

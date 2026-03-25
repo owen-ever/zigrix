@@ -9,16 +9,17 @@ import { defaultConfig } from '../src/config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from '../src/config/load.js';
 
 function makeConfigWithOrchestrator() {
-  // Add pro-zig as orchestrator first so orchestratorId validation passes
+  // Add orch-a as orchestrator first so orchestratorId validation passes
   let config = structuredClone(defaultConfig);
-  config.agents.registry['pro-zig'] = {
-    label: 'pro-zig',
+  config.agents.registry['orch-a'] = {
+    label: 'orch-a',
     role: 'orchestrator',
     runtime: 'openclaw',
     enabled: true,
     metadata: {},
   };
-  config.agents.orchestration.participants.push('pro-zig');
+  config.agents.orchestration.participants.push('orch-a');
+  config.agents.orchestration.orchestratorId = 'orch-a';
   return config;
 }
 
@@ -81,7 +82,7 @@ describe('agent registry mutations', () => {
 
     // First add an orchestrator so orchestratorId validation passes
     let next = addAgent(loaded.config, {
-      id: 'pro-zig',
+      id: 'orch-a',
       role: 'orchestrator',
       runtime: 'openclaw-session',
       include: true,

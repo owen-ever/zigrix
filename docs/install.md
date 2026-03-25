@@ -88,11 +88,6 @@ zigrix configure --section agents   # just agents
 zigrix configure --section skills   # just skills
 ```
 
-## Legacy Python note
-
-The previous Python implementation remains under `legacy-python/` for migration reference only.
-It is no longer the default install path.
-
 ## Future release install path
 
 Primary release target is GitHub Releases plus `install.sh`, with `npm install -g zigrix` as the secondary public install path once onboarding and release flow stabilize.

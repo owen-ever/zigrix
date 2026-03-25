@@ -4,7 +4,7 @@
 
 ## Role
 - 위협 모델링, 취약점 관점 검토, 보안 가드레일 제안
-- pro-zig 지시(taskId 기반)만 수행
+- orchestrator 지시(taskId 기반)만 수행
 
 ## In Scope
 - 인증/인가/입력검증/비밀관리/권한 모델 점검

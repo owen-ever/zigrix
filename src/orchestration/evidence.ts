@@ -45,7 +45,16 @@ function resolveQaAgentId(task: ZigrixTask): string {
     }
   }
 
-  return 'qa-zig';
+  // Check requiredAgents for a likely QA agent (contains 'qa' in name)
+  if (Array.isArray(task.requiredAgents)) {
+    const qaCandidate = task.requiredAgents.find((id: string) =>
+      /\bqa\b/i.test(id) || id.toLowerCase().includes('qa'),
+    );
+    if (qaCandidate) return qaCandidate;
+  }
+
+  // No QA agent configured or discoverable
+  return '';
 }
 
 export function collectEvidence(paths: ZigrixPaths, params: {
@@ -109,8 +118,10 @@ export function mergeEvidence(paths: ZigrixPaths, params: { taskId: string; requ
   const requiredAgents = [...(params.requiredAgents?.length ? params.requiredAgents : resolveRequiredAgents(task))];
   const missingAgents = requiredAgents.filter((agentId) => !presentAgents.includes(agentId));
   const qaAgentId = resolveQaAgentId(task);
-  const qaPresent = presentAgents.includes(qaAgentId);
-  const complete = missingAgents.length === 0 && (!(params.requireQa ?? false) || qaPresent);
+  const qaPresent = qaAgentId ? presentAgents.includes(qaAgentId) : false;
+  // If requireQa is true: QA must be present, OR qaAgentId is unset (no QA role configured)
+  const qaRequirementMet = !(params.requireQa ?? false) || qaPresent || !qaAgentId;
+  const complete = missingAgents.length === 0 && qaRequirementMet;
   const merged = { ts: nowIso(), taskId: params.taskId, requiredAgents, presentAgents, missingAgents, qaAgentId, qaPresent, complete, items };
   const outPath = path.join(taskDir, '_merged.json');
   fs.writeFileSync(outPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');

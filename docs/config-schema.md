@@ -53,15 +53,15 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 {
   "agents": {
     "registry": {
-      "pro-zig": {
-        "label": "pro-zig",
+      "my-orchestrator": {
+        "label": "my-orchestrator",
         "role": "orchestrator",
         "runtime": "openclaw",
         "enabled": true,
         "metadata": {}
       },
-      "qa-zig": {
-        "label": "qa-zig",
+      "my-qa": {
+        "label": "my-qa",
         "role": "qa",
         "runtime": "openclaw",
         "enabled": true,
@@ -69,9 +69,9 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
       }
     },
     "orchestration": {
-      "participants": ["pro-zig", "qa-zig"],
+      "participants": ["my-orchestrator", "my-qa"],
       "excluded": [],
-      "orchestratorId": "pro-zig"
+      "orchestratorId": "my-orchestrator"
     }
   }
 }
@@ -95,7 +95,7 @@ Role values are normalized automatically. Aliases like `"infra"` become `"system
 - `orchestratorId`: the agent id that acts as orchestrator for dispatched tasks
 - Must exist in registry when any orchestrator-role agent is registered
 - Cannot be in `excluded` list
-- Default: `"pro-zig"`
+- Default: `"orchestrator"` (resolved dynamically from registry)
 
 ### Registry rules
 - registry: all known agents (each with a standard role)

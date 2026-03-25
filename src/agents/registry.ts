@@ -67,6 +67,12 @@ export function addAgent(config: ZigrixConfig, params: {
     next.agents.orchestration.excluded = next.agents.orchestration.excluded.filter((item) => item !== params.id);
   }
 
+  // Auto-update orchestratorId when adding the first orchestrator-role agent
+  // and the current orchestratorId doesn't exist in registry
+  if (normalizedRole === 'orchestrator' && !next.agents.registry[next.agents.orchestration.orchestratorId]) {
+    next.agents.orchestration.orchestratorId = params.id;
+  }
+
   return {
     config: zigrixConfigSchema.parse(next),
     changed: true,
