@@ -1,11 +1,13 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
 import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
+import { expandUserPath, resolveDefaultWorkspaceBaseDir } from './config/path-utils.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { ensureBaseState, resolvePaths, type ZigrixPaths } from './state/paths.js';
 import { rebuildIndex } from './state/tasks.js';
@@ -47,6 +49,8 @@ export interface OnboardResult {
   ok: boolean;
   action: string;
   baseDir: string;
+  workspaceBaseDir: string;
+  workspaceChanged: boolean;
   configPath: string;
   paths: ZigrixPaths;
   openclawDetected: boolean;
@@ -72,6 +76,7 @@ export interface OnboardResult {
 export interface RunOnboardOptions {
   yes?: boolean;
   projectDir?: string;
+  projectsBaseDir?: string;
   orchestratorId?: string;
   silent?: boolean;
 }
@@ -80,8 +85,8 @@ export interface RunOnboardOptions {
 
 export function detectOpenClawHome(): string {
   return process.env.OPENCLAW_HOME
-    ? path.resolve(process.env.OPENCLAW_HOME)
-    : path.join(process.env.HOME ?? '~', '.openclaw');
+    ? expandUserPath(process.env.OPENCLAW_HOME)
+    : path.join(os.homedir(), '.openclaw');
 }
 
 export function loadOpenClawConfig(openclawHome: string): OpenClawConfig | null {
@@ -115,7 +120,7 @@ export function resolveOpenClawBin(openclawHome?: string): string | null {
   }
 
   // Strategy 2: nvm/volta/fnm managed global bin dirs
-  const home = process.env.HOME ?? '';
+  const home = os.homedir();
   const nodeVersion = process.versions.node;
   const majorMinorPatch = nodeVersion; // e.g., "25.5.0"
   const nvmCandidate = path.join(home, '.nvm', 'versions', 'node', `v${majorMinorPatch}`, 'bin', 'openclaw');
@@ -350,7 +355,7 @@ export function findSystemBinDir(): string | null {
  * or falls back to ~/.local/bin (creating it if needed).
  */
 export function findUserBinDir(): string {
-  const home = process.env.HOME ?? '~';
+  const home = os.homedir();
   const candidates = [
     path.join(home, '.local', 'bin'),
   ];
@@ -633,7 +638,7 @@ export function resolveSkillsDir(): string | null {
 
 /**
  * Register zigrix skill packs into OpenClaw's skills directory.
- * Creates symlinks from ~/.openclaw/skills/<skill-name> → zigrix/skills/<skill-name>.
+ * Creates symlinks under <openclawHome>/skills/<skill-name> → zigrix/skills/<skill-name>.
  * Idempotent: skips skills that already exist (unless they point elsewhere).
  */
 export function registerSkills(openclawHome: string): SkillRegistrationResult {
@@ -773,6 +778,26 @@ export async function promptAgentRoleAssignments(
   }
 }
 
+function resolveWorkspaceBaseDirInput(input?: string): string {
+  if (typeof input === 'string' && input.trim().length > 0) {
+    return expandUserPath(input);
+  }
+  return resolveDefaultWorkspaceBaseDir();
+}
+
+export async function promptWorkspaceBaseDir(defaultValue: string): Promise<string> {
+  try {
+    const { input } = await import('@inquirer/prompts');
+    const value = await input({
+      message: 'Workspace directory for projects (absolute or ~/.. path):',
+      default: defaultValue,
+    });
+    return resolveWorkspaceBaseDirInput(value);
+  } catch {
+    return resolveWorkspaceBaseDirInput(defaultValue);
+  }
+}
+
 export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string): {
   config: ZigrixConfig;
   changed: boolean;
@@ -794,7 +819,8 @@ export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string)
     .map(([agentId]) => agentId)
     .sort();
 
-  const requested = preferredId?.trim();
+  const requestedRaw = preferredId?.trim();
+  const requested = requestedRaw === 'auto' ? undefined : requestedRaw;
   const current = next.agents.orchestration.orchestratorId;
 
   if (requested) {
@@ -848,10 +874,32 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     if (!silent) console.log(msg);
   };
 
-  // 1. Ensure ~/.zigrix base state (idempotent)
+  // 1. Ensure base state (idempotent)
   const { configPath } = ensureConfig();
   const loaded = loadConfig({ configPath });
-  const paths = resolvePaths(loaded.config);
+  let currentConfig = structuredClone(loaded.config);
+  let configDirty = false;
+
+  const defaultWorkspaceBaseDir = resolveDefaultWorkspaceBaseDir();
+  const workspaceInputDefault = currentConfig.workspace.projectsBaseDir || defaultWorkspaceBaseDir;
+
+  let resolvedWorkspaceBaseDir = resolveWorkspaceBaseDirInput(
+    options.projectsBaseDir ?? workspaceInputDefault,
+  );
+
+  if (!options.projectsBaseDir && !options.yes) {
+    resolvedWorkspaceBaseDir = await promptWorkspaceBaseDir(workspaceInputDefault);
+  }
+
+  let workspaceChanged = false;
+  if (currentConfig.workspace.projectsBaseDir !== resolvedWorkspaceBaseDir) {
+    currentConfig.workspace.projectsBaseDir = resolvedWorkspaceBaseDir;
+    workspaceChanged = true;
+    configDirty = true;
+    log(`✅ Workspace projects base dir set to: ${resolvedWorkspaceBaseDir}`);
+  }
+
+  const paths = resolvePaths(currentConfig);
   ensureBaseState(paths);
   rebuildIndex(paths);
 
@@ -892,7 +940,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       selectedAgents = await promptAgentSelection(allAgents);
     }
 
-    let nextConfig = loaded.config;
+    let nextConfig = currentConfig;
 
     if (selectedAgents.length > 0) {
       const roleAssignments = options.yes
@@ -919,8 +967,9 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       log(`⚠️  ${orchResult.warning}`);
     }
 
+    currentConfig = nextConfig;
     if (agentsRegistered.length > 0 || orchResult.changed) {
-      writeConfigFile(configPath, nextConfig);
+      configDirty = true;
       if (orchResult.changed) {
         log(`✅ Orchestrator set to: ${nextConfig.agents.orchestration.orchestratorId}`);
       }
@@ -928,13 +977,14 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   }
 
   if (!openclawConfig && options.orchestratorId) {
-    const orchResult = ensureOrchestratorId(loaded.config, options.orchestratorId);
+    const orchResult = ensureOrchestratorId(currentConfig, options.orchestratorId);
+    currentConfig = orchResult.config;
     if (orchResult.warning) {
       warnings.push(orchResult.warning);
       log(`⚠️  ${orchResult.warning}`);
     }
     if (orchResult.changed) {
-      writeConfigFile(configPath, orchResult.config);
+      configDirty = true;
       log(`✅ Orchestrator set to: ${orchResult.config.agents.orchestration.orchestratorId}`);
     }
   }
@@ -983,14 +1033,13 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     }
 
     // Persist openclaw integration config
-    const currentConfig = loadConfig({ configPath }).config;
     const needsUpdate =
       currentConfig.openclaw.home !== openclawHome ||
       currentConfig.openclaw.binPath !== openclawBinPath;
     if (needsUpdate) {
       currentConfig.openclaw.home = openclawHome;
       currentConfig.openclaw.binPath = openclawBinPath;
-      writeConfigFile(configPath, currentConfig);
+      configDirty = true;
       log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'})`);
     }
   }
@@ -1040,10 +1089,16 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
 
   const openclawSkillsDirExists = fs.existsSync(openclawSkillsDir);
 
+  if (configDirty) {
+    writeConfigFile(configPath, currentConfig);
+  }
+
   return {
     ok: true,
     action: 'onboard',
     baseDir: paths.baseDir,
+    workspaceBaseDir: resolvedWorkspaceBaseDir,
+    workspaceChanged,
     configPath,
     paths,
     openclawDetected: openclawExists,

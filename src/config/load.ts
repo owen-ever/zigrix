@@ -4,6 +4,7 @@ import process from 'node:process';
 import YAML from 'yaml';
 
 import { defaultConfig, ZIGRIX_HOME } from './defaults.js';
+import { expandUserPath } from './path-utils.js';
 import { type ZigrixConfig, zigrixConfigSchema } from './schema.js';
 
 const CONFIG_CANDIDATES = [
@@ -61,6 +62,29 @@ function resolveConfigPath(baseDir: string, explicitPath?: string): string | nul
   return null;
 }
 
+function normalizePathFields(config: ZigrixConfig): ZigrixConfig {
+  const copy = structuredClone(config);
+
+  copy.paths.baseDir = expandUserPath(copy.paths.baseDir);
+  copy.paths.tasksDir = expandUserPath(copy.paths.tasksDir);
+  copy.paths.evidenceDir = expandUserPath(copy.paths.evidenceDir);
+  copy.paths.promptsDir = expandUserPath(copy.paths.promptsDir);
+  copy.paths.eventsFile = expandUserPath(copy.paths.eventsFile);
+  copy.paths.indexFile = expandUserPath(copy.paths.indexFile);
+  copy.paths.runsDir = expandUserPath(copy.paths.runsDir);
+  copy.paths.rulesDir = expandUserPath(copy.paths.rulesDir);
+
+  if (copy.workspace.projectsBaseDir) {
+    copy.workspace.projectsBaseDir = expandUserPath(copy.workspace.projectsBaseDir);
+  }
+
+  if (copy.openclaw.home) {
+    copy.openclaw.home = expandUserPath(copy.openclaw.home);
+  }
+
+  return copy;
+}
+
 function applyEnvOverrides(config: ZigrixConfig): ZigrixConfig {
   const copy = structuredClone(config);
   if (process.env.ZIGRIX_OUTPUT_MODE === 'text' || process.env.ZIGRIX_OUTPUT_MODE === 'json') {
@@ -80,7 +104,8 @@ export function loadConfig(options?: { baseDir?: string; configPath?: string }):
   const configPath = resolveConfigPath(baseDir, options?.configPath);
   const parsed = configPath ? parseConfigFile(configPath) : {};
   const merged = deepMerge(structuredClone(defaultConfig) as unknown as ZigrixConfig, parsed);
-  const withEnv = applyEnvOverrides(merged);
+  const normalized = normalizePathFields(merged);
+  const withEnv = applyEnvOverrides(normalized);
   const result = zigrixConfigSchema.parse(withEnv);
   return { config: result, configPath, baseDir };
 }

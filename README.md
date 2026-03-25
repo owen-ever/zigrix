@@ -81,6 +81,7 @@ From source:
 
 ```bash
 zigrix onboard
+# or: zigrix onboard --projects-base-dir ~/dev/workspace
 ```
 
 ### 3) Verify
@@ -145,12 +146,13 @@ zigrix reset state --yes
 
 `zigrix onboard` prepares runtime and integration in one pass:
 
-1. creates `~/.zigrix/` and default config/state structure
-2. seeds rule files from bundled templates
-3. ensures `zigrix` is reachable from the runtime-visible PATH
-4. detects OpenClaw and imports agents from `openclaw.json`
-5. registers bundled `skills/zigrix-*` into `~/.openclaw/skills/`
-6. leaves the environment ready for agent-led orchestration
+1. creates `$HOME/.zigrix/` and default config/state structure
+2. configures workspace base dir (default: `$HOME/.zigrix/workspace`, override supported)
+3. seeds rule files from bundled templates
+4. ensures `zigrix` is reachable from the runtime-visible PATH
+5. detects OpenClaw and imports agents from `openclaw.json`
+6. registers bundled `skills/zigrix-*` into `$OPENCLAW_HOME/skills/` (or `$HOME/.openclaw/skills/`)
+7. leaves the environment ready for agent-led orchestration
 
 ---
 

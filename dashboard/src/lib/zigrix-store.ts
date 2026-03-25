@@ -8,9 +8,6 @@ function getZigrixHome(): string {
   return process.env.ZIGRIX_HOME || path.join(os.homedir(), '.zigrix');
 }
 
-const DEFAULT_OPENCLAW_AGENTS_DIR = path.join(os.homedir(), '.openclaw', 'agents');
-const DEFAULT_SUBAGENT_RUNS_PATH = path.join(os.homedir(), '.openclaw', 'subagents', 'runs.json');
-const DEFAULT_OPENCLAW_CONFIG_PATH = path.join(os.homedir(), '.openclaw', 'openclaw.json');
 const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
 const DEFAULT_SESSIONS_HISTORY_LIMIT = 200;
 
@@ -255,6 +252,15 @@ function toNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function inferRoleFromAgentId(agentId: string): 'orchestrator' | 'qa' | null {
+  const normalized = agentId.toLowerCase();
+  if (normalized.includes('qa') || normalized.includes('test')) return 'qa';
+  if (normalized.includes('pro') || normalized.includes('orch') || normalized.includes('coord')) {
+    return 'orchestrator';
+  }
+  return null;
+}
+
 function toIsoFromUnknownTimestamp(value: unknown): string | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return new Date(value).toISOString();
@@ -307,11 +313,11 @@ function readAgentIds(zigrixHome: string): string[] {
   }
 
   if (isObject(agents)) {
-    // New config structure: { registry: { "pro-zig": {...}, ... }, orchestration: {...} }
+    // New config structure: { registry: { "orch-agent": {...}, ... }, orchestration: {...} }
     if (isObject(agents.registry)) {
       return Object.keys(agents.registry);
     }
-    // Legacy flat map: { "pro-zig": {...}, "back-zig": {...} }
+    // Legacy flat map: { "orch-agent": {...}, "api-agent": {...} }
     return Object.keys(agents);
   }
 
@@ -679,12 +685,27 @@ function parseTaskMetaSessionMap(
   sessionKeys: Set<string>;
   sessionToAgent: Map<string, string>;
   metaSessionIdMap: Map<string, string>;
+  orchestratorAgentIds: Set<string>;
 } {
   const metaPath = path.join(specsDir, `${taskId}.meta.json`);
   const meta = readJson(metaPath, {});
   const sessionKeys = new Set<string>();
   const sessionToAgent = new Map<string, string>();
   const metaSessionIdMap = new Map<string, string>();
+  const orchestratorAgentIds = new Set<string>();
+
+  const roleAgentMap = isObject(meta.roleAgentMap) ? (meta.roleAgentMap as LooseRecord) : null;
+  const orchestratorCandidates = roleAgentMap && Array.isArray(roleAgentMap.orchestrator)
+    ? (roleAgentMap.orchestrator as unknown[])
+    : [];
+
+  const orchestratorId =
+    toNonEmptyString(meta.orchestratorId) ||
+    toNonEmptyString(orchestratorCandidates[0]);
+
+  if (orchestratorId) {
+    orchestratorAgentIds.add(orchestratorId);
+  }
 
   const bindSession = (sessionKey: unknown, agentId?: string | null, sessionId?: string | null) => {
     const normalizedSessionKey = toNonEmptyString(sessionKey);
@@ -696,16 +717,19 @@ function parseTaskMetaSessionMap(
     if (sessionId) metaSessionIdMap.set(normalizedSessionKey, sessionId);
   };
 
-  bindSession(meta.orchestratorSessionKey, 'pro-zig', toNonEmptyString(meta.orchestratorSessionId));
+  bindSession(meta.orchestratorSessionKey, orchestratorId, toNonEmptyString(meta.orchestratorSessionId));
 
   if (isObject(meta.workerSessions)) {
     for (const [agentId, raw] of Object.entries(meta.workerSessions)) {
       if (!isObject(raw)) continue;
+      if (!orchestratorId && inferRoleFromAgentId(agentId) === 'orchestrator') {
+        orchestratorAgentIds.add(agentId);
+      }
       bindSession(raw.sessionKey, agentId, toNonEmptyString(raw.sessionId));
     }
   }
 
-  return { sessionKeys, sessionToAgent, metaSessionIdMap };
+  return { sessionKeys, sessionToAgent, metaSessionIdMap, orchestratorAgentIds };
 }
 
 function collectEvidenceSessionMap(
@@ -799,10 +823,12 @@ function resolveTaskSessionKeys(
   sessionKeys: string[];
   sessionToAgent: Map<string, string>;
   sessionIdMap: Map<string, string>;
+  orchestratorAgentIds: Set<string>;
 } {
   const taskEvents = events.filter((e) => e.taskId === taskId);
   const metaSessions = parseTaskMetaSessionMap(taskId, specsDir);
   const evidenceSessions = collectEvidenceSessionMap(taskId, evidenceDir);
+  const orchestratorAgentIds = new Set<string>(metaSessions.orchestratorAgentIds);
   const merged = new Set<string>([
     ...Array.from(metaSessions.sessionKeys),
     ...Array.from(evidenceSessions.sessionKeys),
@@ -816,7 +842,12 @@ function resolveTaskSessionKeys(
     merged.add(sessionKey);
     const fromSession = getAgentFromSessionKey(sessionKey);
     const normalizedAgent = agentId || fromSession;
-    if (normalizedAgent) sessionToAgent.set(sessionKey, normalizedAgent);
+    if (normalizedAgent) {
+      sessionToAgent.set(sessionKey, normalizedAgent);
+      if (inferRoleFromAgentId(normalizedAgent) === 'orchestrator') {
+        orchestratorAgentIds.add(normalizedAgent);
+      }
+    }
   };
 
   const fromEventSessionFields = collectEventFieldCandidates(taskEvents, [
@@ -847,7 +878,7 @@ function resolveTaskSessionKeys(
     if (!sessionIdMap.has(sk)) sessionIdMap.set(sk, sid);
   });
 
-  return { sessionKeys: Array.from(merged), sessionToAgent, sessionIdMap };
+  return { sessionKeys: Array.from(merged), sessionToAgent, sessionIdMap, orchestratorAgentIds };
 }
 
 function listDeletedSessionFiles(
@@ -945,8 +976,16 @@ function extractMessageText(content: unknown): string {
     .join('\n');
 }
 
-function isDuplicateWorkerCompletionAnnounce(sessionKey: string, message: LooseRecord): boolean {
-  if (getAgentFromSessionKey(sessionKey) !== 'pro-zig') return false;
+function isDuplicateWorkerCompletionAnnounce(
+  sessionKey: string,
+  message: LooseRecord,
+  orchestratorAgentIds: Set<string>,
+): boolean {
+  const fromSession = getAgentFromSessionKey(sessionKey);
+  const mappedAgentId = toNonEmptyString(message.agentId);
+  const actor = mappedAgentId || fromSession;
+  if (!actor || !orchestratorAgentIds.has(actor)) return false;
+
   const role = toNonEmptyString(message.role);
   const text = extractMessageText(message.content).trim();
   if (!text) return false;
@@ -959,10 +998,11 @@ function isDuplicateWorkerCompletionAnnounce(sessionKey: string, message: LooseR
 function flattenConversationStream(
   sessionRows: Array<{ sessionKey: string; messages: LooseRecord[] }>,
   sessionToAgent: Map<string, string>,
+  orchestratorAgentIds: Set<string>,
 ): ZigrixConversationStreamMessage[] {
   const flattened = sessionRows.flatMap(({ sessionKey, messages }, sessionIdx) =>
     messages
-      .filter((message) => !isDuplicateWorkerCompletionAnnounce(sessionKey, message))
+      .filter((message) => !isDuplicateWorkerCompletionAnnounce(sessionKey, message, orchestratorAgentIds))
       .map((message, idx) => {
         const timestamp = toTimestampMs(message);
         const ts = timestamp ? new Date(timestamp).toISOString() : toNonEmptyString(message.ts);
@@ -1107,7 +1147,9 @@ export function createZigrixStore(options?: {
     evidenceDir: path.join(zigrixHome, 'evidence'),
     agentsStateDir: resolvedAgentsDir,
     subagentRunsPath:
-      options?.subagentRunsPath || process.env.OPENCLAW_SUBAGENT_RUNS_PATH || DEFAULT_SUBAGENT_RUNS_PATH,
+      options?.subagentRunsPath ||
+      process.env.OPENCLAW_SUBAGENT_RUNS_PATH ||
+      path.join(resolvedOpenClawHome, 'subagents', 'runs.json'),
     openclawConfigPath:
       options?.openclawConfigPath || process.env.OPENCLAW_CONFIG_PATH || path.join(resolvedOpenClawHome, 'openclaw.json'),
     openclawBinPath: zigrixOcConfig?.binPath || null,
@@ -1324,7 +1366,11 @@ export function createZigrixStore(options?: {
       }),
     );
 
-    const stream = flattenConversationStream(sessionFetchResults, sessionMeta.sessionToAgent);
+    const stream = flattenConversationStream(
+      sessionFetchResults,
+      sessionMeta.sessionToAgent,
+      sessionMeta.orchestratorAgentIds,
+    );
     const sessions: ZigrixSessionHistoryFetchMeta[] = sessionFetchResults.map((item) => ({
       sessionKey: item.sessionKey,
       ok: item.ok,

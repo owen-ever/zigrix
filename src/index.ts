@@ -127,15 +127,17 @@ const pipeline = program.command('pipeline').description('High-level orchestrati
 
 program
   .command('onboard')
-  .description('Set up Zigrix for first use (creates ~/.zigrix, seeds rules, registers agents)')
+  .description('Set up Zigrix for first use (creates base state, configures workspace, seeds rules, registers agents)')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
   .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--projects-base-dir <path>', 'workspace directory for managed projects (supports ~/...)')
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .action(async (options) => {
     const result = await runOnboard({
       yes: Boolean(options.yes),
       projectDir: options.projectDir,
+      projectsBaseDir: options.projectsBaseDir,
       orchestratorId: options.orchestratorId,
       silent: Boolean(options.json),
     });

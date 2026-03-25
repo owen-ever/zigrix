@@ -302,7 +302,6 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
     metaPath: path.join(paths.tasksDir, `${task.taskId}.meta.json`),
     promptPath,
     orchestratorPrompt,
-    proZigPrompt: orchestratorPrompt,
     projectDir: params.projectDir ?? null,
   };
 }

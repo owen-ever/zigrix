@@ -4,23 +4,14 @@ import path from 'node:path';
 import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { loadTask, saveTask, type ZigrixTask } from '../state/tasks.js';
+import { resolveRoleAgentIdOrLabel } from './role-resolution.js';
 
 export const DEFAULT_REQUIRED_AGENTS = ['orchestrator', 'qa'] as const;
 
-const DEFAULT_ORCHESTRATOR_ID = 'pro-zig';
-const DEFAULT_QA_AGENT_ID = 'qa-zig';
-
 function resolveDefaultRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
-  const orchestratorId = typeof task.orchestratorId === 'string' && task.orchestratorId.trim().length > 0
-    ? task.orchestratorId
-    : DEFAULT_ORCHESTRATOR_ID;
-  const qaAgentId = typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0
-    ? task.qaAgentId
-    : DEFAULT_QA_AGENT_ID;
-
   const resolvedByRole: Record<(typeof DEFAULT_REQUIRED_AGENTS)[number], string> = {
-    orchestrator: orchestratorId,
-    qa: qaAgentId,
+    orchestrator: resolveRoleAgentIdOrLabel(task, 'orchestrator'),
+    qa: resolveRoleAgentIdOrLabel(task, 'qa'),
   };
 
   return [...new Set(DEFAULT_REQUIRED_AGENTS.map((role) => resolvedByRole[role]))];

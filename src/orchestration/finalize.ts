@@ -5,6 +5,7 @@ import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths } from '../state/paths.js';
 import { type ZigrixTask, loadTask, rebuildIndex, saveTask } from '../state/tasks.js';
 import { mergeEvidence } from './evidence.js';
+import { resolveRoleAgentId } from './role-resolution.js';
 import { renderReport } from './report.js';
 import { resolveRequiredAgents } from './worker.js';
 
@@ -21,7 +22,8 @@ function autoCloseCompletedUnits(task: ZigrixTask): boolean {
     if (s.status === 'done') doneAgents.add(agentId);
   }
   // orchestrator is always "done" at finalize time
-  doneAgents.add(task.orchestratorId ?? 'pro-zig');
+  const orchestratorId = resolveRoleAgentId(task, 'orchestrator');
+  if (orchestratorId) doneAgents.add(orchestratorId);
 
   let changed = false;
   for (const unit of units) {

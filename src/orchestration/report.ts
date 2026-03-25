@@ -4,6 +4,7 @@ import path from 'node:path';
 import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths } from '../state/paths.js';
 import { loadTask, rebuildIndex } from '../state/tasks.js';
+import { resolveRoleAgentIdOrLabel } from './role-resolution.js';
 
 function readJson(filePath: string): Record<string, unknown> {
   try {
@@ -44,11 +45,12 @@ function collectRisks(merged: Record<string, unknown>): string[] {
   return [...risks];
 }
 
-function qaLine(merged: Record<string, unknown>): string {
+function qaLine(task: Record<string, unknown>, merged: Record<string, unknown>): string {
   const present = new Set(Array.isArray(merged.presentAgents) ? merged.presentAgents.map(String) : []);
-  const qaAgentId = typeof merged.qaAgentId === 'string' && merged.qaAgentId.trim().length > 0
+  const mergedQaAgentId = typeof merged.qaAgentId === 'string' && merged.qaAgentId.trim().length > 0
     ? merged.qaAgentId
-    : 'qa-zig';
+    : null;
+  const qaAgentId = mergedQaAgentId ?? resolveRoleAgentIdOrLabel(task, 'qa');
   return present.has(qaAgentId)
     ? `- ${qaAgentId} evidence 존재, QA 수행됨`
     : `- ${qaAgentId} evidence 없음 또는 별도 QA 미실행`;
@@ -80,7 +82,7 @@ export function renderReport(paths: ZigrixPaths, params: { taskId: string; recor
     ...agentLines,
     '',
     'QA 결과',
-    qaLine(merged),
+    qaLine(task as Record<string, unknown>, merged),
     '',
     '남은 리스크 / 후속 액션',
     ...riskLines,

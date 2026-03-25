@@ -90,7 +90,9 @@ export const zigrixConfigSchema = z.object({
     const hasOrchestratorInRegistry = knownAgents.has(orchestratorId);
     const hasAnyOrchestrator = Object.values(value.registry).some((agent) => agent.role === 'orchestrator');
 
-    if (hasAnyOrchestrator && !hasOrchestratorInRegistry) {
+    const orchestratorIsAuto = orchestratorId === 'auto';
+
+    if (hasAnyOrchestrator && !hasOrchestratorInRegistry && !orchestratorIsAuto) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `orchestratorId '${orchestratorId}' must exist in registry`,
@@ -98,7 +100,7 @@ export const zigrixConfigSchema = z.object({
       });
     }
 
-    if (value.orchestration.excluded.includes(orchestratorId)) {
+    if (!orchestratorIsAuto && value.orchestration.excluded.includes(orchestratorId)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `orchestratorId '${orchestratorId}' cannot be excluded`,

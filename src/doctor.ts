@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import type { LoadedConfig } from './config/load.js';
@@ -14,7 +15,7 @@ function existsWritable(targetPath: string): boolean {
 }
 
 function detectOpenClawHome(): string {
-  return process.env.OPENCLAW_HOME ? path.resolve(process.env.OPENCLAW_HOME) : path.join(process.env.HOME ?? '~', '.openclaw');
+  return process.env.OPENCLAW_HOME ? path.resolve(process.env.OPENCLAW_HOME) : path.join(os.homedir(), '.openclaw');
 }
 
 export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<string, unknown> {
@@ -112,9 +113,9 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
 
   if (!payload.node.ok) warnings.push('Node.js 22+ is required.');
   if (!payload.files.configExists) warnings.push('zigrix.config.json not found. Run `zigrix onboard`.');
-  if (!payload.files.baseDirExists) warnings.push('~/.zigrix not found. Run `zigrix onboard`.');
-  if (!payload.writeAccess.baseDir) warnings.push('Base directory is not writable.');
-  if (!payload.openclaw.exists) warnings.push('~/.openclaw not found. OpenClaw integration remains optional.');
+  if (!payload.files.baseDirExists) warnings.push(`${payload.paths.baseDir} not found. Run \`zigrix onboard\`.`);
+  if (!payload.writeAccess.baseDir) warnings.push(`Base directory is not writable: ${payload.paths.baseDir}`);
+  if (!payload.openclaw.exists) warnings.push(`${payload.openclaw.home} not found. OpenClaw integration remains optional.`);
   if (payload.rules.count === 0) warnings.push('No rule files found in rules directory. Seed from orchestration/rules/.');
   if (!payload.pathReach.zigrixInNonLoginPath) {
     warnings.push(

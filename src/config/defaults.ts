@@ -1,7 +1,8 @@
 import path from 'node:path';
-import os from 'node:os';
 
-export const ZIGRIX_HOME = process.env.ZIGRIX_HOME ?? path.join(os.homedir(), '.zigrix');
+import { resolveDefaultWorkspaceBaseDir, resolveDefaultZigrixHome } from './path-utils.js';
+
+export const ZIGRIX_HOME = resolveDefaultZigrixHome();
 
 export const defaultConfig = {
   paths: {
@@ -15,14 +16,14 @@ export const defaultConfig = {
     rulesDir: path.join(ZIGRIX_HOME, 'rules'),
   },
   workspace: {
-    projectsBaseDir: '',
+    projectsBaseDir: resolveDefaultWorkspaceBaseDir(),
   },
   agents: {
     registry: {},
     orchestration: {
       participants: [],
       excluded: [],
-      orchestratorId: 'pro-zig',
+      orchestratorId: 'auto',
     },
   },
   rules: {

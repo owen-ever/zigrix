@@ -4,7 +4,7 @@
 Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 관리한다.
 
 ## Location
-- Default: `~/.zigrix/zigrix.config.json`
+- Default: `$HOME/.zigrix/zigrix.config.json`
 - Override: `ZIGRIX_HOME` env → `$ZIGRIX_HOME/zigrix.config.json`
 - Also supports YAML: `zigrix.config.yaml` / `zigrix.config.yml`
 
@@ -24,14 +24,14 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 ```json
 {
   "paths": {
-    "baseDir": "~/.zigrix",
-    "tasksDir": "~/.zigrix/tasks",
-    "evidenceDir": "~/.zigrix/evidence",
-    "promptsDir": "~/.zigrix/prompts",
-    "eventsFile": "~/.zigrix/tasks.jsonl",
-    "indexFile": "~/.zigrix/index.json",
-    "runsDir": "~/.zigrix/runs",
-    "rulesDir": "~/.zigrix/rules"
+    "baseDir": "$HOME/.zigrix",
+    "tasksDir": "$HOME/.zigrix/tasks",
+    "evidenceDir": "$HOME/.zigrix/evidence",
+    "promptsDir": "$HOME/.zigrix/prompts",
+    "eventsFile": "$HOME/.zigrix/tasks.jsonl",
+    "indexFile": "$HOME/.zigrix/index.json",
+    "runsDir": "$HOME/.zigrix/runs",
+    "rulesDir": "$HOME/.zigrix/rules"
   }
 }
 ```
@@ -42,26 +42,27 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 ```json
 {
   "workspace": {
-    "projectsBaseDir": ""
+    "projectsBaseDir": "$HOME/.zigrix/workspace"
   }
 }
 ```
-- `projectsBaseDir`: default directory for new project creation (empty = not set)
+- `projectsBaseDir`: default directory for new project creation
+- onboard/configure에서 `~/...` 입력을 허용하며, 내부적으로 홈 디렉토리 API 기반 절대경로로 안전 해석
 
 ## agents
 ```json
 {
   "agents": {
     "registry": {
-      "pro-zig": {
-        "label": "pro-zig",
+      "orch-agent": {
+        "label": "orch-agent",
         "role": "orchestrator",
         "runtime": "openclaw",
         "enabled": true,
         "metadata": {}
       },
-      "qa-zig": {
-        "label": "qa-zig",
+      "qa-agent": {
+        "label": "qa-agent",
         "role": "qa",
         "runtime": "openclaw",
         "enabled": true,
@@ -69,9 +70,9 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
       }
     },
     "orchestration": {
-      "participants": ["pro-zig", "qa-zig"],
+      "participants": ["orch-agent", "qa-agent"],
       "excluded": [],
-      "orchestratorId": "pro-zig"
+      "orchestratorId": "orch-agent"
     }
   }
 }
@@ -95,7 +96,8 @@ Role values are normalized automatically. Aliases like `"infra"` become `"system
 - `orchestratorId`: the agent id that acts as orchestrator for dispatched tasks
 - Must exist in registry when any orchestrator-role agent is registered
 - Cannot be in `excluded` list
-- Default: `"pro-zig"`
+- Special value `"auto"`: defer concrete orchestrator binding until role-based agent selection runs
+- Default: `"auto"`
 
 ### Registry rules
 - registry: all known agents (each with a standard role)

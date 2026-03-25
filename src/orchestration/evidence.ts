@@ -4,6 +4,7 @@ import path from 'node:path';
 import { appendEvent, nowIso } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { type ZigrixTask, loadTask, rebuildIndex } from '../state/tasks.js';
+import { resolveRoleAgentIdOrLabel } from './role-resolution.js';
 import { resolveRequiredAgents } from './worker.js';
 
 function readTranscript(transcriptPath: string, limit = 40): Array<Record<string, unknown>> {
@@ -33,19 +34,7 @@ function extractEvidence(rows: Array<Record<string, unknown>>): Record<string, u
 }
 
 function resolveQaAgentId(task: ZigrixTask): string {
-  if (typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0) {
-    return task.qaAgentId;
-  }
-
-  const roleMap = task.roleAgentMap;
-  if (roleMap && typeof roleMap === 'object') {
-    const qaAgents = (roleMap as Record<string, unknown>).qa;
-    if (Array.isArray(qaAgents) && qaAgents.length > 0) {
-      return String(qaAgents[0]);
-    }
-  }
-
-  return 'qa-zig';
+  return resolveRoleAgentIdOrLabel(task, 'qa');
 }
 
 export function collectEvidence(paths: ZigrixPaths, params: {

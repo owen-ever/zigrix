@@ -28,11 +28,12 @@ zigrix onboard --yes
 ```
 
 This:
-- Creates `~/.zigrix/` with default config and directories
+- Creates `$HOME/.zigrix/` with default config and directories
+- Configures workspace default (`$HOME/.zigrix/workspace`, override 가능)
 - Detects OpenClaw and imports agents from `openclaw.json`
 - Seeds rule files from `orchestration/rules/`
 - Ensures `zigrix` is reachable from PATH (creates symlink if needed)
-- Registers zigrix skill packs into `~/.openclaw/skills/`
+- Registers zigrix skill packs into `$OPENCLAW_HOME/skills/` (or `$HOME/.openclaw/skills/`)
 
 ## 3) Check environment
 ```bash
@@ -66,7 +67,7 @@ zigrix task dispatch \
   --json
 ```
 
-This returns an `orchestratorPrompt` (plus `proZigPrompt` compatibility alias) for spawning the orchestrator agent.
+This returns an `orchestratorPrompt` for spawning the orchestrator-role agent.
 
 ## 5) Low-level task flow (agent usage)
 ```bash
@@ -77,10 +78,10 @@ zigrix task dispatch \
   --scale normal \
   --json
 
-# Collect evidence (example: QA agent)
+# Collect evidence (example: selected QA role agent)
 zigrix evidence collect \
   --task-id DEV-YYYYMMDD-001 \
-  --agent-id qa-zig \
+  --agent-id <qa-agent-id> \
   --summary "Smoke passed"
 
 # Merge and report
