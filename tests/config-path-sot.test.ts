@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('bcryptjs', () => ({
+  default: {
+    hash: async (password: string) => `mock-bcrypt:${password}`,
+    compare: async (password: string, passwordHash: string) => passwordHash === `mock-bcrypt:${password}`,
+  },
+}));
 
 import { buildDefaultConfig } from '../src/config/defaults.js';
 import { loadConfig, writeConfigFile } from '../src/config/load.js';

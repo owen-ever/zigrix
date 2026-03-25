@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
 
 import {
   readCanonicalConfigSnapshot,
@@ -16,6 +15,20 @@ const BCRYPT_COST = 12;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+type BcryptLike = {
+  hash(password: string, saltRounds: number): Promise<string>;
+  compare(password: string, passwordHash: string): Promise<boolean>;
+};
+
+async function loadBcrypt(): Promise<BcryptLike> {
+  const mod = await import('bcryptjs');
+  const candidate = ((mod as { default?: unknown }).default ?? mod) as Partial<BcryptLike>;
+  if (typeof candidate.hash !== 'function' || typeof candidate.compare !== 'function') {
+    throw new Error('bcryptjs adapter unavailable');
+  }
+  return candidate as BcryptLike;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +101,7 @@ export function isSetupRequired(): boolean {
 }
 
 export async function setupAdmin(username: string, password: string): Promise<void> {
+  const bcrypt = await loadBcrypt();
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   const sessionSecret = crypto.randomBytes(64).toString('hex');
 
@@ -119,6 +133,7 @@ export async function setupAdmin(username: string, password: string): Promise<vo
 // ─── Password Verification ────────────────────────────────────────────────────
 
 export async function verifyPassword(username: string, password: string): Promise<boolean> {
+  const bcrypt = await loadBcrypt();
   const config = getDashboardConfig();
   const admin = config.admins.find((a) => a.username === username);
   if (!admin) {
