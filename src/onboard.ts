@@ -857,7 +857,7 @@ function ensureConfig(): { configPath: string; isNew: boolean } {
   if (existing.configPath && fs.existsSync(existing.configPath)) {
     return { configPath: existing.configPath, isNew: false };
   }
-  const configPath = writeDefaultConfig(undefined, false);
+  const configPath = writeDefaultConfig(false);
   return { configPath, isNew: true };
 }
 

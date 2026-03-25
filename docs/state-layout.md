@@ -2,8 +2,8 @@
 
 ## Directory shape
 ```text
-~/.zigrix/
-├─ zigrix.config.json
+~/.zigrix/zigrix.config.json        # config location
+<paths.baseDir>/
 ├─ tasks/
 │  ├─ DEV-YYYYMMDD-NNN.meta.json   # machine-readable metadata
 │  └─ DEV-YYYYMMDD-NNN.md          # human-readable spec

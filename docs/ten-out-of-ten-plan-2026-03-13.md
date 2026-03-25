@@ -28,7 +28,7 @@ Zigrix를 10/10 공개 CLI라고 부르려면, 아래 조건을 모두 만족해
 ### 이식성
 - 개인 로컬 경로에 묶이지 않음
 - macOS/Linux에서 동작
-- 최소 지원 Python 버전과 OS 범위가 명확함
+- 최소 지원 런타임 버전과 OS 범위가 명확함
 - 프로젝트별 상태와 전역 설정이 분리됨
 
 ### 신뢰성
@@ -57,7 +57,7 @@ Zigrix를 10/10 공개 CLI라고 부르려면, 아래 조건을 모두 만족해
 > Zigrix = OpenClaw agent-oriented development orchestration CLI
 
 ### 구현 언어
-- Python 유지
+- Node/TypeScript 유지
 
 ### 배포 전략
 - 1차: **GitHub Releases + install.sh**
@@ -73,10 +73,10 @@ Zigrix를 10/10 공개 CLI라고 부르려면, 아래 조건을 모두 만족해
 - Windows: 명시적 후순위
 
 ### 상태 경로
-- config: `~/.config/zigrix/`
-- data: `~/.local/share/zigrix/`
-- cache: `~/.cache/zigrix/`
-- project runtime: `<repo>/.zigrix/`
+- canonical config: `~/.zigrix/zigrix.config.json`
+- runtime state: `<paths.baseDir>/...`
+- default runtime base: `~/.zigrix/`
+- project runtime: 사용하지 않음 (task별 `projectDir`만 metadata에 기록)
 
 ### 라이선스 기본안
 - `Apache-2.0` 우선 검토
@@ -189,7 +189,7 @@ Zigrix는 OpenClaw 친화적이어야 하지만 OpenClaw 내부 구현에 종속
 완료 기준:
 - repo 이름 확정
 - 라이선스 방향 확정
-- 지원 OS/Python 버전 확정
+- 지원 OS/런타임 버전 확정
 - 상태 경로 정책 확정
 - 배포 채널 우선순위 확정
 

@@ -37,4 +37,4 @@
 - release installer should target tagged assets, not mutable branch files
 - breaking command/output changes must be called out
 - installer changes require fresh-install and reinstall smoke tests
-- Legacy Python follow-up paths are deprecated and must not re-enter release/runtime contracts
+- Legacy follow-up paths are deprecated and must not re-enter release/runtime contracts

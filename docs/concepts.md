@@ -1,7 +1,7 @@
 # Concepts
 
 ## Global multi-project orchestration
-Zigrix keeps runtime data in `paths.baseDir` from `zigrix.config.json` (default concept: `~/.zigrix` via `ZIGRIX_HOME`). Tasks are not bound to a single project — a single Zigrix instance manages parallel tasks across multiple project directories. Each task's `meta.json` records its `projectDir` when relevant.
+Zigrix keeps runtime data in `paths.baseDir` from `zigrix.config.json`. Tasks are not bound to a single project — a single Zigrix instance manages parallel tasks across multiple project directories. Each task's `meta.json` records its `projectDir` when relevant.
 
 ## Config-first
 Behavior is controlled through `zigrix.config.json` rather than hidden hardcoded policy. Defaults exist, but the product assumes operators will inspect and occasionally modify config, rules, and templates.

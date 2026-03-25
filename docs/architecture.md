@@ -9,7 +9,7 @@
 
 ### 2. Core state layer
 - resolves portable paths
-- manages global runtime state from `zigrix.config.json` (`paths.*`, default concept: `~/.zigrix`)
+- manages global runtime state from `zigrix.config.json` (`paths.*`)
 - persists tasks (sidecar model: `.meta.json` + `.md`), prompts, evidence, and index files
 - appends events to `tasks.jsonl`
 - renders user-facing reports from merged evidence
@@ -26,8 +26,8 @@
 Global runtime state:
 
 ```text
-~/.zigrix/
-├─ zigrix.config.json
+~/.zigrix/zigrix.config.json        # config location
+<paths.baseDir>/
 ├─ tasks/
 │  ├─ <taskId>.meta.json    # machine-readable metadata
 │  └─ <taskId>.md           # human-readable spec
@@ -49,3 +49,4 @@ Global runtime state:
 - `zigrix task dispatch` — creates task with full orchestration metadata
 - `zigrix task finalize` — merges evidence, checks units, auto-reports
 - `zigrix worker prepare/register/complete` — worker lifecycle management
+rker prepare/register/complete` — worker lifecycle management

@@ -1,6 +1,8 @@
 import path from 'node:path';
 import os from 'node:os';
 
+export const CONFIG_FILENAME = 'zigrix.config.json';
+
 export function expandTilde(input: string): string {
   const homeDir = os.homedir();
   if (!input) return homeDir;
@@ -13,19 +15,19 @@ export function resolveAbsolutePath(input: string): string {
   return path.resolve(expandTilde(input));
 }
 
-export function resolveZigrixHome(): string {
-  const configuredHome = process.env.ZIGRIX_HOME?.trim();
-  const fallback = path.join(os.homedir(), '.zigrix');
-  return resolveAbsolutePath(configuredHome && configuredHome.length > 0 ? configuredHome : fallback);
+export function resolveCanonicalConfigHome(): string {
+  return path.join(os.homedir(), '.zigrix');
 }
 
-export function resolveDefaultWorkspaceDir(baseDir = resolveZigrixHome()): string {
+export function resolveCanonicalConfigPath(): string {
+  return path.join(resolveCanonicalConfigHome(), CONFIG_FILENAME);
+}
+
+export function resolveDefaultWorkspaceDir(baseDir = resolveCanonicalConfigHome()): string {
   return path.join(baseDir, 'workspace');
 }
 
-export const ZIGRIX_HOME = resolveZigrixHome();
-
-export function buildDefaultConfig(baseDir = ZIGRIX_HOME) {
+export function buildDefaultConfig(baseDir = resolveCanonicalConfigHome()) {
   return {
     paths: {
       baseDir,

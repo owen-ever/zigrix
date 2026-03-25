@@ -5,7 +5,7 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 
 ## Location
 - Single source of truth file: `zigrix.config.json`
-- Default location: `$ZIGRIX_HOME/zigrix.config.json` (fallback `~/.zigrix/zigrix.config.json`)
+- Canonical location: `~/.zigrix/zigrix.config.json`
 - Path contract consumers must read `paths.*` from this config model.
 
 ## Top-level shape
@@ -46,7 +46,7 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
   }
 }
 ```
-- `projectsBaseDir`: default project root path (default concept: `~/.zigrix/workspace`, stored/resolved as absolute)
+- `projectsBaseDir`: default project root path (default proposal: `~/.zigrix/workspace`, stored/resolved as absolute)
 
 ## agents
 ```json

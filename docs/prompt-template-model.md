@@ -5,9 +5,8 @@
 
 ## source precedence
 1. built-in template
-2. user override
-3. project override
-4. CLI inline override (debug only)
+2. `zigrix.config.json` override
+3. CLI inline override (debug only)
 
 ## supported template kinds
 - `workerPrompt`

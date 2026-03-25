@@ -2,24 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
+import {
+  getCanonicalConfigHome,
+  readCanonicalConfigSnapshot,
+  toAbsolute,
+} from './zigrix-config';
+
 // ─── Paths ────────────────────────────────────────────────────────────────────
-
-function expandTilde(input: string): string {
-  if (!input) return input;
-  if (input === '~') return os.homedir();
-  if (input.startsWith('~/')) return path.join(os.homedir(), input.slice(2));
-  return input;
-}
-
-function toAbsolute(input: string, baseDir: string): string {
-  const expanded = expandTilde(input);
-  return path.isAbsolute(expanded) ? path.resolve(expanded) : path.resolve(baseDir, expanded);
-}
-
-function getZigrixHome(): string {
-  const configured = process.env.ZIGRIX_HOME?.trim();
-  return configured ? toAbsolute(configured, os.homedir()) : path.join(os.homedir(), '.zigrix');
-}
 
 const DEFAULT_SUBAGENT_RUNS_PATH = path.join(os.homedir(), '.openclaw', 'subagents', 'runs.json');
 const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
@@ -45,15 +34,7 @@ type ZigrixConfigSnapshot = {
 };
 
 function readZigrixConfigSnapshot(zigrixHome: string): ZigrixConfigSnapshot | null {
-  const configPath = path.join(zigrixHome, 'zigrix.config.json');
-  try {
-    if (!fs.existsSync(configPath)) return null;
-    const raw = fs.readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(raw) as unknown;
-    return isObject(parsed) ? (parsed as ZigrixConfigSnapshot) : null;
-  } catch {
-    return null;
-  }
+  return readCanonicalConfigSnapshot<ZigrixConfigSnapshot>(zigrixHome);
 }
 
 function resolveZigrixStatePaths(zigrixHome: string, snapshot: ZigrixConfigSnapshot | null): {
@@ -1149,7 +1130,7 @@ export function createZigrixStore(options?: {
   invokeTool?: ToolInvoker;
   fetchImpl?: typeof fetch;
 }) {
-  const zigrixHome = options?.zigrixHome || getZigrixHome();
+  const zigrixHome = options?.zigrixHome || getCanonicalConfigHome();
   const zigrixConfig = readZigrixConfigSnapshot(zigrixHome);
   const statePaths = resolveZigrixStatePaths(zigrixHome, zigrixConfig);
 

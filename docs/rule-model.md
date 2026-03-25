@@ -30,7 +30,7 @@
 
 ## template requirements
 - built-in defaults 제공
-- project override 허용
+- override는 `zigrix.config.json`에 저장
 - placeholder whitelist 검증
 - preview/render 지원
 - diff 지원

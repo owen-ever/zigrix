@@ -21,23 +21,21 @@ describe('configure', () => {
     zigrixHome = path.join(tmpDir, '.zigrix');
     openclawHome = path.join(tmpDir, '.openclaw');
 
-    process.env.ZIGRIX_HOME = zigrixHome;
+    process.env.HOME = tmpDir;
     process.env.OPENCLAW_HOME = openclawHome;
 
-    // Create default config in the temp zigrix home
-    configPath = writeDefaultConfig(zigrixHome, true);
+    // Create default config in the canonical temp zigrix home
+    configPath = writeDefaultConfig(true);
   });
 
   afterEach(() => {
     Object.assign(process.env, originalEnv);
-    delete process.env.ZIGRIX_HOME;
     delete process.env.OPENCLAW_HOME;
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('throws when zigrix is not initialized', async () => {
-    // Point to a nonexistent dir
-    process.env.ZIGRIX_HOME = path.join(tmpDir, 'nonexistent');
+    fs.rmSync(zigrixHome, { recursive: true, force: true });
     await expect(runConfigure({ silent: true, yes: true })).rejects.toThrow(/not initialized/);
   });
 
@@ -73,7 +71,7 @@ describe('configure', () => {
     expect(result.workspaceChanged).toBe(true);
 
     // Verify it was persisted
-    const reloaded = loadConfig({ baseDir: zigrixHome });
+    const reloaded = loadConfig();
     expect(reloaded.config.workspace.projectsBaseDir).toBe(path.resolve(newBase));
   });
 
@@ -91,9 +89,9 @@ describe('configure', () => {
       agents: {
         list: [
           { id: 'main', default: true },
-          { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
-          { id: 'front-zig', name: 'front-zig', identity: { theme: 'Frontend Agent' } },
-          { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+          { id: 'orch-main', name: 'orch-main', identity: { theme: 'Orchestrator Agent' } },
+          { id: 'frontend-main', name: 'frontend-main', identity: { theme: 'Frontend Agent' } },
+          { id: 'qa-main', name: 'qa-main', identity: { theme: 'QA Agent' } },
         ],
       },
     }));
@@ -104,9 +102,9 @@ describe('configure', () => {
       yes: true,
     });
     expect(result.ok).toBe(true);
-    expect(result.agentsRegistered).toContain('front-zig');
-    expect(result.agentsRegistered).toContain('qa-zig');
-    expect(result.agentsRegistered).toContain('pro-zig');
+    expect(result.agentsRegistered).toContain('frontend-main');
+    expect(result.agentsRegistered).toContain('qa-main');
+    expect(result.agentsRegistered).toContain('orch-main');
     // main should not be registered
     expect(result.agentsRegistered).not.toContain('main');
   });

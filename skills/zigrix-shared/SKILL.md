@@ -14,7 +14,7 @@ Use Zigrix for multi-project parallel task orchestration with file-backed, inspe
 
 ## Rules
 - Prefer `--json` for automation-heavy flows.
-- Runtime paths are sourced from `zigrix.config.json` (`paths.*`). Default base is `~/.zigrix` via `ZIGRIX_HOME`.
+- Runtime paths are sourced from `zigrix.config.json` (`paths.*`).
 - Tasks are NOT project-bound — one Zigrix instance manages tasks across projects.
 - Do not assume OpenClaw internals are required unless the task explicitly needs them.
 

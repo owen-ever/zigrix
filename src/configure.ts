@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import { addAgent, removeAgent } from './agents/registry.js';
@@ -61,12 +60,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
   const silent = options.silent ?? false;
   const log = (msg: string) => { if (!silent) console.log(msg); };
 
-  // Resolve base dir at runtime (not from the static ZIGRIX_HOME constant)
-  const runtimeBaseDir = process.env.ZIGRIX_HOME
-    ? resolveAbsolutePath(process.env.ZIGRIX_HOME)
-    : path.join(os.homedir(), '.zigrix');
-
-  const loaded = loadConfig({ baseDir: runtimeBaseDir });
+  const loaded = loadConfig();
   if (!loaded.configPath || !fs.existsSync(loaded.configPath)) {
     throw new Error('zigrix not initialized. Run `zigrix onboard` first.');
   }

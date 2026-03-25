@@ -2,14 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-import { buildDefaultConfig, expandTilde, resolveAbsolutePath, ZIGRIX_HOME, resolveDefaultWorkspaceDir } from './defaults.js';
+import {
+  buildDefaultConfig,
+  CONFIG_FILENAME,
+  expandTilde,
+  resolveAbsolutePath,
+  resolveCanonicalConfigHome,
+  resolveCanonicalConfigPath,
+  resolveDefaultWorkspaceDir,
+} from './defaults.js';
 import { type ZigrixConfig, zigrixConfigSchema } from './schema.js';
-
-const CONFIG_FILENAME = 'zigrix.config.json';
 
 export type LoadedConfig = {
   config: ZigrixConfig;
-  configPath: string | null;
+  configPath: string;
   baseDir: string;
 };
 
@@ -39,16 +45,11 @@ function parseConfigFile(filePath: string): unknown {
   return JSON.parse(raw);
 }
 
-function resolveConfigPath(baseDir: string, explicitPath?: string): string | null {
+function resolveConfigPath(explicitPath?: string): string {
   if (explicitPath) {
     return resolveAbsolutePath(explicitPath);
   }
-
-  const fullPath = path.join(baseDir, CONFIG_FILENAME);
-  if (fs.existsSync(fullPath)) {
-    return fullPath;
-  }
-  return null;
+  return resolveCanonicalConfigPath();
 }
 
 function resolvePathLike(value: unknown, baseDir: string, fallback: string): string {
@@ -63,7 +64,8 @@ function resolvePathLike(value: unknown, baseDir: string, fallback: string): str
 function normalizeConfigPaths(config: ZigrixConfig): ZigrixConfig {
   const copy = structuredClone(config);
 
-  const resolvedBaseDir = resolvePathLike(copy.paths.baseDir, ZIGRIX_HOME, ZIGRIX_HOME);
+  const configHome = resolveCanonicalConfigHome();
+  const resolvedBaseDir = resolvePathLike(copy.paths.baseDir, configHome, configHome);
   copy.paths.baseDir = resolvedBaseDir;
   copy.paths.tasksDir = resolvePathLike(copy.paths.tasksDir, resolvedBaseDir, path.join(resolvedBaseDir, 'tasks'));
   copy.paths.evidenceDir = resolvePathLike(copy.paths.evidenceDir, resolvedBaseDir, path.join(resolvedBaseDir, 'evidence'));
@@ -120,11 +122,10 @@ export function normalizeConfig(input: ZigrixConfig): ZigrixConfig {
   return zigrixConfigSchema.parse(normalized);
 }
 
-export function loadConfig(options?: { baseDir?: string; configPath?: string }): LoadedConfig {
-  const baseDirCandidate = resolveAbsolutePath(options?.baseDir ?? ZIGRIX_HOME);
-  const configPath = resolveConfigPath(baseDirCandidate, options?.configPath);
-  const parsed = configPath ? parseConfigFile(configPath) : {};
-  const defaultBaseDir = resolveBaseDirHint(parsed, baseDirCandidate);
+export function loadConfig(options?: { configPath?: string }): LoadedConfig {
+  const configPath = resolveConfigPath(options?.configPath);
+  const parsed = fs.existsSync(configPath) ? parseConfigFile(configPath) : {};
+  const defaultBaseDir = resolveBaseDirHint(parsed, resolveCanonicalConfigHome());
   const defaults = buildDefaultConfig(defaultBaseDir) as unknown as ZigrixConfig;
   const merged = deepMerge(structuredClone(defaults), parsed);
   const withEnv = applyEnvOverrides(merged);
@@ -140,14 +141,14 @@ export function writeConfigFile(targetPath: string, config: ZigrixConfig): strin
   return resolvedPath;
 }
 
-export function writeDefaultConfig(baseDir?: string, force = false): string {
-  const resolvedBase = resolveAbsolutePath(baseDir ?? ZIGRIX_HOME);
-  const targetPath = path.join(resolvedBase, CONFIG_FILENAME);
+export function writeDefaultConfig(force = false): string {
+  const configHome = resolveCanonicalConfigHome();
+  const targetPath = resolveCanonicalConfigPath();
   if (fs.existsSync(targetPath) && !force) {
     throw new Error(`config already exists: ${targetPath}`);
   }
-  fs.mkdirSync(resolvedBase, { recursive: true });
-  return writeConfigFile(targetPath, buildDefaultConfig(resolvedBase) as unknown as ZigrixConfig);
+  fs.mkdirSync(configHome, { recursive: true });
+  return writeConfigFile(targetPath, buildDefaultConfig(configHome) as unknown as ZigrixConfig);
 }
 
 export function getConfigValue(config: ZigrixConfig, dottedPath?: string): unknown {
@@ -159,3 +160,5 @@ export function getConfigValue(config: ZigrixConfig, dottedPath?: string): unkno
     return undefined;
   }, config);
 }
+
+export { CONFIG_FILENAME };

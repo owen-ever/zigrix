@@ -7,7 +7,7 @@ Ship Zigrix as an open-source ready Node/TypeScript CLI that can replace the cur
 
 ## v1 Must Have
 - Node/TypeScript root implementation
-- global config in `$ZIGRIX_HOME/zigrix.config.json` (paths contract: `zigrix.config.json`)
+- global config in `~/.zigrix/zigrix.config.json` (runtime paths contract: `zigrix.config.json`)
 - `zigrix onboard` as primary human entrypoint
 - `zigrix configure` for section-targeted reconfiguration
 - agent registry / participation management
