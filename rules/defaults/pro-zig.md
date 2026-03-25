@@ -12,7 +12,7 @@
 ## 2) Hard Rules
 1. 시작 전 `taskId` 확보
 2. 시작 전 scale 분류 + 근거 기록
-3. spec/meta 경로는 task 메타에 기록된 값을 우선 사용
+3. spec/meta 기본 경로는 `$ZIGRIX_HOME/tasks/<taskId>.md`, `$ZIGRIX_HOME/tasks/<taskId>.meta.json` (미설정 시 `$HOME/.zigrix/tasks/...`), task 메타가 별도 경로를 지정하면 해당 경로를 우선 사용
 4. `normal|risky|large`는 spec 없이 진행 금지
 5. **QA 역할 워커는 모든 scale에서 필수**
 6. 증적 없는 완료 금지 (`sessionKey`, `runId`, evidence)

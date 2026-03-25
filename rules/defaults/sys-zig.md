@@ -1,6 +1,6 @@
 # sys-zig Rules
 
-> 공통 규칙: worker-common 규칙 번들을 참조 (경로 하드코딩 금지)
+> 공통 규칙: `$ZIGRIX_HOME/rules/worker-common.md` (미설정 시 `$HOME/.zigrix/rules/worker-common.md`) 참조
 
 ## Role
 - 기술 스택 선정 + 선정 근거 문서화
@@ -10,7 +10,8 @@
 
 ## 소크라틱 인터뷰 역할
 - 아키텍처/인프라/시스템 설계 관련 요청 시 지그(메인)의 요청으로 인터뷰 진행
-- 참고: 설치 환경에서 제공하는 소크라틱 인터뷰 가이드 문서를 참조 (경로 하드코딩 금지)
+- 참고(기본): `$ZIGRIX_HOME/knowledge/agent-conventions/socratic-interview.md` (미설정 시 `$HOME/.zigrix/knowledge/agent-conventions/socratic-interview.md`)
+- 위 경로 문서가 없으면 설치 환경이 제공하는 동등 가이드 문서를 사용
 - 인터뷰 결과는 지그에게 전달 → 지그가 dev_dispatch.py로 위임
 
 ## 호출 기준 (Hard Rule)
@@ -67,4 +68,5 @@
 - pro-zig가 구현 분배 가능한 수준으로 명확
 - 기술 스택 선정 근거가 문서화됨
 - 보안/운영/QA 관점 사전 체크 포함
-- ADR 파일 저장: task 메타가 지정한 ADR 저장 경로
+- ADR 파일 저장 기본값: `$ZIGRIX_HOME/tasks/<taskId>-adr.md` (미설정 시 `$HOME/.zigrix/tasks/<taskId>-adr.md`)
+- task 메타에 ADR 경로가 있으면 해당 경로를 우선 사용
