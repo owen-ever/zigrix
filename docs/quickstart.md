@@ -28,12 +28,12 @@ zigrix onboard --yes
 ```
 
 This:
-- Creates `$HOME/.zigrix/` with default config and directories
-- Configures workspace default (`$HOME/.zigrix/workspace`, override 가능)
-- Detects OpenClaw and imports agents from `openclaw.json`
-- Seeds rule files from `orchestration/rules/`
+- Creates `zigrix.config.json` and default directories (`paths.baseDir` 기준)
+- Configures workspace default (`workspace.projectsBaseDir`, override 가능)
+- Detects OpenClaw and imports agents from `openclaw` section
+- Seeds rule files into `paths.rulesDir`
 - Ensures `zigrix` is reachable from PATH (creates symlink if needed)
-- Registers zigrix skill packs into `$OPENCLAW_HOME/skills/` (or `$HOME/.openclaw/skills/`)
+- Registers zigrix skill packs into `<openclaw.home>/skills/`
 
 ## 3) Check environment
 ```bash

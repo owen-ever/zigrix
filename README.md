@@ -146,12 +146,12 @@ zigrix reset state --yes
 
 `zigrix onboard` prepares runtime and integration in one pass:
 
-1. creates `$HOME/.zigrix/` and default config/state structure
-2. configures workspace base dir (default: `$HOME/.zigrix/workspace`, override supported)
-3. seeds rule files from bundled templates
+1. creates `zigrix.config.json` and default state structure (`paths.baseDir` 기준)
+2. configures workspace base dir (`workspace.projectsBaseDir`)
+3. seeds rule files into `paths.rulesDir`
 4. ensures `zigrix` is reachable from the runtime-visible PATH
-5. detects OpenClaw and imports agents from `openclaw.json`
-6. registers bundled `skills/zigrix-*` into `$OPENCLAW_HOME/skills/` (or `$HOME/.openclaw/skills/`)
+5. detects OpenClaw and imports agents from `openclaw` section (`openclaw.home`, `openclaw.binPath`)
+6. registers bundled `skills/zigrix-*` into `<openclaw.home>/skills/`
 7. leaves the environment ready for agent-led orchestration
 
 ---

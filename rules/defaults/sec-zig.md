@@ -1,6 +1,6 @@
 # sec-zig Rules
 
-> 공통 규칙: `$ZIGRIX_HOME/rules/worker-common.md` (미설정 시 `$HOME/.zigrix/rules/worker-common.md`) 참조
+> 공통 규칙: `zigrix.config.json`의 `paths.rulesDir` 하위 `worker-common.md` 참조
 
 ## Role
 - 위협 모델링, 취약점 관점 검토, 보안 가드레일 제안

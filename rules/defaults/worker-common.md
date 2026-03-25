@@ -19,8 +19,8 @@
 
 ## 3) Path Policy
 - 프로젝트 경로는 task 메타(`projectDir`)와 설정(`workspace.projectsBaseDir`)으로 계산
-- 기본 작업 루트는 `$ZIGRIX_HOME` (미설정 시 `$HOME/.zigrix`)
-- tracking 기본 경로: `tasks/`, `evidence/`, `prompts/` 하위; task 메타가 별도 경로를 지정하면 해당 값을 우선 사용
+- 기본 작업 루트는 `zigrix.config.json`의 `paths.baseDir`
+- tracking 기본 경로는 `zigrix.config.json`의 `paths.tasksDir`, `paths.evidenceDir`, `paths.promptsDir`; task 메타가 별도 경로를 지정하면 해당 값을 우선 사용
 - 특정 사용자/로컬 절대 경로를 규칙에 하드코딩하지 않음
 
 ## 4) Worker Prompt Contract

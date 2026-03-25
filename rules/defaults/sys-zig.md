@@ -1,6 +1,6 @@
 # sys-zig Rules
 
-> 공통 규칙: `$ZIGRIX_HOME/rules/worker-common.md` (미설정 시 `$HOME/.zigrix/rules/worker-common.md`) 참조
+> 공통 규칙: `zigrix.config.json`의 `paths.rulesDir` 하위 `worker-common.md` 참조
 
 ## Role
 - 기술 스택 선정 + 선정 근거 문서화
@@ -10,8 +10,8 @@
 
 ## 소크라틱 인터뷰 역할
 - 아키텍처/인프라/시스템 설계 관련 요청 시 지그(메인)의 요청으로 인터뷰 진행
-- 참고(기본): `$ZIGRIX_HOME/knowledge/agent-conventions/socratic-interview.md` (미설정 시 `$HOME/.zigrix/knowledge/agent-conventions/socratic-interview.md`)
-- 위 경로 문서가 없으면 설치 환경이 제공하는 동등 가이드 문서를 사용
+- 참고(기본): `zigrix.config.json`의 `paths.baseDir` 기준 `knowledge/agent-conventions/socratic-interview.md`
+- 해당 문서가 없으면 설치 환경이 제공하는 동등 가이드 문서를 사용
 - 인터뷰 결과는 지그에게 전달 → 지그가 dev_dispatch.py로 위임
 
 ## 호출 기준 (Hard Rule)
@@ -25,7 +25,7 @@
 - **risky/large**: 무조건 호출
 
 > ⚠️ 단순 버그픽스나 기존 컴포넌트 스타일/로직 수정만이면 normal이어도 호출 생략 가능.
-> pro-zig가 판단하되, 판단 근거를 tasks.jsonl에 기록한다.
+> pro-zig가 판단하되, 판단 근거를 `zigrix.config.json`의 `paths.eventsFile`에 기록한다.
 
 ## In Scope
 - **기술 스택 선정**: 사용할 언어/프레임워크/라이브러리를 결정하고, 대안 대비 선정 이유를 문서화
@@ -68,5 +68,5 @@
 - pro-zig가 구현 분배 가능한 수준으로 명확
 - 기술 스택 선정 근거가 문서화됨
 - 보안/운영/QA 관점 사전 체크 포함
-- ADR 파일 저장 기본값: `$ZIGRIX_HOME/tasks/<taskId>-adr.md` (미설정 시 `$HOME/.zigrix/tasks/<taskId>-adr.md`)
+- ADR 파일 저장 기본값: `zigrix.config.json`의 `paths.tasksDir` 기준 `{tasksDir}/{taskId}-adr.md`
 - task 메타에 ADR 경로가 있으면 해당 경로를 우선 사용

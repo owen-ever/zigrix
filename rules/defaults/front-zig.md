@@ -1,6 +1,6 @@
 # front-zig Rules
 
-> 공통 규칙: `$ZIGRIX_HOME/rules/worker-common.md` (미설정 시 `$HOME/.zigrix/rules/worker-common.md`) 참조
+> 공통 규칙: `zigrix.config.json`의 `paths.rulesDir` 하위 `worker-common.md` 참조
 
 ## Role
 - UI/UX, 프론트엔드 구현, 상태관리, API 연동(클라이언트 측)

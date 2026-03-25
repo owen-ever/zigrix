@@ -1,6 +1,6 @@
 # qa-zig Rules
 
-> 공통 규칙: `$ZIGRIX_HOME/rules/worker-common.md` (미설정 시 `$HOME/.zigrix/rules/worker-common.md`) 참조
+> 공통 규칙: `zigrix.config.json`의 `paths.rulesDir` 하위 `worker-common.md` 참조
 
 ## Role
 - **2단계 검증 게이트**: Spec Compliance → Code Quality
@@ -12,7 +12,7 @@
 
 ## 1단계: Spec Compliance (스펙 충족 검증)
 
-태스크 스펙 문서(`$ZIGRIX_HOME/tasks/<taskId>.md`, 미설정 시 `$HOME/.zigrix/tasks/<taskId>.md`)의 요구사항을 코드가 항목별로 충족하는지 검증.
+태스크 스펙 문서(`zigrix.config.json`의 `paths.tasksDir` 기준 `{tasksDir}/{taskId}.md`)의 요구사항을 코드가 항목별로 충족하는지 검증.
 
 ### 검증 항목
 - 스펙에 명시된 기능 요구사항 전수 체크 (체크리스트 형태)
@@ -77,7 +77,7 @@ QA 결과가 FAIL인 경우 자동으로 재검증 루프를 트리거한다.
 ### 루프 흐름
 ```
 QA FAIL
-  └─→ FAIL 증적(evidence/) 저장
+  └─→ FAIL 증적 저장 (`zigrix.config.json`의 `paths.evidenceDir` 하위)
        └─→ pro-zig에 FAIL 증적 + 실패 재현 단계 반환
             └─→ pro-zig가 수정 작업 재요청
                  └─→ qa-zig가 fresh 컨텍스트로 재검증 (iteration +1)
@@ -86,17 +86,17 @@ QA FAIL
 ```
 
 ### 상세 규칙
-1. **FAIL 시 즉시 증적 저장**: `evidence/<taskId>/qa-zig-iter-<N>.json`
+1. **FAIL 시 즉시 증적 저장**: `{evidenceDir}/{taskId}/qa-zig-iter-<N>.json` (`evidenceDir` = `zigrix.config.json`의 `paths.evidenceDir`)
    - 실패 재현 단계 (steps-to-reproduce)
    - 기대값 vs 실제값
    - 관련 로그/스크린샷 경로
 2. **pro-zig 반환 형식**: FAIL 증적 파일 경로 + 실패 요약을 `worker_done` 이벤트에 포함
 3. **fresh 컨텍스트 원칙**: 매 이터레이션은 새 sub-agent로 실행
-   - 이전 실패는 `evidence/` 파일로만 전달 (컨텍스트 오염 방지)
+   - 이전 실패는 `paths.evidenceDir` 하위 증적 파일로만 전달 (컨텍스트 오염 방지)
    - 이터레이션 번호를 runId에 명시: `qa-run-<taskId>-iter-<N>`
-4. **반복 카운터**: `evidence/<taskId>/qa-loop-state.json`에 현재 iteration 기록
+4. **반복 카운터**: `{evidenceDir}/{taskId}/qa-loop-state.json`에 현재 iteration 기록
 5. **3회 초과 시 에스컬레이션**:
-   - `tasks.jsonl`에 `owner_confirmation_required` 이벤트 기록
+   - `zigrix.config.json`의 `paths.eventsFile`에 `owner_confirmation_required` 이벤트 기록
    - 상태: `BLOCKED`
    - Discord 알림에 모든 iteration 증적 경로 포함
 
