@@ -26,6 +26,10 @@
    - preflight: version/tag validation, `publish:check`, npm/gh auth checks
    - publish: git tag push, npm publish, GitHub release create/update
    - verify: package version + dist-tags (`latest` drift guard)
+   - prerelease default: stays on prerelease dist-tags (alpha/beta/rc), not `latest`
+   - explicit latest promotion (optional): `npm run release -- <version> --latest`
+     - promotes npm `latest` dist-tag
+     - marks GitHub release as latest
 5. run fresh-install smoke test from release artifacts
 6. update changelog/release notes
 

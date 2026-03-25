@@ -50,6 +50,9 @@ Create the intended tag only after the above checks pass.
 ```bash
 # NPM_TOKEN env or scripts/local/.env.npm must be set first
 npm run release -- <version>
+
+# Optional: prerelease도 latest로 승격하려면 명시적으로 --latest 사용
+npm run release -- <version> --latest
 ```
 
 ## 6) Verify after publish
