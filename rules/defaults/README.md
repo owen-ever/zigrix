@@ -16,7 +16,7 @@
 - QA: **모든 Scale 필수 포함**
 - Session visibility: `all` (운영 규칙으로 통제)
 - Thread mapping: `taskId` 기준 유연 매핑 (`primaryThreadId`, `relatedThreadIds[]`)
-- 명세문서 경로: `orchestration/tasks/<taskId>.md`
+- 명세문서 경로: `paths.tasksDir/<taskId>.md`
 - `normal|risky|large`: 명세문서 **미작성 시 진행 금지**
 - `simple`: 요약형 spec 허용(동일 경로 파일)
 

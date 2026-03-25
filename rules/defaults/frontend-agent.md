@@ -1,6 +1,6 @@
 # frontend-agent Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: `worker-common.md` 참조
 
 ## Role
 - UI/UX, 프론트엔드 구현, 상태관리, API 연동(클라이언트 측)

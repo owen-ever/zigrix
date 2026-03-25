@@ -115,7 +115,7 @@ export function gatherDoctor(loaded: LoadedConfig, paths: ZigrixPaths): Record<s
   if (!payload.files.baseDirExists) warnings.push(`${paths.baseDir} not found. Run \`zigrix onboard\`.`);
   if (!payload.writeAccess.baseDir) warnings.push('Base directory is not writable.');
   if (!payload.openclaw.exists) warnings.push(`${openclawHome} not found. OpenClaw integration remains optional.`);
-  if (payload.rules.count === 0) warnings.push('No rule files found in rules directory. Seed from orchestration/rules/.');
+  if (payload.rules.count === 0) warnings.push('No rule files found in rules directory. Seed bundled defaults with `zigrix onboard` or `zigrix configure --section rules`.');
   if (!payload.pathReach.zigrixInNonLoginPath) {
     warnings.push(
       'zigrix is not reachable from non-login shell PATH (checked: /usr/local/bin, /usr/bin). ' +

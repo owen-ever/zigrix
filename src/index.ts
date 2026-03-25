@@ -127,7 +127,7 @@ program
   .description('Set up Zigrix for first use (creates config.paths.baseDir state, seeds rules, registers agents, and captures workspace defaults)')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
-  .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--project-dir <path>', 'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used')
   .option('--projects-base-dir <path>', 'workspace base directory to persist in zigrix.config.json')
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .action(async (options) => {
@@ -148,7 +148,7 @@ program
   .description('Reconfigure agents, rules, PATH, skills, or workspace settings')
   .option('--section <section>', 'reconfigure specific section (agents|rules|workspace|path|skills), repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--projects-base-dir <path>', 'set projects base directory')
-  .option('--project-dir <path>', 'path to project directory containing orchestration/rules/')
+  .option('--project-dir <path>', 'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used')
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')

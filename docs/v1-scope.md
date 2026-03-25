@@ -3,7 +3,7 @@
 _Last updated: 2026-03-16_
 
 ## Goal
-Ship Zigrix as an open-source ready Node/TypeScript CLI that can replace the current `workspace/orchestration` operator flow for local, file-backed multi-project parallel task orchestration.
+Ship Zigrix as an open-source ready Node/TypeScript CLI for local, file-backed multi-project parallel task orchestration without depending on a personal workspace layout.
 
 ## v1 Must Have
 - Node/TypeScript root implementation

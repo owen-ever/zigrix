@@ -149,7 +149,7 @@
 - Zigrix 최종 구현은 **Node/TypeScript 기반**
 - 산출물 경로는 **초기 setup/config에서 변경 가능**해야 함
 - agent는 registry와 orchestration 참여 여부를 **동적으로 관리 가능**해야 함
-- rule은 정책뿐 아니라 **`orchestration/rules/*.md` 성격의 프롬프트 템플릿 수정**까지 포함해야 함
+- rule은 정책뿐 아니라 **`rules/defaults/*.md` 성격의 프롬프트 템플릿 수정**까지 포함해야 함
 
 즉, Zigrix는 단순 CLI가 아니라 **설정 가능한 orchestration platform**으로 재정의됐다.
 

@@ -15,6 +15,7 @@ import {
   ensureOrchestratorId,
   registerAgents,
   registerSkills,
+  resolveRuleSeedSource,
   seedRules,
   type OpenClawAgent,
   type PathStabilizeResult,
@@ -157,17 +158,19 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
 
   // ─── rules ────────────────────────────────────────────────────────────
   if (sections.includes('rules')) {
-    const projectDir = options.projectDir ?? process.cwd();
-    const rulesSourceDir = path.join(projectDir, 'orchestration', 'rules');
+    const ruleSeed = resolveRuleSeedSource(options.projectDir);
 
-    if (fs.existsSync(rulesSourceDir)) {
-      const result = seedRules(rulesSourceDir, paths.rulesDir);
+    if (ruleSeed.sourceDir) {
+      if (options.projectDir && ruleSeed.source === 'bundled') {
+        log(`ℹ️  No external rule templates found under ${options.projectDir}; using bundled defaults.`);
+      }
+      const result = seedRules(ruleSeed.sourceDir, paths.rulesDir);
       rulesCopied = result.copied;
       rulesSkipped = result.skipped;
       if (rulesCopied.length > 0) log(`✅ Rules added: ${rulesCopied.join(', ')}`);
       if (rulesSkipped.length > 0) log(`⏭️  Rules unchanged: ${rulesSkipped.join(', ')}`);
     } else {
-      log(`ℹ️  No orchestration/rules/ at ${projectDir} — rule seeding skipped.`);
+      log('ℹ️  No bundled rule templates available — rule seeding skipped.');
     }
   }
 

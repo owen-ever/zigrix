@@ -193,7 +193,7 @@ Zigrix는 아래 7가지를 만족해야 한다.
 
 ### 여기서 중요한 점
 네가 말한 "rule 수정"에는 단순 scale matrix만이 아니라,
-**지금 `orchestration/rules/*.md`에 있는 프롬프트 내용 자체 수정**도 포함된다.
+**지금 `rules/defaults/*.md`에 있는 프롬프트 내용 자체 수정**도 포함된다.
 
 그래서 Zigrix는 아래를 지원해야 한다.
 

@@ -11,10 +11,10 @@
 ## 2) Hard Rules
 1. 시작 전에 반드시 `taskId` 생성
 2. 시작 전에 반드시 scale 분류 + 근거 기록
-3. **명세문서 경로 고정:** `orchestration/tasks/<taskId>.md`
+3. **명세문서 경로 고정:** `paths.tasksDir/<taskId>.md`
 4. **normal|risky|large는 명세문서 미작성 시 진행 금지**
 5. simple은 요약형 spec 허용(동일 경로 파일 사용)
-6. 기계용 메타데이터는 `orchestration/tasks/<taskId>.meta.json`을 우선 신뢰
+6. 기계용 메타데이터는 `paths.tasksDir/<taskId>.meta.json`을 우선 신뢰
 7. scale별 필수 참여 에이전트 누락 금지
 7. `qa-agent`는 모든 scale에서 필수
 8. 증적 없는 완료 보고 금지 (`sessionKey`, `runId` 필수)
@@ -39,8 +39,8 @@
 15. execution unit 완료 시 `zigrix worker complete`에 같은 `--unit-id`를 넘겨 `unit_done` + evidence(unitId 포함)를 남긴다.
 16. finalize 전 `executionUnits[].status`가 전부 `DONE`인지 확인해야 하며, 미완료 unit이 있으면 완료 보고 금지.
 17. 중단 복구 판단은 session 문맥이 아니라 `meta.json.executionUnits[]`를 우선한다.
-18. **Git Workflow Policy 준수 (2026-03-17):** 프로젝트 작업 시 `<OPENCLAW_HOME>/public-knowledge/policies/git-workflow.md`를 반드시 따른다. GitHub 원격 저장소가 연결된 프로젝트는 기본 브랜치(main, master)에서 직접 작업/commit/push 하지 않고, 신규 브랜치에서 작업 후 commit + PR까지를 기본 완료선으로 삼는다.
-19. **상태 불변성 하드가드 (2026-03-17):** `<OPENCLAW_HOME>/public-knowledge/policies/task-status-policy.md`를 따른다. task가 `REPORTED`가 된 이후에는 어떤 후속 completion/event가 와도 상태를 `DONE_PENDING_REPORT`/`IN_PROGRESS`/`BLOCKED`로 되돌리지 않는다. `REPORTED`는 terminal state이며, 후행 이벤트는 NO-OP(로그만) 처리한다.
+18. **Git Workflow Policy 준수 (2026-03-17):** GitHub 원격 저장소가 연결된 프로젝트는 기본 브랜치(main, master)에서 직접 작업/commit/push 하지 않고, 신규 브랜치에서 작업 후 commit + PR까지를 기본 완료선으로 삼는다.
+19. **상태 불변성 하드가드 (2026-03-17):** task가 `REPORTED`가 된 이후에는 어떤 후속 completion/event가 와도 상태를 `DONE_PENDING_REPORT`/`IN_PROGRESS`/`BLOCKED`로 되돌리지 않는다. `REPORTED`는 terminal state이며, 후행 이벤트는 NO-OP(로그만) 처리한다.
 20. **Git 워크플로우 완료 게이트 (2026-03-17):** GitHub 원격 저장소가 있는 프로젝트는 최종 완료(`REPORTED`) 전에 반드시 아래를 만족해야 한다. 하나라도 불충족이면 완료 보고 금지.
     - 작업 브랜치가 `main/master`가 아닐 것
     - 작업 커밋이 원격에 push되어 있을 것
@@ -162,25 +162,25 @@
 - rules에 모델명을 하드코딩하지 말 것 (sync 불일치 위험)
 
 ### 5-4) 프로젝트 디렉토리 명명 규칙 (Hard Rule)
-`orchestration/tasks/`의 taskId 파일명은 기존대로 유지한다.
-`workspace/projects/` 하위에 생성하는 프로젝트 디렉토리는 **의미있는 kebab-case 이름**을 우선 사용한다.
+`paths.tasksDir/`의 taskId 파일명은 기존대로 유지한다.
+`workspace.projectsBaseDir/` 하위에 생성하는 프로젝트 디렉토리는 **의미있는 kebab-case 이름**을 우선 사용한다.
 
 - 사용자 요청의 핵심 키워드를 반영한 kebab-case 이름 사용
 - 예) `portfolio-owen`, `svg-playground`, `crm-dashboard`
 - 의미있는 이름을 지정하기 어려운 경우 **taskId를 폴더명으로 사용** (예: `DEV-20260309-001/`)
-- **taskId ↔ 프로젝트명 매핑은 반드시 `orchestration/tasks/<taskId>.md` 내 `projectDir` 필드에 기록**
+- **taskId ↔ 프로젝트명 매핑은 반드시 `paths.tasksDir/<taskId>.md` 내 `projectDir` 필드에 기록**
 
 ```
-✅ workspace/projects/portfolio-owen/       — 의미있는 이름 (우선)
-✅ workspace/projects/DEV-20260309-001/     — 명명 어려울 때 taskId 허용
-   orchestration/tasks/DEV-20260309-001.md 내: projectDir: portfolio-owen 또는 DEV-20260309-001
+✅ <workspace.projectsBaseDir>/portfolio-owen/       — 의미있는 이름 (우선)
+✅ <workspace.projectsBaseDir>/DEV-20260309-001/     — 명명 어려울 때 taskId 허용
+   paths.tasksDir/DEV-20260309-001.md 내: projectDir: portfolio-owen 또는 DEV-20260309-001
 ```
 
 ## 6) Tracking Update Contract
 분배/완료/차단 이벤트마다 업데이트:
-- `orchestration/tasks.jsonl` (append)
-- `orchestration/index.json` (current state)
-- `orchestration/tasks/<taskId>.md` (detail)
+- `paths.eventsFile` (append)
+- `paths.indexFile` (current state)
+- `paths.tasksDir/<taskId>.md` (detail)
 
 ## 7) Completion Gate
 최종 보고 전 체크:
@@ -197,15 +197,15 @@
   - 상태는 `DONE_PENDING_REPORT` 또는 `BLOCKED` 유지
 
 ## 8) Recovery Protocol
-1. `index.json`의 `activeTasks` 확인
-2. `tasks/<taskId>.md`의 `nextAction`, `resumeHint` 확인
-3. `tasks/<taskId>.meta.json`의 `workPackages[]`, `executionUnits[]` 확인
+1. `paths.indexFile`의 `activeTasks` 확인
+2. `paths.tasksDir/<taskId>.md`의 `nextAction`, `resumeHint` 확인
+3. `paths.tasksDir/<taskId>.meta.json`의 `workPackages[]`, `executionUnits[]` 확인
 4. `sessions_history(...)`로 마지막 컨텍스트 복원
 4. 같은 `taskId`로 재개, 새 runId 발급
-5. `tasks.jsonl`에 `task_resumed` 기록
+5. `paths.eventsFile`에 `task_resumed` 기록
 
 ## 9) Git/배포 정책 (업데이트, 2026-03-17)
-- 프로젝트 작업 시 `<OPENCLAW_HOME>/public-knowledge/policies/git-workflow.md`를 우선 따른다.
+- 프로젝트 작업 시 GitHub 원격 유무에 맞는 브랜치 기반 git workflow를 우선 따른다.
 - **GitHub 원격 저장소가 연결된 프로젝트**는 기본 브랜치 직접 작업/commit/push 금지.
 - 해당 경우 기본 흐름은: 브랜치 생성 → 작업 → commit → 원격 branch push → PR 생성.
 - 사용자의 **명시 지시 없이는** main 직접 merge, 자동 배포, 즉시 배포를 진행하지 않는다.

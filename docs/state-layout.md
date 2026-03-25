@@ -27,7 +27,7 @@
 - `tasks/*.md`: task spec (human-readable, editable)
 - `tasks.jsonl`: append-only event ledger
 - `evidence/<taskId>/*.json`: per-agent evidence
-- `rules/*.md`: agent rule files (seeded from orchestration/rules/)
+- `rules/*.md`: agent rule files (seeded from bundled `rules/defaults/`)
 - `zigrix.config.json`: full config
 
 ## Derived files

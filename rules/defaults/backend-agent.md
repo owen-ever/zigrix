@@ -1,6 +1,6 @@
 # backend-agent Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: `worker-common.md` 참조
 
 ## Role
 - API, 비즈니스 로직, 데이터 처리, 서버 측 성능/안정성

@@ -233,6 +233,36 @@ export function resolveBundledRulesDir(): string | null {
   return null;
 }
 
+export function resolveRuleSeedSource(projectDir?: string): {
+  sourceDir: string | null;
+  source: 'external' | 'bundled' | 'none';
+  searched: string[];
+} {
+  const searched: string[] = [];
+
+  const base = projectDir?.trim();
+  if (base) {
+    const resolvedBase = resolveAbsolutePath(base);
+    const candidates = [
+      path.join(resolvedBase, 'rules', 'defaults'),
+      path.join(resolvedBase, 'rules'),
+    ];
+    searched.push(...candidates);
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return { sourceDir: candidate, source: 'external', searched };
+      }
+    }
+  }
+
+  const bundled = resolveBundledRulesDir();
+  if (bundled) {
+    return { sourceDir: bundled, source: 'bundled', searched };
+  }
+
+  return { sourceDir: null, source: 'none', searched };
+}
+
 export function seedRules(
   sourceDir: string,
   targetDir: string,
@@ -976,23 +1006,26 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   }
 
   // 4. Seed rules
-  const projectDir = options.projectDir ?? process.cwd();
-  const rulesSourceDir = path.join(projectDir, 'orchestration', 'rules');
   const rulesTargetDir = paths.rulesDir;
+  const ruleSeed = resolveRuleSeedSource(options.projectDir);
+  let rulesCopied: string[] = [];
+  let rulesSkipped: string[] = [];
 
-  if (!fs.existsSync(rulesSourceDir)) {
-    warnings.push(
-      `orchestration/rules/ not found at ${rulesSourceDir}. Rules seeding skipped.`,
-    );
+  if (!ruleSeed.sourceDir) {
+    warnings.push('No bundled rule templates available. Rules seeding skipped.');
     log(`⚠️  ${warnings[warnings.length - 1]}`);
-  }
+  } else {
+    if (options.projectDir && ruleSeed.source === 'bundled') {
+      log(`ℹ️  No external rule templates found under ${options.projectDir}; using bundled defaults.`);
+    }
 
-  const { copied: rulesCopied, skipped: rulesSkipped } = seedRules(rulesSourceDir, rulesTargetDir);
-  if (rulesCopied.length > 0) {
-    log(`✅ Rules copied: ${rulesCopied.join(', ')}`);
-  }
-  if (rulesSkipped.length > 0) {
-    log(`⏭️  Rules already exist (skipped): ${rulesSkipped.join(', ')}`);
+    ({ copied: rulesCopied, skipped: rulesSkipped } = seedRules(ruleSeed.sourceDir, rulesTargetDir));
+    if (rulesCopied.length > 0) {
+      log(`✅ Rules copied: ${rulesCopied.join(', ')}`);
+    }
+    if (rulesSkipped.length > 0) {
+      log(`⏭️  Rules already exist (skipped): ${rulesSkipped.join(', ')}`);
+    }
   }
 
   // 5. Stabilize PATH — ensure zigrix is reachable

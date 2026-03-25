@@ -30,7 +30,7 @@ zigrix onboard --yes
 This:
 - Creates `paths.baseDir` from `zigrix.config.json` with default directories
 - Detects OpenClaw and imports agents from `openclaw.json`
-- Seeds rule files from `orchestration/rules/`
+- Seeds bundled rule templates from `rules/defaults/` into `paths.rulesDir`
 - Ensures `zigrix` is reachable from PATH (creates symlink if needed)
 - Registers zigrix skill packs into `~/.openclaw/skills/`
 

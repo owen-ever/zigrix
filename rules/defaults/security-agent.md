@@ -1,6 +1,6 @@
 # security-agent Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: `worker-common.md` 참조
 
 ## Role
 - 위협 모델링, 취약점 관점 검토, 보안 가드레일 제안

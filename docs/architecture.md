@@ -33,7 +33,7 @@ Global runtime state:
 │  └─ <taskId>.md           # human-readable spec
 ├─ prompts/
 ├─ evidence/
-├─ rules/                   # seeded from orchestration/rules/
+├─ rules/                   # seeded from bundled rules/defaults/
 ├─ runs/
 ├─ tasks.jsonl              # append-only event log
 └─ index.json               # derived projection (rebuildable)

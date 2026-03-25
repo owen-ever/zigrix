@@ -59,7 +59,7 @@ Note: `zigrix onboard` now handles skill registration automatically when OpenCla
 1. Creates runtime directories from `zigrix.config.json` (`paths.baseDir` and derived paths) and default config
 2. Detects OpenClaw (`~/.openclaw/`) and reads `openclaw.json`
 3. Imports agents (filters out `main`, registers with roles)
-4. Seeds rule files from `orchestration/rules/`
+4. Seeds bundled rule templates from `rules/defaults/` into `paths.rulesDir`
 5. **PATH stabilization** — if `zigrix` isn't in PATH, creates a symlink in `~/.local/bin/`
 6. **Skill registration** — symlinks `skills/zigrix-*` into `~/.openclaw/skills/`
 
