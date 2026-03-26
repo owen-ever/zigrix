@@ -60,10 +60,10 @@ describe('release script helpers', () => {
 
   describe('parseReleaseArgs', () => {
     it('parses version, dry-run, and dist-tag', () => {
-      expect(parseReleaseArgs(['0.1.0-alpha.16', '--dry-run', '--dist-tag', 'alpha'])).toEqual({
-        versionArg: '0.1.0-alpha.16',
+      expect(parseReleaseArgs(['0.1.0', '--dry-run', '--dist-tag', 'latest'])).toEqual({
+        versionArg: '0.1.0',
         dryRun: true,
-        distTagOverride: 'alpha',
+        distTagOverride: 'latest',
         latest: false,
         help: false,
       });
@@ -79,8 +79,8 @@ describe('release script helpers', () => {
     });
 
     it('parses explicit latest promotion flag', () => {
-      expect(parseReleaseArgs(['0.1.0-alpha.16', '--latest'])).toEqual({
-        versionArg: '0.1.0-alpha.16',
+      expect(parseReleaseArgs(['0.1.0', '--latest'])).toEqual({
+        versionArg: '0.1.0',
         dryRun: false,
         latest: true,
         help: false,
@@ -92,3 +92,4 @@ describe('release script helpers', () => {
     });
   });
 });
+

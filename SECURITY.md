@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Zigrix is in early alpha. Security fixes will target the latest active alpha branch.
+Zigrix is in a pre-1.0 semver phase. Security fixes target the latest supported `0.x` release line.
 
 ## Reporting a vulnerability
 

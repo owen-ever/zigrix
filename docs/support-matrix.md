@@ -15,9 +15,9 @@
 
 | Stage | Install path | Guarantees |
 |---|---|---|
-| alpha | source / install.sh | best effort, rapid iteration |
-| beta | GitHub Release assets | stable golden path expected |
-| v1.0 | GitHub Release assets + npm | documented install/onboard/upgrade/uninstall and smoke-tested release |
+| `0.x` prerelease | source / install.sh or preview release artifacts | best effort, rapid iteration |
+| `0.x` release | GitHub Release assets + npm | default install path exists, but command/output compatibility may still evolve before `1.0.0` |
+| `1.x+` | GitHub Release assets + npm | documented install/onboard/upgrade/uninstall and smoke-tested release with stronger compatibility expectations |
 
 ## Intended ownership model
 - human operator: install Zigrix and run `zigrix onboard`

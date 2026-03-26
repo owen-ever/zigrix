@@ -14,9 +14,9 @@
 - checksums
 
 ## Tag format
-- alpha: `v0.1.0-alpha.1`
-- beta: `v0.1.0-beta.1`
-- stable: `v1.0.0`
+- release: `v0.1.0`
+- prerelease: `v0.2.0-beta.1`
+- stable major: `v1.0.0`
 
 ## Release flow
 1. merge release-ready changes
