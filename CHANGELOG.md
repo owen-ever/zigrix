@@ -30,6 +30,7 @@ All notable changes to Zigrix will be documented in this file.
 - Dependency: `@inquirer/prompts` (interactive terminal prompts)
 
 ### Changed
+- Dropped the alpha suffix for the next release line and moved Zigrix to plain pre-`1.0.0` semver (`0.1.0`)
 - Promoted the Node/TypeScript implementation to the repository root
 - Removed the previous legacy prototype and aligned the repo to a single Node/TypeScript implementation path
 - Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
