@@ -1,6 +1,6 @@
 ---
 name: zigrix-evidence
-version: 0.2.0
+version: 0.3.0
 description: Collect and merge task evidence in Zigrix.
 metadata:
   openclaw:
@@ -18,4 +18,8 @@ zigrix evidence collect --task-id DEV-20260316-001 --agent-id <qaAgentId> --summ
 zigrix evidence merge --task-id DEV-20260316-001 --require-qa --json
 ```
 
-Evidence files are stored under `paths.evidenceDir/<taskId>/` in `zigrix.config.json`.
+Key JSON output fields:
+- `evidence collect` → `evidencePath` (absolute path to the written evidence file)
+- `evidence merge` → `mergedPath` (absolute path to the merged evidence file)
+
+Do not construct evidence file paths manually from symbolic keys. Always use the `evidencePath` / `mergedPath` returned by the CLI.

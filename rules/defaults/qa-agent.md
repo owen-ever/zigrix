@@ -12,7 +12,7 @@
 
 ## 1단계: Spec Compliance (스펙 충족 검증)
 
-스펙 문서(`paths.tasksDir/<taskId>.md`)의 요구사항을 코드가 항목별로 충족하는지 검증.
+스펙 문서는 `zigrix task status <taskId> --json`의 `specPath`로 확인하고, 그 요구사항을 코드가 항목별로 충족하는지 검증.
 
 ### 검증 항목
 - 스펙에 명시된 기능 요구사항 전수 체크 (체크리스트 형태)

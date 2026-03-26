@@ -11,7 +11,7 @@
 4. 불확실한 추정은 추정이라고 명시
 5. BLOCKED 상태는 즉시 보고 (원인/필요입력/우회안)
 6. **모든 문제는 근본적인 해결을 원칙으로 한다. 임시방편(workaround) 금지.**
-7. **오케스트레이션 필수 (owner 고정, 2026-03-04):** 오케스트레이션에 등록(`paths.tasksDir/<taskId>.md` 존재)되지 않은 작업은 수행 거부. taskId가 있더라도 오케스트레이션 미등록이면 orchestrator-agent에 확인 요청.
+7. **오케스트레이션 필수 (owner 고정, 2026-03-04):** 오케스트레이션에 등록되지 않은 작업은 수행 거부. 확인은 `zigrix task status <taskId> --json`의 성공 여부와 반환된 `specPath`/`metaPath`를 기준으로 한다. taskId가 있더라도 조회가 실패하면 orchestrator-agent에 확인 요청.
 8. **CLI 체인 정합:** 워커 lifecycle 기록(`worker_dispatched`/`worker_done`/`worker_skipped`)은 orchestrator-agent가 `zigrix worker prepare → zigrix worker register → zigrix worker complete` 체인으로 처리한다.
 9. **Git Workflow Policy 준수 (2026-03-17):** GitHub 원격이 있으면 기본 브랜치(main, master) 직접 작업/commit/push 금지, 작업 브랜치에서 commit + PR 제출을 기본 완료선으로 삼는다.
 10. **완료 상태 불변성 (2026-03-17):** `REPORTED` task에 대한 후행 completion/event는 상태 전이를 만들지 않는다. 워커는 중복 완료 알림이 와도 추가 상태 변경 시도를 하지 않고 NO-OP로 처리한다.
@@ -19,13 +19,18 @@
 
 ## 3) Project Path Policy (고정)
 - 개발 프로젝트 경로는 worker prompt의 `projectDir` / `projectPath`를 우선 사용
-- `projectDir`가 비어 있는 신규 작업의 기본 루트는 `workspace.projectsBaseDir`
+- `projectDir`가 비어 있는 신규 작업의 기본 루트가 필요하면 `zigrix path get workspace.projectsBaseDir --json`의 `value`를 조회
 - 구현/수정/테스트 작업은 해당 프로젝트 루트 기준 상대 경로로 수행
+- bare symbolic key(`paths.tasksDir`, `workspace.projectsBaseDir`)는 자동 확장되지 않으므로 그대로 파일 경로처럼 쓰지 않는다
 
-## 4) Tracking Paths
-- Spec: `paths.tasksDir/<taskId>.md`
-- Meta: `paths.tasksDir/<taskId>.meta.json`
-- Evidence output: `paths.evidenceDir/<taskId>/<agentId>.json`
+## 4) Path Resolution Contract
+절대경로가 필요하면 아래 순서를 따른다.
+
+1. `zigrix task status <taskId> --json` → `specPath`, `metaPath`, `projectDir`
+2. `zigrix worker prepare --task-id <taskId> --agent-id <agentId> --description "..." --json` → `promptPath`, `specPath`, `metaPath`, `projectDir`
+3. `zigrix evidence collect --task-id <taskId> --agent-id <agentId> --summary "..." --json` → `evidencePath`
+4. `zigrix evidence merge --task-id <taskId> --json` → `mergedPath`
+5. 런타임 디렉토리만 필요하면 `zigrix path get tasksDir|evidenceDir|promptsDir|workspace.projectsBaseDir --json`
 
 ## 5) Worker Prompt Contract (필수)
 `zigrix worker prepare`가 생성한 worker prompt를 작업 지시서로 간주한다.

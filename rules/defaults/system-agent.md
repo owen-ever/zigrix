@@ -66,4 +66,4 @@
 - orchestrator-agent가 구현 분배 가능한 수준으로 명확
 - 기술 스택 선정 근거가 문서화됨
 - 보안/운영/QA 관점 사전 체크 포함
-- ADR 파일 저장: `paths.tasksDir/<taskId>-adr.md`
+- ADR 파일 저장: `zigrix task status <taskId> --json`의 `specPath`와 같은 디렉토리에 `<taskId>-adr.md`

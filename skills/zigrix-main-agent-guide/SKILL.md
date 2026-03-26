@@ -1,7 +1,7 @@
 ---
 name: zigrix-main-agent-guide
-version: 0.1.0
-description: Main-agent guide for using Zigrix CLI (task issuance, orchestrator spawn, dashboard, and Python-script-to-CLI migration).
+version: 0.2.0
+description: Main-agent guide for using Zigrix CLI (task issuance, orchestrator spawn, dashboard, and path resolution).
 metadata:
   openclaw:
     requires:
@@ -40,13 +40,17 @@ zigrix task dispatch \
   --json
 ```
 
-디스패치 결과에서 확인할 핵심 필드:
+디스패치 결과에서 확인하고 다음 에이전트에 전달할 핵심 필드:
 - `taskId`
 - `orchestratorId`
 - `qaAgentId`
 - `baselineRequiredAgents`
 - `candidateAgents`
-- `orchestratorPrompt` (`proZigPrompt` 호환 별칭 포함)
+- `orchestratorPrompt`
+- `specPath` — resolved absolute path to spec markdown
+- `metaPath` — resolved absolute path to metadata JSON
+- `promptPath` — resolved absolute path to dispatch prompt
+- `projectDir` — resolved project directory
 
 ## 3) 오케스트레이터 spawn 패턴
 
@@ -64,7 +68,7 @@ sessions_spawn(
 ## 4) 워커/검증/최종 보고 체인
 
 ```bash
-# 워커 준비
+# 워커 준비 (returns promptPath, specPath, metaPath, projectDir)
 zigrix worker prepare --task-id <taskId> --agent-id <agentId> --description "..." --json
 
 # 워커 세션 등록
@@ -73,15 +77,29 @@ zigrix worker register --task-id <taskId> --agent-id <agentId> --session-key <se
 # 워커 완료
 zigrix worker complete --task-id <taskId> --agent-id <agentId> --session-key <sessionKey> --run-id <runId> --json
 
-# evidence 수집/머지
+# evidence 수집 (returns evidencePath)
 zigrix evidence collect --task-id <taskId> --agent-id <agentId> --summary "..." --json
+
+# evidence 머지 (returns mergedPath)
 zigrix evidence merge --task-id <taskId> --require-qa --json
 
 # 최종화
 zigrix task finalize <taskId> --auto-report --json
 ```
 
-## 5) 대시보드 사용 포인트
+## 5) 경로 해석이 필요할 때
+
+CLI JSON 응답의 resolved path 필드를 우선 사용한다. 런타임 디렉토리만 필요하면:
+
+```bash
+zigrix path get tasksDir --json
+zigrix path get workspace.projectsBaseDir --json
+zigrix path list --json
+```
+
+bare symbolic key(`paths.tasksDir`, `workspace.projectsBaseDir`)를 파일 경로처럼 직접 쓰지 않는다.
+
+## 6) 대시보드 사용 포인트
 
 대시보드에서 확인:
 - Task 상태 (OPEN → IN_PROGRESS → REPORTED)
@@ -94,17 +112,17 @@ zigrix task finalize <taskId> --auto-report --json
 2. `zigrix task events <taskId> --json`
 3. `zigrix evidence merge --task-id <taskId> --require-qa --json`
 
-## 6) Python 스크립트 체인 → Zigrix CLI 전환 가이드
+## 7) Standard CLI chain
 
-## Standard CLI chain
-
-| Step | Command |
-|------|---------|
-| Dispatch | `zigrix task dispatch` |
-| Start | `zigrix task start` |
-| Worker prepare | `zigrix worker prepare` |
-| Worker register | `zigrix worker register` |
-| Worker complete | `zigrix worker complete` |
-| Finalize | `zigrix task finalize` |
+| Step | Command | Key resolved path fields |
+|------|---------|--------------------------|
+| Dispatch | `zigrix task dispatch` | `specPath`, `metaPath`, `promptPath`, `projectDir` |
+| Start | `zigrix task start` | |
+| Worker prepare | `zigrix worker prepare` | `promptPath`, `specPath`, `metaPath`, `projectDir` |
+| Worker register | `zigrix worker register` | |
+| Worker complete | `zigrix worker complete` | |
+| Evidence collect | `zigrix evidence collect` | `evidencePath` |
+| Evidence merge | `zigrix evidence merge` | `mergedPath` |
+| Finalize | `zigrix task finalize` | |
 
 - JSON 출력(`--json`)을 기본으로 파이프라인에서 파싱

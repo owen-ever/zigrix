@@ -11,10 +11,10 @@
 ## 2) Hard Rules
 1. 시작 전에 반드시 `taskId` 생성
 2. 시작 전에 반드시 scale 분류 + 근거 기록
-3. **명세문서 경로 고정:** `paths.tasksDir/<taskId>.md`
+3. **명세문서 절대경로 확인 필수:** `zigrix task status <taskId> --json`의 `specPath`를 canonical spec path로 사용
 4. **normal|risky|large는 명세문서 미작성 시 진행 금지**
 5. simple은 요약형 spec 허용(동일 경로 파일 사용)
-6. 기계용 메타데이터는 `paths.tasksDir/<taskId>.meta.json`을 우선 신뢰
+6. 기계용 메타데이터는 `zigrix task status <taskId> --json`의 `metaPath`와 그 JSON 내용을 우선 신뢰
 7. scale별 필수 참여 에이전트 누락 금지
 7. `qa-agent`는 모든 scale에서 필수
 8. 증적 없는 완료 보고 금지 (`sessionKey`, `runId` 필수)
@@ -28,12 +28,14 @@
     - **태스크 메타 및 dispatch prompt가 태스크 브리핑이자 작업 지시서**이다.
     - 모든 상태 추적은 CLI 체인을 통해 자동 기록된다.
     - **체인을 건너뛰면 다음 지시를 받을 수 없다.**
+    - bare symbolic key(`paths.tasksDir`, `paths.eventsFile`, `workspace.projectsBaseDir`)는 자동 확장되지 않으므로, 절대경로가 필요하면 반드시 CLI JSON 응답을 사용한다.
     - 아래 체인을 순서대로 따른다:
       1. **착수:** `zigrix task start <taskId> --json`
-      2. **워커 prompt 생성:** `zigrix worker prepare --task-id <taskId> --agent-id <workerId> --description "..."` → sessions_spawn에 전달할 prompt 출력
-      3. **워커 등록:** `zigrix worker register --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 다음 행동 출력
-      4. **워커 완료:** `zigrix worker complete --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 완료 여부 + 다음 행동 출력
-      5. **최종 보고:** `zigrix task finalize <taskId> --auto-report`
+      2. **태스크 경로 확인:** `zigrix task status <taskId> --json` → `specPath`, `metaPath`, `projectDir` 확보
+      3. **워커 prompt 생성:** `zigrix worker prepare --task-id <taskId> --agent-id <workerId> --description "..." --json` → `promptPath`, `specPath`, `metaPath`, `projectDir`를 확인하고 sessions_spawn에 prompt를 전달
+      4. **워커 등록:** `zigrix worker register --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 다음 행동 출력
+      5. **워커 완료:** `zigrix worker complete --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 완료 여부 + 다음 행동 출력
+      6. **최종 보고:** `zigrix task finalize <taskId> --auto-report`
 13. task는 크게 유지하고 내부 실행은 `workPackages[]` + `executionUnits[]`로 세분화한다.
 14. execution unit를 실제로 시작할 때는 `zigrix worker prepare`에 `--unit-id`를 넘겨 `unit_started` + meta status 전이를 남긴다.
 15. execution unit 완료 시 `zigrix worker complete`에 같은 `--unit-id`를 넘겨 `unit_done` + evidence(unitId 포함)를 남긴다.
@@ -162,25 +164,27 @@
 - rules에 모델명을 하드코딩하지 말 것 (sync 불일치 위험)
 
 ### 5-4) 프로젝트 디렉토리 명명 규칙 (Hard Rule)
-`paths.tasksDir/`의 taskId 파일명은 기존대로 유지한다.
-`workspace.projectsBaseDir/` 하위에 생성하는 프로젝트 디렉토리는 **의미있는 kebab-case 이름**을 우선 사용한다.
+- taskId 파일명 자체는 기존 규칙을 유지한다.
+- 프로젝트 기본 루트는 `zigrix path get workspace.projectsBaseDir --json`의 `value`다.
+- 그 하위에 생성하는 프로젝트 디렉토리는 **의미있는 kebab-case 이름**을 우선 사용한다.
 
 - 사용자 요청의 핵심 키워드를 반영한 kebab-case 이름 사용
 - 예) `portfolio-owen`, `svg-playground`, `crm-dashboard`
 - 의미있는 이름을 지정하기 어려운 경우 **taskId를 폴더명으로 사용** (예: `DEV-20260309-001/`)
-- **taskId ↔ 프로젝트명 매핑은 반드시 `paths.tasksDir/<taskId>.md` 내 `projectDir` 필드에 기록**
+- **taskId ↔ 프로젝트명 매핑은 반드시 `zigrix task status <taskId> --json`의 `specPath` 문서 내 `projectDir` 필드에 기록**
 
 ```
-✅ <workspace.projectsBaseDir>/portfolio-owen/       — 의미있는 이름 (우선)
-✅ <workspace.projectsBaseDir>/DEV-20260309-001/     — 명명 어려울 때 taskId 허용
-   paths.tasksDir/DEV-20260309-001.md 내: projectDir: portfolio-owen 또는 DEV-20260309-001
+✅ <path get workspace.projectsBaseDir>/portfolio-owen/       — 의미있는 이름 (우선)
+✅ <path get workspace.projectsBaseDir>/DEV-20260309-001/     — 명명 어려울 때 taskId 허용
+   specPath 문서 내: projectDir: portfolio-owen 또는 DEV-20260309-001
 ```
 
 ## 6) Tracking Update Contract
-분배/완료/차단 이벤트마다 업데이트:
-- `paths.eventsFile` (append)
-- `paths.indexFile` (current state)
-- `paths.tasksDir/<taskId>.md` (detail)
+분배/완료/차단 이벤트는 CLI 체인이 자동 갱신한다.
+절대경로가 필요하면 raw symbolic key를 추론하지 말고 아래를 사용한다.
+- `zigrix task status <taskId> --json` → `specPath`, `metaPath`
+- `zigrix path get eventsFile --json` → events append file
+- `zigrix path get indexFile --json` → current-state index file
 
 ## 7) Completion Gate
 최종 보고 전 체크:
@@ -197,12 +201,13 @@
   - 상태는 `DONE_PENDING_REPORT` 또는 `BLOCKED` 유지
 
 ## 8) Recovery Protocol
-1. `paths.indexFile`의 `activeTasks` 확인
-2. `paths.tasksDir/<taskId>.md`의 `nextAction`, `resumeHint` 확인
-3. `paths.tasksDir/<taskId>.meta.json`의 `workPackages[]`, `executionUnits[]` 확인
-4. `sessions_history(...)`로 마지막 컨텍스트 복원
-4. 같은 `taskId`로 재개, 새 runId 발급
-5. `paths.eventsFile`에 `task_resumed` 기록
+1. `zigrix path get indexFile --json`로 current-state index 위치 확인
+2. `zigrix task status <taskId> --json`로 `specPath`, `metaPath`, `projectDir` 확보
+3. `specPath`의 `nextAction`, `resumeHint` 확인
+4. `metaPath`의 `workPackages[]`, `executionUnits[]` 확인
+5. `sessions_history(...)`로 마지막 컨텍스트 복원
+6. 같은 `taskId`로 재개, 새 runId 발급
+7. `zigrix path get eventsFile --json`로 확인한 events file에 CLI 체인이 `task_resumed`를 기록하게 한다
 
 ## 9) Git/배포 정책 (업데이트, 2026-03-17)
 - 프로젝트 작업 시 GitHub 원격 유무에 맞는 브랜치 기반 git workflow를 우선 따른다.

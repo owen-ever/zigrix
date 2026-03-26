@@ -1,6 +1,6 @@
 ---
 name: zigrix-task-status
-version: 0.1.0
+version: 0.2.0
 description: Inspect Zigrix task records and state transitions.
 metadata:
   openclaw:
@@ -23,5 +23,8 @@ zigrix task start TASK-20260313-001
 zigrix task finalize TASK-20260313-001
 zigrix task report TASK-20260313-001
 ```
+
+`task status --json` returns resolved path fields (`specPath`, `metaPath`, `projectDir`) alongside task metadata.
+Use these fields when absolute file paths are needed; do not construct paths from symbolic config keys.
 
 Treat status transitions as explicit lifecycle events.
