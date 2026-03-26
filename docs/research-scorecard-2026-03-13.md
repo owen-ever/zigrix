@@ -69,7 +69,7 @@
   - install.sh 중심 전략과 PyPI 후속 전략의 역할 구분이 좋음
   - pipx/uv를 후속 또는 병행 채널로 보는 판단이 현실적임
 - 감점 이유:
-  - 실제 사용자 여정(완전 초심자 vs Python 사용자)에 대한 비교가 조금 더 있으면 좋음
+  - 실제 사용자 여정(완전 초심자 vs 기존 CLI 사용자)에 대한 비교가 조금 더 있으면 좋음
   - Homebrew / Windows 경로는 아직 러프함
 
 ### 5. GitHub Releases / 릴리즈 자산 설계
@@ -142,14 +142,14 @@
 
 ## 2026-03-13 저녁 재정의 메모
 
-이 문서의 초기 아키텍처 방향은 **Python 유지 + 공개 CLI 제품화**를 전제로 했다.
+이 문서의 초기 아키텍처 방향은 **legacy prototype 유지 + 공개 CLI 제품화**를 전제로 했다.
 하지만 이후 요구사항이 더 분명해졌다.
 
 새 요구사항:
 - Zigrix 최종 구현은 **Node/TypeScript 기반**
 - 산출물 경로는 **초기 setup/config에서 변경 가능**해야 함
 - agent는 registry와 orchestration 참여 여부를 **동적으로 관리 가능**해야 함
-- rule은 정책뿐 아니라 **`orchestration/rules/*.md` 성격의 프롬프트 템플릿 수정**까지 포함해야 함
+- rule은 정책뿐 아니라 **`rules/defaults/*.md` 성격의 프롬프트 템플릿 수정**까지 포함해야 함
 
 즉, Zigrix는 단순 CLI가 아니라 **설정 가능한 orchestration platform**으로 재정의됐다.
 
@@ -163,7 +163,7 @@
 
 1. **실제 배포 유사체 비교표 추가**
    - gws
-   - Python CLI 1~2개
+   - legacy/reference CLI 1~2개
    - OpenClaw skill-pack형 repo 1개
 
 2. **명령/입출력 계약 표준화 문서 작성**

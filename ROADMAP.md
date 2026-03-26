@@ -26,7 +26,7 @@ Zigrix는 아래 조건을 만족할 때 `10/10 open-source CLI`로 본다.
 
 ## Phase
 
-- Phase A: Python prototype 동결 + Node 재설계
+- Phase A: legacy prototype 동결 + Node 재설계
 - Phase B: config-first Node skeleton
 - Phase C: agent registry / participation model
 - Phase D: rule + prompt editing engine
@@ -45,4 +45,4 @@ Zigrix는 아래 조건을 만족할 때 `10/10 open-source CLI`로 본다.
 
 구조 원칙:
 - repository root = **Node/TypeScript main implementation**
-- `legacy-python/` = **reference prototype only**
+- repository root = **single supported Node/TypeScript implementation**

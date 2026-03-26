@@ -28,15 +28,10 @@ rm -f ~/.openclaw/skills/zigrix-*
 
 ## Keep or remove global state
 
-Zigrix runtime state is stored globally in:
-
-```text
-~/.zigrix/
-```
-
-This includes config, tasks, evidence, rules, and event logs.
-Remove it only if you intentionally want to discard all Zigrix data.
+Zigrix runtime state is stored under the directory pointed to by `zigrix.config.json` (`paths.baseDir`). This includes tasks, evidence, rules, and event logs. The config file itself lives at `~/.zigrix/zigrix.config.json`.
+Remove runtime state only if you intentionally want to discard all Zigrix data.
 
 ```bash
-rm -rf ~/.zigrix
+# inspect paths.baseDir first, then remove that directory if you really want a full wipe
+zigrix config get paths.baseDir --json
 ```

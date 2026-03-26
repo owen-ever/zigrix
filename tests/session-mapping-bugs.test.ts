@@ -30,14 +30,14 @@ describe('registerWorker sessionId from sessionKey', () => {
       },
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
-          'qa-zig': { label: 'qa-zig', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
-          'back-zig': { label: 'back-zig', role: 'backend', runtime: 'openclaw', enabled: true, metadata: {} },
+          'orch-main': { label: 'orch-main', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+          'qa-main': { label: 'qa-main', role: 'qa', runtime: 'openclaw', enabled: true, metadata: {} },
+          'backend-main': { label: 'backend-main', role: 'backend', runtime: 'openclaw', enabled: true, metadata: {} },
         },
         orchestration: {
-          participants: ['pro-zig', 'qa-zig', 'back-zig'],
+          participants: ['orch-main', 'qa-main', 'backend-main'],
           excluded: [],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orch-main',
         },
       },
     });
@@ -54,10 +54,10 @@ describe('registerWorker sessionId from sessionKey', () => {
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
 
-    const sessionKey = 'agent:back-zig:subagent:abc-def-123';
+    const sessionKey = 'agent:backend-main:subagent:abc-def-123';
     const result = registerWorker(paths, {
       taskId,
-      agentId: 'back-zig',
+      agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
       // sessionId intentionally omitted (empty)
@@ -69,7 +69,7 @@ describe('registerWorker sessionId from sessionKey', () => {
     // Verify it's persisted in meta.json
     const task = loadTask(paths, taskId);
     expect(task).toBeTruthy();
-    const workerSession = task!.workerSessions['back-zig'] as Record<string, unknown>;
+    const workerSession = task!.workerSessions['backend-main'] as Record<string, unknown>;
     expect(workerSession.sessionId).toBe('abc-def-123');
   });
 
@@ -82,10 +82,10 @@ describe('registerWorker sessionId from sessionKey', () => {
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
 
-    const sessionKey = 'agent:back-zig:subagent:abc-def-123';
+    const sessionKey = 'agent:backend-main:subagent:abc-def-123';
     const result = registerWorker(paths, {
       taskId,
-      agentId: 'back-zig',
+      agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
       sessionId: 'explicit-session-id',
@@ -107,7 +107,7 @@ describe('registerWorker sessionId from sessionKey', () => {
     const sessionKey = 'custom-session-key-no-standard-format';
     const result = registerWorker(paths, {
       taskId,
-      agentId: 'back-zig',
+      agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
     }) as Record<string, unknown>;
@@ -125,10 +125,10 @@ describe('registerWorker sessionId from sessionKey', () => {
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
 
-    const sessionKey = 'agent:back-zig:subagent:event-sess-id-456';
+    const sessionKey = 'agent:backend-main:subagent:event-sess-id-456';
     registerWorker(paths, {
       taskId,
-      agentId: 'back-zig',
+      agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
     });
@@ -137,7 +137,7 @@ describe('registerWorker sessionId from sessionKey', () => {
     const eventsRaw = fs.readFileSync(paths.eventsFile, 'utf-8');
     const events = eventsRaw.split('\n').filter(Boolean).map((line) => JSON.parse(line));
     const dispatchedEvent = events.find(
-      (e: Record<string, unknown>) => e.event === 'worker_dispatched' && e.targetAgent === 'back-zig',
+      (e: Record<string, unknown>) => e.event === 'worker_dispatched' && e.targetAgent === 'backend-main',
     );
 
     expect(dispatchedEvent).toBeTruthy();
@@ -161,13 +161,13 @@ describe('createZigrixStore: readAgentIds with nested registry', () => {
     const config = {
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator' },
-          'back-zig': { label: 'back-zig', role: 'backend' },
-          'qa-zig': { label: 'qa-zig', role: 'qa' },
+          'orch-main': { label: 'orch-main', role: 'orchestrator' },
+          'backend-main': { label: 'backend-main', role: 'backend' },
+          'qa-main': { label: 'qa-main', role: 'qa' },
         },
         orchestration: {
-          participants: ['pro-zig', 'back-zig', 'qa-zig'],
-          orchestratorId: 'pro-zig',
+          participants: ['orch-main', 'backend-main', 'qa-main'],
+          orchestratorId: 'orch-main',
         },
       },
     };
@@ -194,8 +194,8 @@ describe('createZigrixStore: readAgentIds with nested registry', () => {
   it('reads agent IDs from flat agents map (legacy config structure)', async () => {
     const config = {
       agents: {
-        'pro-zig': { label: 'pro-zig', role: 'orchestrator' },
-        'back-zig': { label: 'back-zig', role: 'backend' },
+        'orch-main': { label: 'orch-main', role: 'orchestrator' },
+        'backend-main': { label: 'backend-main', role: 'backend' },
       },
     };
     fs.writeFileSync(
@@ -225,7 +225,7 @@ describe('resolveSessionIdMap: deleted session file fallback', () => {
   });
 
   it('resolves sessionId from deleted session files when sessions.json lacks entry', async () => {
-    const agentId = 'back-zig';
+    const agentId = 'backend-main';
     const sessionId = 'deleted-sess-abc';
     const sessionKey = `agent:${agentId}:subagent:${sessionId}`;
 
@@ -244,7 +244,7 @@ describe('resolveSessionIdMap: deleted session file fallback', () => {
         registry: {
           [agentId]: { label: agentId, role: 'backend' },
         },
-        orchestration: { participants: [agentId], orchestratorId: 'pro-zig' },
+        orchestration: { participants: [agentId], orchestratorId: 'orch-main' },
       },
     };
     fs.writeFileSync(
@@ -305,7 +305,7 @@ describe('resolveSessionIdMap: deleted session file fallback', () => {
   });
 
   it('resolves sessionId from active session file as well', async () => {
-    const agentId = 'pro-zig';
+    const agentId = 'orch-main';
     const sessionId = 'active-sess-xyz';
     const sessionKey = `agent:${agentId}:subagent:${sessionId}`;
 

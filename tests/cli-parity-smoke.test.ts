@@ -18,8 +18,8 @@ function setupOpenClawConfig(tmpBase: string) {
     agents: {
       list: [
         { id: 'main', default: true },
-        { id: 'pro-zig', name: 'pro-zig', identity: { theme: 'Orchestrator Agent' } },
-        { id: 'qa-zig', name: 'qa-zig', identity: { theme: 'QA Agent' } },
+        { id: 'orch-main', name: 'orch-main', identity: { theme: 'Orchestrator Agent' } },
+        { id: 'qa-main', name: 'qa-main', identity: { theme: 'QA Agent' } },
       ],
     },
   }));
@@ -29,14 +29,13 @@ function setupOpenClawConfig(tmpBase: string) {
 describe('cli parity smoke', () => {
   it('supports onboard/task/evidence/report commands through built CLI', () => {
     const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-cli-'));
-    const zigrixHome = path.join(tmpRoot, '.zigrix');
     const openclawHome = setupOpenClawConfig(tmpRoot);
-    const env = { ...process.env, ZIGRIX_HOME: zigrixHome, OPENCLAW_HOME: openclawHome };
+    const env = { ...process.env, HOME: tmpRoot, OPENCLAW_HOME: openclawHome };
 
     execFileSync(nodeBin, ['dist/index.js', 'onboard', '--yes'], { cwd: repoRoot, env });
-    const createRaw = execFileSync(nodeBin, ['dist/index.js', 'task', 'create', '--title', 'CLI task', '--description', 'smoke', '--required-agent', 'qa-zig', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
+    const createRaw = execFileSync(nodeBin, ['dist/index.js', 'task', 'create', '--title', 'CLI task', '--description', 'smoke', '--required-agent', 'qa-main', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
     const created = JSON.parse(createRaw) as { taskId: string };
-    execFileSync(nodeBin, ['dist/index.js', 'evidence', 'collect', '--task-id', created.taskId, '--agent-id', 'qa-zig', '--summary', 'done'], { cwd: repoRoot, env });
+    execFileSync(nodeBin, ['dist/index.js', 'evidence', 'collect', '--task-id', created.taskId, '--agent-id', 'qa-main', '--summary', 'done'], { cwd: repoRoot, env });
     const mergedRaw = execFileSync(nodeBin, ['dist/index.js', 'evidence', 'merge', '--task-id', created.taskId, '--require-qa', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
     const merged = JSON.parse(mergedRaw) as { complete: boolean };
     expect(merged.complete).toBe(true);

@@ -1,8 +1,8 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import { addAgent, removeAgent } from './agents/registry.js';
+import { resolveAbsolutePath } from './config/defaults.js';
 import { loadConfig, writeConfigFile } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import {
@@ -15,6 +15,7 @@ import {
   ensureOrchestratorId,
   registerAgents,
   registerSkills,
+  resolveRuleSeedSource,
   seedRules,
   type OpenClawAgent,
   type PathStabilizeResult,
@@ -60,12 +61,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
   const silent = options.silent ?? false;
   const log = (msg: string) => { if (!silent) console.log(msg); };
 
-  // Resolve base dir at runtime (not from the static ZIGRIX_HOME constant)
-  const runtimeBaseDir = process.env.ZIGRIX_HOME
-    ? path.resolve(process.env.ZIGRIX_HOME)
-    : path.join(os.homedir(), '.zigrix');
-
-  const loaded = loadConfig({ baseDir: runtimeBaseDir });
+  const loaded = loadConfig();
   if (!loaded.configPath || !fs.existsSync(loaded.configPath)) {
     throw new Error('zigrix not initialized. Run `zigrix onboard` first.');
   }
@@ -151,7 +147,7 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
 
   // ─── workspace ────────────────────────────────────────────────────────
   if (sections.includes('workspace') && options.projectsBaseDir) {
-    const resolved = path.resolve(options.projectsBaseDir);
+    const resolved = resolveAbsolutePath(options.projectsBaseDir);
     if (config.workspace.projectsBaseDir !== resolved) {
       config.workspace.projectsBaseDir = resolved;
       configDirty = true;
@@ -162,17 +158,19 @@ export async function runConfigure(options: RunConfigureOptions): Promise<Config
 
   // ─── rules ────────────────────────────────────────────────────────────
   if (sections.includes('rules')) {
-    const projectDir = options.projectDir ?? process.cwd();
-    const rulesSourceDir = path.join(projectDir, 'orchestration', 'rules');
+    const ruleSeed = resolveRuleSeedSource(options.projectDir);
 
-    if (fs.existsSync(rulesSourceDir)) {
-      const result = seedRules(rulesSourceDir, paths.rulesDir);
+    if (ruleSeed.sourceDir) {
+      if (options.projectDir && ruleSeed.source === 'bundled') {
+        log(`ℹ️  No external rule templates found under ${options.projectDir}; using bundled defaults.`);
+      }
+      const result = seedRules(ruleSeed.sourceDir, paths.rulesDir);
       rulesCopied = result.copied;
       rulesSkipped = result.skipped;
       if (rulesCopied.length > 0) log(`✅ Rules added: ${rulesCopied.join(', ')}`);
       if (rulesSkipped.length > 0) log(`⏭️  Rules unchanged: ${rulesSkipped.join(', ')}`);
     } else {
-      log(`ℹ️  No orchestration/rules/ at ${projectDir} — rule seeding skipped.`);
+      log('ℹ️  No bundled rule templates available — rule seeding skipped.');
     }
   }
 

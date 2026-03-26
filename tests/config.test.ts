@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { defaultConfig } from '../src/config/defaults.js';
@@ -9,7 +11,7 @@ describe('zigrix config schema', () => {
     const parsed = zigrixConfigSchema.parse(defaultConfig);
     expect(parsed.paths.baseDir).toContain('.zigrix');
     expect(parsed.rules.stale.defaultHours).toBe(24);
-    expect(parsed.workspace.projectsBaseDir).toBe('');
+    expect(parsed.workspace.projectsBaseDir).toContain(`${parsed.paths.baseDir}${path.sep}workspace`);
   });
 
   it('rejects participant/excluded overlap', () => {
@@ -22,7 +24,7 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: ['qa-main'],
           excluded: ['qa-main'],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orch-main',
         },
       },
     })).toThrow(/cannot be both participant and excluded/);
@@ -36,7 +38,7 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: ['ghost-agent'],
           excluded: [],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orch-main',
         },
       },
     })).toThrow(/must exist in registry/);
@@ -58,7 +60,7 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: [],
           excluded: [],
-          orchestratorId: 'ghost-zig',
+          orchestratorId: 'ghost-agent',
         },
       },
     })).toThrow(/orchestratorId .* must exist in registry/);
@@ -75,11 +77,11 @@ describe('zigrix config schema', () => {
         orchestration: {
           participants: [],
           excluded: [],
-          orchestratorId: 'pro-zig',
+          orchestratorId: 'orch-main',
         },
       },
     });
-    expect(parsed.agents.orchestration.orchestratorId).toBe('pro-zig');
+    expect(parsed.agents.orchestration.orchestratorId).toBe('orch-main');
   });
 
   it('rejects excluded orchestratorId', () => {
@@ -87,12 +89,12 @@ describe('zigrix config schema', () => {
       ...defaultConfig,
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
+          'orch-main': { label: 'orch-main', role: 'orchestrator', runtime: 'openclaw', enabled: true, metadata: {} },
         },
         orchestration: {
           participants: [],
-          excluded: ['pro-zig'],
-          orchestratorId: 'pro-zig',
+          excluded: ['orch-main'],
+          orchestratorId: 'orch-main',
         },
       },
     })).toThrow(/orchestratorId .* cannot be excluded/);

@@ -70,21 +70,21 @@ describe('inferStandardAgentRole', () => {
   });
 
   it('infers from agent id when theme is absent', () => {
-    expect(inferStandardAgentRole({ agentId: 'qa-zig' })).toBe('qa');
-    expect(inferStandardAgentRole({ agentId: 'front-zig' })).toBe('frontend');
-    expect(inferStandardAgentRole({ agentId: 'back-zig' })).toBe('backend');
-    expect(inferStandardAgentRole({ agentId: 'sec-zig' })).toBe('security');
-    expect(inferStandardAgentRole({ agentId: 'pro-zig' })).toBe('orchestrator');
-    expect(inferStandardAgentRole({ agentId: 'sys-zig' })).toBe('system');
+    expect(inferStandardAgentRole({ agentId: 'qa-main' })).toBe('qa');
+    expect(inferStandardAgentRole({ agentId: 'frontend-main' })).toBe('frontend');
+    expect(inferStandardAgentRole({ agentId: 'backend-main' })).toBe('backend');
+    expect(inferStandardAgentRole({ agentId: 'security-main' })).toBe('security');
+    expect(inferStandardAgentRole({ agentId: 'orch-main' })).toBe('orchestrator');
+    expect(inferStandardAgentRole({ agentId: 'system-main' })).toBe('system');
   });
 
   it('falls back to "system" for unrecognizable agents', () => {
-    expect(inferStandardAgentRole({ agentId: 'mystery-zig' })).toBe('system');
+    expect(inferStandardAgentRole({ agentId: 'mystery-agent' })).toBe('system');
     expect(inferStandardAgentRole({ agentId: 'custom', theme: 'Random Agent' })).toBe('system');
   });
 
   it('prefers theme over agent id', () => {
-    expect(inferStandardAgentRole({ agentId: 'qa-zig', theme: 'Frontend Agent' })).toBe('frontend');
+    expect(inferStandardAgentRole({ agentId: 'qa-main', theme: 'Frontend Agent' })).toBe('frontend');
   });
 });
 

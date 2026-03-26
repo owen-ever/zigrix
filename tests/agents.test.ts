@@ -9,16 +9,16 @@ import { defaultConfig } from '../src/config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from '../src/config/load.js';
 
 function makeConfigWithOrchestrator() {
-  // Add pro-zig as orchestrator first so orchestratorId validation passes
+  // Add orch-main as orchestrator first so orchestratorId validation passes
   let config = structuredClone(defaultConfig);
-  config.agents.registry['pro-zig'] = {
-    label: 'pro-zig',
+  config.agents.registry['orch-main'] = {
+    label: 'orch-main',
     role: 'orchestrator',
     runtime: 'openclaw',
     enabled: true,
     metadata: {},
   };
-  config.agents.orchestration.participants.push('pro-zig');
+  config.agents.orchestration.participants.push('orch-main');
   return config;
 }
 
@@ -76,27 +76,38 @@ describe('agent registry mutations', () => {
 
   it('persists mutated config to zigrix.config.json', () => {
     const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-agent-config-'));
-    const configPath = writeDefaultConfig(tmpBase);
-    const loaded = loadConfig({ baseDir: tmpBase });
+    const originalHome = process.env.HOME;
+    process.env.HOME = tmpBase;
 
-    // First add an orchestrator so orchestratorId validation passes
-    let next = addAgent(loaded.config, {
-      id: 'pro-zig',
-      role: 'orchestrator',
-      runtime: 'openclaw-session',
-      include: true,
-    }).config;
+    try {
+      const configPath = writeDefaultConfig(true);
+      const loaded = loadConfig();
 
-    next = addAgent(next, {
-      id: 'front-main',
-      role: 'frontend',
-      runtime: 'openclaw-session',
-      include: true,
-    }).config;
+      // First add an orchestrator so orchestratorId validation passes
+      let next = addAgent(loaded.config, {
+        id: 'orch-main',
+        role: 'orchestrator',
+        runtime: 'openclaw-session',
+        include: true,
+      }).config;
 
-    writeConfigFile(configPath, next);
-    const reloaded = loadConfig({ baseDir: tmpBase });
-    expect(reloaded.config.agents.registry['front-main'].role).toBe('frontend');
-    expect(reloaded.config.agents.orchestration.participants).toContain('front-main');
+      next = addAgent(next, {
+        id: 'front-main',
+        role: 'frontend',
+        runtime: 'openclaw-session',
+        include: true,
+      }).config;
+
+      writeConfigFile(configPath, next);
+      const reloaded = loadConfig();
+      expect(reloaded.config.agents.registry['front-main'].role).toBe('frontend');
+      expect(reloaded.config.agents.orchestration.participants).toContain('front-main');
+    } finally {
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+    }
   });
 });

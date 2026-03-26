@@ -12,15 +12,15 @@ All notable changes to Zigrix will be documented in this file.
 ## [Unreleased]
 
 ### Breaking Changes
-- **Global state model**: Zigrix now uses `~/.zigrix/` (global) instead of per-project `.zigrix/`. Tasks are not project-bound. Configurable via `ZIGRIX_HOME` env.
+- **Global state model**: Zigrix now uses fixed global state under `~/.zigrix/` instead of per-project `.zigrix/`. Tasks are not project-bound.
 - **`zigrix init` deprecated**: Use `zigrix onboard` instead. `init` remains as compatibility command.
 
 ### Added
 - `zigrix onboard` — primary human entrypoint: creates `~/.zigrix/`, detects OpenClaw, imports agents (interactive checkbox with space-to-toggle), seeds rules, stabilizes PATH (creates symlink if needed), auto-registers skill packs into `~/.openclaw/skills/`
 - `zigrix dashboard` — starts bundled Next.js standalone dashboard in foreground mode (default port `3838`, `--port <n>` override)
 - `zigrix configure` — section-targeted reconfiguration (agents, rules, workspace, path, skills)
-- `zigrix task dispatch` — full orchestration dispatch with work packages, execution units, selection hints, and boot prompt generation (replaces `dev_dispatch.py`)
-- `zigrix task finalize` — evidence merge, execution unit completeness check, auto-close completed units, optional auto-report (replaces `dev_finalize.py`)
+- `zigrix task dispatch` — full orchestration dispatch with work packages, execution units, selection hints, and boot prompt generation
+- `zigrix task finalize` — evidence merge, execution unit completeness check, auto-close completed units, optional auto-report
 - Task sidecar storage model: `<taskId>.meta.json` (machine) + `<taskId>.md` (human)
 - Task ID format: `DEV-YYYYMMDD-NNN` (supports `TEST-` and legacy `TASK-` prefixes)
 - Legacy event normalization: `timestamp` → `ts`, top-level `agentId`/`reason` → `payload`
@@ -31,7 +31,7 @@ All notable changes to Zigrix will be documented in this file.
 
 ### Changed
 - Promoted the Node/TypeScript implementation to the repository root
-- Moved the previous Python CLI into `legacy-python/` as a reference prototype
+- Removed the previous legacy prototype and aligned the repo to a single Node/TypeScript implementation path
 - Switched installer, CI, release workflow, and contributor guidance to Node-first defaults
 - All documentation updated from per-project `.zigrix/` to global `~/.zigrix/` model
 - Release smoke script updated for onboard/global-base CLI surface

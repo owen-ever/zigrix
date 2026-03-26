@@ -2,12 +2,12 @@
 
 _Last updated: 2026-03-14_
 
-> **Note (2026-03-16):** This document reflects the initial bootstrap state. Zigrix now uses global `~/.zigrix/` state (not project-local `.zigrix/`), has `onboard`/`configure`/`dispatch`/`finalize` commands, and the full Python migration is complete. See `cli-spec.md` and `product-decisions.md` for current state.
+> **Note (2026-03-16):** This document reflects the initial bootstrap state. Zigrix now uses runtime state from `zigrix.config.json` (`paths.*`) instead of project-local `.zigrix/`, has `onboard`/`configure`/`dispatch`/`finalize` commands, and the legacy migration is complete. See `cli-spec.md` and `product-decisions.md` for current state.
 
 ## What landed
 
 A first working Node/TypeScript bootstrap now exists at the **repository root**.
-The previous Python implementation has been moved under `legacy-python/` as a reference prototype.
+The previous legacy follow-up references are deprecated; Node/TypeScript is the only active implementation path.
 
 Included in the current Node bootstrap:
 - `config validate/get/schema/set/diff/reset`
@@ -20,7 +20,7 @@ Included in the current Node bootstrap:
 - task/worker/evidence/report/pipeline/index-rebuild parity surface
 - minimal sequential `run <workflowPath>`
 - `inspect <runIdOrPath>`
-- local JSON run persistence to `.zigrix/runs/`
+- local JSON run persistence to `paths.runsDir`
 - vitest coverage for config validation + minimal workflow execution
 
 ## Directory
@@ -44,33 +44,29 @@ zigrix/
 │  └─ hello-workflow.json
 ├─ package.json
 ├─ tsconfig.json
-└─ legacy-python/
-   ├─ src/
-   ├─ tests/
-   └─ pyproject.toml
+└─ (legacy python paths removed from active contracts)
 ```
 
 ## Why this matters
 
-This is not full parity with the Python prototype.
+This is not full parity with the previous legacy prototype.
 It is a **Phase 1 bootstrap** that proves:
 - Node CLI packaging is viable
 - config-first loading/validation works
-- local run persistence contract can exist independently of Python
+- local run persistence contract can exist independently of the removed legacy implementation
 - the repository can now treat Node as the default product path
-- runtime migration can proceed incrementally with Python kept as a reference
+- runtime migration proceeds on Node/TypeScript contracts only
 
 ## Not done yet
 
-- interactive `zigrix init`
-- user config + project config layered discovery beyond simple local file lookup
-- env/CLI source-map explain support
-- richer config explain/source tracing
+- interactive `zigrix init` removal follow-through / `onboard` 중심 UX 정리
+- single-file config diagnostics (`config explain` style visibility) 개선
+- richer config explain/source tracing inside the canonical single-file model
 - npm publish (deliberately deferred to manual next step)
 
 ## Recommended next step
 
-1. Add `config explain` + richer config layering.
+1. Improve `config explain` around the canonical config file.
 2. Implement `agent list/add/include/exclude`.
 3. Add template placeholder validation/render preview.
 4. Start parity migration for task/evidence/report commands.

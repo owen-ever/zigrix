@@ -4,9 +4,9 @@
 Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 관리한다.
 
 ## Location
-- Default: `~/.zigrix/zigrix.config.json`
-- Override: `ZIGRIX_HOME` env → `$ZIGRIX_HOME/zigrix.config.json`
-- Also supports YAML: `zigrix.config.yaml` / `zigrix.config.yml`
+- Single source of truth file: `zigrix.config.json`
+- Canonical location: `~/.zigrix/zigrix.config.json`
+- Path contract consumers must read `paths.*` from this config model.
 
 ## Top-level shape
 ```json
@@ -24,44 +24,44 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
 ```json
 {
   "paths": {
-    "baseDir": "~/.zigrix",
-    "tasksDir": "~/.zigrix/tasks",
-    "evidenceDir": "~/.zigrix/evidence",
-    "promptsDir": "~/.zigrix/prompts",
-    "eventsFile": "~/.zigrix/tasks.jsonl",
-    "indexFile": "~/.zigrix/index.json",
-    "runsDir": "~/.zigrix/runs",
-    "rulesDir": "~/.zigrix/rules"
+    "baseDir": "/abs/path/to/zigrix-home",
+    "tasksDir": "/abs/path/to/zigrix-home/tasks",
+    "evidenceDir": "/abs/path/to/zigrix-home/evidence",
+    "promptsDir": "/abs/path/to/zigrix-home/prompts",
+    "eventsFile": "/abs/path/to/zigrix-home/tasks.jsonl",
+    "indexFile": "/abs/path/to/zigrix-home/index.json",
+    "runsDir": "/abs/path/to/zigrix-home/runs",
+    "rulesDir": "/abs/path/to/zigrix-home/rules"
   }
 }
 ```
-- All paths are absolute by default (resolved from `ZIGRIX_HOME`)
+- Paths are normalized to absolute paths at load/write time (`~` expansion + relative resolution).
 - Tasks are NOT project-bound — a single Zigrix instance manages parallel tasks across projects
 
 ## workspace
 ```json
 {
   "workspace": {
-    "projectsBaseDir": ""
+    "projectsBaseDir": "/abs/path/to/zigrix-home/workspace"
   }
 }
 ```
-- `projectsBaseDir`: default directory for new project creation (empty = not set)
+- `projectsBaseDir`: default project root path (default proposal: `~/.zigrix/workspace`, stored/resolved as absolute)
 
 ## agents
 ```json
 {
   "agents": {
     "registry": {
-      "pro-zig": {
-        "label": "pro-zig",
+      "orch-main": {
+        "label": "orch-main",
         "role": "orchestrator",
         "runtime": "openclaw",
         "enabled": true,
         "metadata": {}
       },
-      "qa-zig": {
-        "label": "qa-zig",
+      "qa-main": {
+        "label": "qa-main",
         "role": "qa",
         "runtime": "openclaw",
         "enabled": true,
@@ -69,9 +69,9 @@ Zigrix의 설정을 코드 하드코딩이 아니라 schema 기반 계약으로 
       }
     },
     "orchestration": {
-      "participants": ["pro-zig", "qa-zig"],
+      "participants": ["orch-main", "qa-main"],
       "excluded": [],
-      "orchestratorId": "pro-zig"
+      "orchestratorId": "orch-main"
     }
   }
 }
@@ -95,7 +95,7 @@ Role values are normalized automatically. Aliases like `"infra"` become `"system
 - `orchestratorId`: the agent id that acts as orchestrator for dispatched tasks
 - Must exist in registry when any orchestrator-role agent is registered
 - Cannot be in `excluded` list
-- Default: `"pro-zig"`
+- Default: `"orchestrator"` (role-oriented default identifier; override after agent registration as needed)
 
 ### Registry rules
 - registry: all known agents (each with a standard role)

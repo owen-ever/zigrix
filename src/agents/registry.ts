@@ -17,6 +17,20 @@ function unique(items: string[]): string[] {
   return [...new Set(items)];
 }
 
+function normalizeOrchestratorId(config: ZigrixConfig): void {
+  const current = config.agents.orchestration.orchestratorId;
+  if (config.agents.registry[current]) return;
+
+  const candidates = Object.entries(config.agents.registry)
+    .filter(([, agent]) => agent.role === 'orchestrator')
+    .map(([agentId]) => agentId)
+    .sort();
+
+  if (candidates.length > 0) {
+    config.agents.orchestration.orchestratorId = candidates[0];
+  }
+}
+
 export function listAgents(config: ZigrixConfig): Array<{
   id: string;
   label: string;
@@ -67,6 +81,8 @@ export function addAgent(config: ZigrixConfig, params: {
     next.agents.orchestration.excluded = next.agents.orchestration.excluded.filter((item) => item !== params.id);
   }
 
+  normalizeOrchestratorId(next);
+
   return {
     config: zigrixConfigSchema.parse(next),
     changed: true,
@@ -80,6 +96,7 @@ export function removeAgent(config: ZigrixConfig, agentId: string): AgentMutatio
   delete next.agents.registry[agentId];
   next.agents.orchestration.participants = next.agents.orchestration.participants.filter((item) => item !== agentId);
   next.agents.orchestration.excluded = next.agents.orchestration.excluded.filter((item) => item !== agentId);
+  normalizeOrchestratorId(next);
   return {
     config: zigrixConfigSchema.parse(next),
     changed: true,

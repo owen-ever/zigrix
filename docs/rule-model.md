@@ -21,7 +21,7 @@
 - evidence summary template
 
 ## 왜 둘 다 rule인가
-실제 운영에서 `orchestration/rules/*.md`는 단순 문서가 아니라:
+실제 운영에서 `rules/defaults/*.md`는 단순 문서가 아니라:
 - 정책을 설명하고
 - 행동을 유도하며
 - 출력 형식을 사실상 고정하는 프롬프트 역할을 한다.
@@ -30,7 +30,7 @@
 
 ## template requirements
 - built-in defaults 제공
-- project override 허용
+- override는 `zigrix.config.json`에 저장
 - placeholder whitelist 검증
 - preview/render 지원
 - diff 지원

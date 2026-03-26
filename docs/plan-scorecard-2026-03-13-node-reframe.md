@@ -68,12 +68,12 @@
   - markdown/plain/json format policy
   가 더 구체적이어야 함
 
-### 7. migration realism (Python → Node)
+### 7. migration realism (legacy prototype → Node)
 - 점수: **7.2 / 10**
 - 평가:
   - prototype 동결 → Node skeleton → parity 확보 흐름은 맞음
 - 남은 감점:
-  - 어떤 Python 자산을 버리고 무엇을 참조본으로 유지할지 경계가 더 필요
+  - 어떤 legacy 자산을 버리고 무엇을 참조본으로 유지할지 경계가 더 필요
   - command compatibility policy 필요
 
 ### 8. 구현 시작 준비도
@@ -96,7 +96,7 @@
 
 ### P2. migration realism (7.2 → 8.2)
 보강 완료:
-- Python prototype retention policy: `docs/migration-plan-python-to-node.md`
+- migration completion note: `docs/node-only-completion-note.md`
 - Node parity milestone 정의
 - 삭제 기준 / freeze 기준 정의
 

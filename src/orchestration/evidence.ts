@@ -32,20 +32,31 @@ function extractEvidence(rows: Array<Record<string, unknown>>): Record<string, u
   return { lastAssistant, toolResults: toolResults.slice(-3) };
 }
 
-function resolveQaAgentId(task: ZigrixTask): string {
+function resolveQaAgentId(task: ZigrixTask): string | null {
   if (typeof task.qaAgentId === 'string' && task.qaAgentId.trim().length > 0) {
-    return task.qaAgentId;
+    return task.qaAgentId.trim();
   }
 
   const roleMap = task.roleAgentMap;
   if (roleMap && typeof roleMap === 'object') {
     const qaAgents = (roleMap as Record<string, unknown>).qa;
     if (Array.isArray(qaAgents) && qaAgents.length > 0) {
-      return String(qaAgents[0]);
+      const fromRoleMap = String(qaAgents[0]).trim();
+      if (fromRoleMap.length > 0) return fromRoleMap;
     }
   }
 
-  return 'qa-zig';
+  const required = Array.isArray(task.requiredAgents) ? task.requiredAgents : [];
+  if (required.length === 1) {
+    const only = String(required[0]).trim();
+    if (only.length > 0) return only;
+  }
+
+  const orchestratorId = typeof task.orchestratorId === 'string' && task.orchestratorId.trim().length > 0
+    ? task.orchestratorId.trim()
+    : null;
+  const fallback = required.find((agentId) => String(agentId).trim().length > 0 && String(agentId).trim() !== orchestratorId);
+  return fallback ? String(fallback).trim() : null;
 }
 
 export function collectEvidence(paths: ZigrixPaths, params: {
@@ -109,8 +120,9 @@ export function mergeEvidence(paths: ZigrixPaths, params: { taskId: string; requ
   const requiredAgents = [...(params.requiredAgents?.length ? params.requiredAgents : resolveRequiredAgents(task))];
   const missingAgents = requiredAgents.filter((agentId) => !presentAgents.includes(agentId));
   const qaAgentId = resolveQaAgentId(task);
-  const qaPresent = presentAgents.includes(qaAgentId);
-  const complete = missingAgents.length === 0 && (!(params.requireQa ?? false) || qaPresent);
+  const qaPresent = qaAgentId ? presentAgents.includes(qaAgentId) : false;
+  const qaRequiredSatisfied = !(params.requireQa ?? false) || (qaAgentId !== null && qaPresent);
+  const complete = missingAgents.length === 0 && qaRequiredSatisfied;
   const merged = { ts: nowIso(), taskId: params.taskId, requiredAgents, presentAgents, missingAgents, qaAgentId, qaPresent, complete, items };
   const outPath = path.join(taskDir, '_merged.json');
   fs.writeFileSync(outPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');

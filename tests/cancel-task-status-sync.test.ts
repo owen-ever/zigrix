@@ -22,7 +22,7 @@ describe('cancelTask: meta.json status sync', () => {
     const config = {
       agents: {
         registry: {
-          'pro-zig': { label: 'pro-zig', role: 'orchestrator' },
+          'orch-main': { label: 'orch-main', role: 'orchestrator' },
         },
       },
     };
@@ -56,7 +56,7 @@ describe('cancelTask: meta.json status sync', () => {
         taskId,
         phase: 'planning',
         status: 'OPEN',
-        actor: 'pro-zig',
+        actor: 'orch-main',
         payload: { title: 'Test task' },
       },
       {
@@ -65,7 +65,7 @@ describe('cancelTask: meta.json status sync', () => {
         taskId,
         phase: 'execution',
         status: 'IN_PROGRESS',
-        actor: 'back-zig',
+        actor: 'backend-main',
         payload: {},
       },
     ];
@@ -128,7 +128,7 @@ describe('cancelTask: meta.json status sync', () => {
         taskId,
         phase: 'planning',
         status: 'OPEN',
-        actor: 'pro-zig',
+        actor: 'orch-main',
         payload: { title: 'Test task 2' },
       },
       {
@@ -137,7 +137,7 @@ describe('cancelTask: meta.json status sync', () => {
         taskId,
         phase: 'execution',
         status: 'IN_PROGRESS',
-        actor: 'back-zig',
+        actor: 'backend-main',
         payload: {},
       },
     ];

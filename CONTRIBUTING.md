@@ -8,7 +8,6 @@ Thanks for considering a contribution.
 - keep destructive operations explicit and recoverable
 - prefer fewer, clearer commands over sprawling surface area
 - treat **Node/TypeScript** as the main implementation path
-- treat `legacy-python/` as reference-only unless parity work explicitly requires it
 
 ## Development setup
 ```bash
@@ -26,11 +25,11 @@ npm run publish:check
 
 ## Local verification checklist
 ```bash
-TMP_HOME="$(mktemp -d)/.zigrix"
-ZIGRIX_HOME="$TMP_HOME" node dist/index.js onboard --yes --json
-node dist/index.js doctor --json
-node dist/index.js task dispatch --title "Smoke" --description "Local verify" --scale simple --json
-node dist/index.js run examples/hello-workflow.json --json
+TMP_HOME="$(mktemp -d)"
+HOME="$TMP_HOME" node dist/index.js onboard --yes --json
+HOME="$TMP_HOME" node dist/index.js doctor --json
+HOME="$TMP_HOME" node dist/index.js task dispatch --title "Smoke" --description "Local verify" --scale simple --json
+HOME="$TMP_HOME" node dist/index.js run examples/hello-workflow.json --json
 ```
 
 ## Before opening a PR
@@ -46,7 +45,7 @@ node dist/index.js run examples/hello-workflow.json --json
 Good focused PRs:
 - config schema improvements
 - recovery/reset behavior improvements
-- runtime migration slices from `legacy-python/`
+- runtime parity / compatibility cleanup
 - docs/quickstart/troubleshooting fixes
 - installer or release-safety improvements
 

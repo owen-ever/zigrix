@@ -48,7 +48,12 @@ function qaLine(merged: Record<string, unknown>): string {
   const present = new Set(Array.isArray(merged.presentAgents) ? merged.presentAgents.map(String) : []);
   const qaAgentId = typeof merged.qaAgentId === 'string' && merged.qaAgentId.trim().length > 0
     ? merged.qaAgentId
-    : 'qa-zig';
+    : null;
+
+  if (!qaAgentId) {
+    return '- QA 역할 에이전트가 식별되지 않음 (config.agents.registry role=qa 확인 필요)';
+  }
+
   return present.has(qaAgentId)
     ? `- ${qaAgentId} evidence 존재, QA 수행됨`
     : `- ${qaAgentId} evidence 없음 또는 별도 QA 미실행`;

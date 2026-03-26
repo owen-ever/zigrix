@@ -68,6 +68,18 @@ function legacyPath(paths: ZigrixPaths, taskId: string): string {
   return path.join(paths.tasksDir, `${taskId}.json`);
 }
 
+export function resolveTaskPaths(paths: ZigrixPaths, taskId: string): {
+  specPath: string;
+  metaPath: string;
+  legacyPath: string;
+} {
+  return {
+    specPath: specPath(paths, taskId),
+    metaPath: metaPath(paths, taskId),
+    legacyPath: legacyPath(paths, taskId),
+  };
+}
+
 // ─── Read helpers ───────────────────────────────────────────────────────────
 
 function readJson(filePath: string): Record<string, unknown> | null {

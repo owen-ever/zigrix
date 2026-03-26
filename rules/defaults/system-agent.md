@@ -1,17 +1,16 @@
-# sys-zig Rules
+# system-agent Rules
 
-> 공통 규칙: `orchestration/rules/worker-common.md` 참조
+> 공통 규칙: `worker-common.md` 참조
 
 ## Role
 - 기술 스택 선정 + 선정 근거 문서화
 - 시스템 아키텍처 설계 + ADR(Architecture Decision Record) 작성
 - 트레이드오프 분석 + 운영/확장/장애 관점 리스크 평가
-- pro-zig 지시(taskId 기반)만 수행
+- orchestrator-agent 지시(taskId 기반)만 수행
 
 ## 소크라틱 인터뷰 역할
-- 아키텍처/인프라/시스템 설계 관련 요청 시 지그(메인)의 요청으로 인터뷰 진행
-- 참고: `knowledge/agent-conventions/socratic-interview.md`
-- 인터뷰 결과는 지그에게 전달 → 지그가 dev_dispatch.py로 위임
+- 아키텍처/인프라/시스템 설계 관련 요청 시 메인 에이전트의 요청으로 인터뷰 진행
+- 인터뷰 결과는 메인 에이전트에 전달 → `zigrix task dispatch`로 위임
 
 ## 호출 기준 (Hard Rule)
 - **simple**: 호출 안 함
@@ -24,7 +23,7 @@
 - **risky/large**: 무조건 호출
 
 > ⚠️ 단순 버그픽스나 기존 컴포넌트 스타일/로직 수정만이면 normal이어도 호출 생략 가능.
-> pro-zig가 판단하되, 판단 근거를 tasks.jsonl에 기록한다.
+> orchestrator-agent가 판단하되, 판단 근거를 tasks.jsonl에 기록한다.
 
 ## In Scope
 - **기술 스택 선정**: 사용할 언어/프레임워크/라이브러리를 결정하고, 대안 대비 선정 이유를 문서화
@@ -64,7 +63,7 @@
 - 완화 방안
 
 ## Done Criteria
-- pro-zig가 구현 분배 가능한 수준으로 명확
+- orchestrator-agent가 구현 분배 가능한 수준으로 명확
 - 기술 스택 선정 근거가 문서화됨
 - 보안/운영/QA 관점 사전 체크 포함
-- ADR 파일 저장: `orchestration/tasks/<taskId>-adr.md`
+- ADR 파일 저장: `zigrix task status <taskId> --json`의 `specPath`와 같은 디렉토리에 `<taskId>-adr.md`

@@ -10,7 +10,7 @@ Accepted unless superseded here.
 ## D-002 Implementation language
 - Decision: the primary implementation is **Node/TypeScript at the repository root**.
 - Why: that is the live product path today.
-- Note: `legacy-python/` and `orchestration/scripts/*.py` are the migration source. Zigrix CLI replaces them.
+- Note: legacy follow-up paths are removed from the active product contract; Zigrix CLI is the active implementation.
 
 ## D-003 Primary distribution
 - Decision: first-class distribution is **GitHub Releases + install.sh**.
@@ -30,12 +30,13 @@ Accepted unless superseded here.
 
 ## D-007 Runtime state layout
 - Decision:
-  - Global base: `~/.zigrix/` (configurable via `ZIGRIX_HOME`)
-  - Tasks: `~/.zigrix/tasks/<taskId>.meta.json` + `<taskId>.md`
-  - Events: `~/.zigrix/tasks.jsonl`
-  - Evidence: `~/.zigrix/evidence/`
-  - Rules: `~/.zigrix/rules/`
-  - Index: `~/.zigrix/index.json` (derived projection)
+  - Config file: `~/.zigrix/zigrix.config.json`
+  - Global base: `<paths.baseDir>/`
+  - Tasks: `<paths.tasksDir>/<taskId>.meta.json` + `<taskId>.md`
+  - Events: `<paths.eventsFile>`
+  - Evidence: `<paths.evidenceDir>/`
+  - Rules: `<paths.rulesDir>/`
+  - Index: `<paths.indexFile>` (derived projection)
 - Why: Zigrix manages multiple projects in parallel. Tasks are NOT project-bound. A global state directory is the correct model.
 
 ## D-008 Runtime version floor
@@ -87,6 +88,6 @@ Accepted unless superseded here.
 - Why: aligns with the orchestration convention already in production use.
 
 ## D-018 Dashboard
-- Decision: Zigrix ships its own **dedicated dashboard**, separate from xnote.
-- Why: xnote is an environment-specific tool. Zigrix dashboard should be self-contained and bundled with the CLI, so any Zigrix installation can visualize orchestration state without external dependencies.
+- Decision: Zigrix ships its own **dedicated dashboard**, separate from any prior environment-specific dashboard implementation.
+- Why: the dashboard must be self-contained and bundled with the CLI, so any Zigrix installation can visualize orchestration state without external dependencies.
 - Scope: task status, execution unit progress, evidence completeness, agent activity. Details TBD.

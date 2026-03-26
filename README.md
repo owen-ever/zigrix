@@ -145,7 +145,7 @@ zigrix reset state --yes
 
 `zigrix onboard` prepares runtime and integration in one pass:
 
-1. creates `~/.zigrix/` and default config/state structure
+1. creates runtime directories from `zigrix.config.json` (`paths.*`) and default config/state structure
 2. seeds rule files from bundled templates
 3. ensures `zigrix` is reachable from the runtime-visible PATH
 4. detects OpenClaw and imports agents from `openclaw.json`

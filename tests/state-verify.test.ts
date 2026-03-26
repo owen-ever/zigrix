@@ -33,8 +33,8 @@ function makeTempPaths() {
 describe('state verification', () => {
   it('passes for a consistent reported task', () => {
     const paths = makeTempPaths();
-    const task = createTask(paths, { title: 'ok', description: 'ok', requiredAgents: ['qa-zig'] });
-    collectEvidence(paths, { taskId: task.taskId, agentId: 'qa-zig', summary: 'done' });
+    const task = createTask(paths, { title: 'ok', description: 'ok', requiredAgents: ['qa-main'] });
+    collectEvidence(paths, { taskId: task.taskId, agentId: 'qa-main', summary: 'done' });
     mergeEvidence(paths, { taskId: task.taskId, requireQa: true });
     renderReport(paths, { taskId: task.taskId, recordEvents: true });
     updateTaskStatus(paths, task.taskId, 'REPORTED');
@@ -45,7 +45,7 @@ describe('state verification', () => {
 
   it('fails when reported task has no merged evidence', () => {
     const paths = makeTempPaths();
-    const task = createTask(paths, { title: 'bad', description: 'bad', requiredAgents: ['qa-zig'] });
+    const task = createTask(paths, { title: 'bad', description: 'bad', requiredAgents: ['qa-main'] });
     updateTaskStatus(paths, task.taskId, 'REPORTED');
 
     const result = verifyState(paths) as { ok: boolean; failedCount: number; checks: Array<{ issues: string[] }> };

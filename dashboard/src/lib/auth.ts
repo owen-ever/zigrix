@@ -1,8 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
+
+import {
+  readCanonicalConfigSnapshot,
+  resolveConfiguredBaseDir,
+} from './zigrix-config';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -12,6 +15,20 @@ const BCRYPT_COST = 12;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+type BcryptLike = {
+  hash(password: string, saltRounds: number): Promise<string>;
+  compare(password: string, passwordHash: string): Promise<boolean>;
+};
+
+async function loadBcrypt(): Promise<BcryptLike> {
+  const mod = await import('bcryptjs');
+  const candidate = ((mod as { default?: unknown }).default ?? mod) as Partial<BcryptLike>;
+  if (typeof candidate.hash !== 'function' || typeof candidate.compare !== 'function') {
+    throw new Error('bcryptjs adapter unavailable');
+  }
+  return candidate as BcryptLike;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,12 +58,19 @@ export type VerifiedSession = {
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
-function getZigrixHome(): string {
-  return process.env.ZIGRIX_HOME || path.join(os.homedir(), '.zigrix');
+type ZigrixAuthConfigSnapshot = {
+  paths?: {
+    baseDir?: string;
+  };
+};
+
+function readConfigSnapshot(): ZigrixAuthConfigSnapshot | null {
+  return readCanonicalConfigSnapshot<ZigrixAuthConfigSnapshot>();
 }
 
 function getDashboardConfigPath(): string {
-  return path.join(getZigrixHome(), 'dashboard.json');
+  const snapshot = readConfigSnapshot();
+  return path.join(resolveConfiguredBaseDir(snapshot?.paths?.baseDir), 'dashboard.json');
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -77,6 +101,7 @@ export function isSetupRequired(): boolean {
 }
 
 export async function setupAdmin(username: string, password: string): Promise<void> {
+  const bcrypt = await loadBcrypt();
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   const sessionSecret = crypto.randomBytes(64).toString('hex');
 
@@ -88,11 +113,11 @@ export async function setupAdmin(username: string, password: string): Promise<vo
   };
 
   const configPath = getDashboardConfigPath();
-  const zigrixHome = getZigrixHome();
+  const dashboardDir = path.dirname(configPath);
 
   // Ensure directory exists
-  if (!fs.existsSync(zigrixHome)) {
-    fs.mkdirSync(zigrixHome, { recursive: true });
+  if (!fs.existsSync(dashboardDir)) {
+    fs.mkdirSync(dashboardDir, { recursive: true });
   }
 
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
@@ -108,6 +133,7 @@ export async function setupAdmin(username: string, password: string): Promise<vo
 // ─── Password Verification ────────────────────────────────────────────────────
 
 export async function verifyPassword(username: string, password: string): Promise<boolean> {
+  const bcrypt = await loadBcrypt();
   const config = getDashboardConfig();
   const admin = config.admins.find((a) => a.username === username);
   if (!admin) {

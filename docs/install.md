@@ -56,10 +56,10 @@ Note: `zigrix onboard` now handles skill registration automatically when OpenCla
 ## What onboard does
 
 `zigrix onboard` covers:
-1. Creates `~/.zigrix/` base directory and default config
+1. Creates runtime directories from `zigrix.config.json` (`paths.baseDir` and derived paths) and default config
 2. Detects OpenClaw (`~/.openclaw/`) and reads `openclaw.json`
 3. Imports agents (filters out `main`, registers with roles)
-4. Seeds rule files from `orchestration/rules/`
+4. Seeds bundled rule templates from `rules/defaults/` into `paths.rulesDir`
 5. **PATH stabilization** — if `zigrix` isn't in PATH, creates a symlink in `~/.local/bin/`
 6. **Skill registration** — symlinks `skills/zigrix-*` into `~/.openclaw/skills/`
 
@@ -88,10 +88,10 @@ zigrix configure --section agents   # just agents
 zigrix configure --section skills   # just skills
 ```
 
-## Legacy Python note
+## Legacy note
 
-The previous Python implementation remains under `legacy-python/` for migration reference only.
-It is no longer the default install path.
+Legacy follow-up references are deprecated and not part of installation/runtime contracts.
+They are no longer part of the supported install path.
 
 ## Future release install path
 

@@ -4,15 +4,15 @@ _Created: 2026-03-16_
 _Updated: 2026-03-16_
 
 ## Overview
-Zigrix 전용 웹 대시보드. `~/.zigrix/` 상태를 실시간 시각화하고, 태스크 오케스트레이션 흐름을 모니터링한다. xnote 대시보드의 오케스트레이션 메뉴를 참고하되, Zigrix 독립 제품으로 구현.
+Zigrix 전용 웹 대시보드. `zigrix.config.json`이 가리키는 runtime state(`paths.*`)를 실시간 시각화하고, 태스크 오케스트레이션 흐름을 모니터링한다. 과거 내부 대시보드의 유용한 패턴은 참고하되, Zigrix 독립 제품으로 구현한다.
 
 ## Tech Stack
 - **Framework**: Next.js 15+ (App Router, SPA)
 - **Language**: TypeScript
-- **Styling**: CSS Modules (xnote 패턴 참조)
+- **Styling**: CSS Modules
 - **Realtime**: SSE (Server-Sent Events), WebSocket은 확장 시 검토
 - **Auth**: 자체 세션 토큰 (HMAC-SHA256, httpOnly cookie)
-- **Data**: `~/.zigrix/` 파일 직접 읽기 + fs.watch
+- **Data**: `zigrix.config.json`의 `paths.*`가 가리키는 파일 읽기 + fs.watch
 - **DB**: 초기 파일 기반, 확장 시 SQLite/Redis 검토
 - **Package**: `zigrix-dashboard` (별도 npm 패키지 또는 zigrix monorepo)
 
@@ -98,7 +98,7 @@ Zigrix 전용 웹 대시보드. `~/.zigrix/` 상태를 실시간 시각화하고
    - password 입력 (최소 8자)
    - password 확인
 3. bcrypt 해시 + JWT secret(crypto.randomBytes(64)) 생성
-4. `~/.zigrix/dashboard.json`에 저장 (파일 권한 600)
+4. `path.join(paths.baseDir, "dashboard.json")`에 저장 (파일 권한 600)
 5. 자동 로그인 → 대시보드 진입
 6. Setup 화면은 관리자 존재 시 404
 
@@ -114,7 +114,7 @@ Zigrix 전용 웹 대시보드. `~/.zigrix/` 상태를 실시간 시각화하고
 - [ ] bcrypt cost factor ≥ 12
 - [ ] 세션 secret은 파일 권한 600
 - [ ] CORS origin 제한 (기본 localhost, 설정 확장 가능)
-- [ ] Rate limit on login: 5회/분 (xnote auth-login-rate-limit.ts 패턴 참조)
+- [ ] Rate limit on login: 5회/분
 - [ ] Setup endpoint는 관리자 존재 시 404 반환
 - [ ] SSE handshake에서 cookie 토큰 검증
 - [ ] 에러 메시지에 내부 정보 노출 금지
@@ -123,7 +123,7 @@ Zigrix 전용 웹 대시보드. `~/.zigrix/` 상태를 실시간 시각화하고
 ## Realtime (SSE)
 
 ### 서버
-- `~/.zigrix/` 디렉토리 fs.watch (recursive)
+- `paths.baseDir` 디렉토리 fs.watch (recursive)
 - 변경 감지 시 변경 유형 판별 → 해당 클라이언트에 이벤트 push
 
 ### 이벤트 타입
@@ -141,12 +141,12 @@ Zigrix 전용 웹 대시보드. `~/.zigrix/` 상태를 실시간 시각화하고
 
 ### 클라이언트
 - 수신 시 해당 영역만 업데이트 (전체 새로고침 X)
-- 머지 로직으로 중복 제거 (xnote mergeByKey 패턴)
+- 머지 로직으로 중복 제거
 - SSE 연결 끊김 시 자동 재연결 (EventSource 기본 동작)
 
 ## Data Sources
 
-### Primary: `~/.zigrix/` 파일
+### Primary: `zigrix.config.json`이 가리키는 runtime files
 | 파일 | 용도 |
 |------|------|
 | `tasks/*.meta.json` | 태스크 메타데이터 |
@@ -162,19 +162,19 @@ Zigrix 전용 웹 대시보드. `~/.zigrix/` 상태를 실시간 시각화하고
 - fallback: 세션 파일 직접 읽기 (`~/.openclaw/agents/<agentId>/sessions/`)
 - OpenClaw 미설치: 대화 내역 탭만 비활성, 나머지 정상
 
-### Dashboard Config: `~/.zigrix/dashboard.json`
+### Dashboard Config: `path.join(paths.baseDir, "dashboard.json")`
 - 관리자 계정 해시
 - 세션 secret
 - CORS 설정
 - 기타 대시보드 설정
 
-## Implementation Notes (xnote 포팅 시 보완 사항)
+## Implementation Notes
 
 ### 1. 에이전트 목록: 동적 로딩
-xnote는 `AGENT_IDS` 상수로 하드코딩. Zigrix는 `zigrix.config.json`의 `agents.registry`에서 동적으로 읽는다. 사용자마다 에이전트 구성이 다를 수 있으므로 하드코딩 금지.
+대시보드는 `zigrix.config.json`의 `agents.registry`에서 동적으로 읽는다. 사용자마다 에이전트 구성이 다를 수 있으므로 하드코딩 금지.
 
 ### 2. 데이터 경로: 설정 기반
-xnote는 절대경로 하드코딩. Zigrix는 `ZIGRIX_HOME` env → `~/.zigrix/` 기본값으로 런타임 해석. `dashboard.json`이나 env로 경로 오버라이드 가능.
+대시보드는 `zigrix.config.json`의 경로 계약을 따른다. 런타임 경로는 설정 기반으로 해석하고 직접 절대경로를 박지 않는다.
 
 ### 3. Task Status 추론: 우선순위 명확화
 ```
@@ -183,11 +183,11 @@ meta.json.status > events 기반 추론(inferTaskStatus) > index.json
 meta.json에 status 필드가 있으면 그것이 SoT. 없거나 stale할 경우 이벤트 기반 추론 fallback.
 
 ### 4. 머지 로직 성능 개선
-xnote의 `stableSerialize`는 매 업데이트마다 전체 JSON 직렬화 + 문자열 비교. 태스크/대화가 커지면 성능 병목 가능.
+매 업데이트마다 전체 JSON 직렬화 + 문자열 비교를 반복하면 태스크/대화가 커질수록 병목이 생길 수 있다.
 → 이벤트 카운트 + 마지막 timestamp 기반 경량 비교로 교체. 전체 직렬화는 디버그 전용.
 
-### 5. Rate Limit: xnote 패턴 참조
-`auth-login-rate-limit.ts` 포팅. IP 기반 윈도우 카운터, 5회/분 초과 시 429.
+### 5. Rate Limit
+IP 기반 윈도우 카운터, 5회/분 초과 시 429.
 
 ## CLI Integration (current)
 ```bash
@@ -207,7 +207,7 @@ zigrix dashboard --port 3939  # explicit port override
 - 다크 모드 (v2)
 - 에이전트 카드 그리드 (v2 검토)
 
-## xnote 참조 포인트
+## 참고 구현 포인트
 - `OrchestrationClient.tsx`: 레이아웃, 머지 로직, 스크롤 관리
 - `orchestration-store.ts`: 데이터 로딩, 이벤트 파싱, 세션 해석
 - `auth.ts`: HMAC 세션 토큰 패턴
@@ -225,3 +225,5 @@ zigrix dashboard --port 3939  # explicit port override
 7. 우측 대화 내역 탭 (OpenClaw 연동 + 미설치 fallback)
 8. SSE 실시간 (재연결 정합성 포함)
 9. CLI 통합 (`zigrix dashboard [--port]` foreground 모델)
+ound 모델)
+nd 모델)

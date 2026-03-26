@@ -2,8 +2,8 @@
 
 ## Directory shape
 ```text
-~/.zigrix/
-├─ zigrix.config.json
+~/.zigrix/zigrix.config.json        # config location
+<paths.baseDir>/
 ├─ tasks/
 │  ├─ DEV-YYYYMMDD-NNN.meta.json   # machine-readable metadata
 │  └─ DEV-YYYYMMDD-NNN.md          # human-readable spec
@@ -13,8 +13,8 @@
 │     ├─ <agent>.json
 │     └─ _merged.json
 ├─ rules/
-│  ├─ pro-zig.md
-│  ├─ front-zig.md
+│  ├─ orchestrator-agent.md
+│  ├─ frontend-agent.md
 │  └─ ...
 ├─ runs/
 │  └─ run-*.json
@@ -27,7 +27,7 @@
 - `tasks/*.md`: task spec (human-readable, editable)
 - `tasks.jsonl`: append-only event ledger
 - `evidence/<taskId>/*.json`: per-agent evidence
-- `rules/*.md`: agent rule files (seeded from orchestration/rules/)
+- `rules/*.md`: agent rule files (seeded from bundled `rules/defaults/`)
 - `zigrix.config.json`: full config
 
 ## Derived files

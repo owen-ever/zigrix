@@ -1,10 +1,12 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
 import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
+import { LEGACY_DEFAULT_GATEWAY_URL, resolveAbsolutePath } from './config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { ensureBaseState, resolvePaths, type ZigrixPaths } from './state/paths.js';
@@ -25,6 +27,23 @@ export interface OpenClawAgent {
 export interface OpenClawConfig {
   agents?: {
     list?: OpenClawAgent[];
+  };
+  gateway?: {
+    port?: number | string;
+    bind?: string;
+    mode?: string;
+    auth?: {
+      token?: string;
+    };
+  };
+  plugins?: {
+    entries?: {
+      'device-pair'?: {
+        config?: {
+          publicUrl?: string;
+        };
+      };
+    };
   };
 }
 
@@ -47,11 +66,13 @@ export interface OnboardResult {
   ok: boolean;
   action: string;
   baseDir: string;
+  workspaceBaseDir: string;
   configPath: string;
   paths: ZigrixPaths;
   openclawDetected: boolean;
   openclawHome: string;
   openclawBinPath: string | null;
+  openclawGatewayUrl: string | null;
   agentsRegistered: string[];
   agentsSkipped: string[];
   rulesCopied: string[];
@@ -72,16 +93,19 @@ export interface OnboardResult {
 export interface RunOnboardOptions {
   yes?: boolean;
   projectDir?: string;
+  projectsBaseDir?: string;
   orchestratorId?: string;
+  gatewayUrl?: string;
   silent?: boolean;
 }
 
 // ─── OpenClaw detection ───────────────────────────────────────────────────────
 
 export function detectOpenClawHome(): string {
+  const fallbackHome = process.env.HOME ?? os.homedir();
   return process.env.OPENCLAW_HOME
-    ? path.resolve(process.env.OPENCLAW_HOME)
-    : path.join(process.env.HOME ?? '~', '.openclaw');
+    ? resolveAbsolutePath(process.env.OPENCLAW_HOME)
+    : path.join(fallbackHome, '.openclaw');
 }
 
 export function loadOpenClawConfig(openclawHome: string): OpenClawConfig | null {
@@ -93,6 +117,51 @@ export function loadOpenClawConfig(openclawHome: string): OpenClawConfig | null 
   } catch {
     return null;
   }
+}
+
+function normalizeGatewayUrl(input?: string | null): string {
+  const trimmed = input?.trim() ?? '';
+  if (!trimmed) return '';
+  const withScheme = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  const parsed = new URL(withScheme);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`unsupported gateway url protocol: ${parsed.protocol}`);
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
+
+function coerceGatewayPort(value: unknown): number | null {
+  const n = typeof value === 'string' && value.trim().length > 0 ? Number(value) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n) || n <= 0 || n > 65535) return null;
+  return Math.trunc(n);
+}
+
+export function resolveOpenClawGatewayUrl(openclawConfig: OpenClawConfig | null): string | null {
+  if (!openclawConfig || typeof openclawConfig !== 'object') return null;
+
+  const directUrl = (openclawConfig as { gateway?: { url?: unknown } }).gateway?.url;
+  if (typeof directUrl === 'string' && directUrl.trim().length > 0) {
+    return normalizeGatewayUrl(directUrl);
+  }
+
+  const port = coerceGatewayPort(openclawConfig.gateway?.port);
+  if (port) {
+    return `http://127.0.0.1:${port}`;
+  }
+
+  return null;
+}
+
+export function resolveOpenClawGatewayToken(openclawConfig: OpenClawConfig | null): string | null {
+  const token = openclawConfig?.gateway?.auth?.token;
+  return typeof token === 'string' && token.trim().length > 0 ? token : null;
+}
+
+function shouldReplaceStoredGatewayUrl(stored: string, detected: string | null): boolean {
+  const trimmed = stored.trim();
+  if (!trimmed) return Boolean(detected);
+  if (!detected) return false;
+  return trimmed === LEGACY_DEFAULT_GATEWAY_URL;
 }
 
 /**
@@ -226,6 +295,36 @@ export function resolveBundledRulesDir(): string | null {
     // ignore
   }
   return null;
+}
+
+export function resolveRuleSeedSource(projectDir?: string): {
+  sourceDir: string | null;
+  source: 'external' | 'bundled' | 'none';
+  searched: string[];
+} {
+  const searched: string[] = [];
+
+  const base = projectDir?.trim();
+  if (base) {
+    const resolvedBase = resolveAbsolutePath(base);
+    const candidates = [
+      path.join(resolvedBase, 'rules', 'defaults'),
+      path.join(resolvedBase, 'rules'),
+    ];
+    searched.push(...candidates);
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return { sourceDir: candidate, source: 'external', searched };
+      }
+    }
+  }
+
+  const bundled = resolveBundledRulesDir();
+  if (bundled) {
+    return { sourceDir: bundled, source: 'bundled', searched };
+  }
+
+  return { sourceDir: null, source: 'none', searched };
 }
 
 export function seedRules(
@@ -773,6 +872,48 @@ export async function promptAgentRoleAssignments(
   }
 }
 
+export async function promptWorkspaceBaseDir(defaultPath: string): Promise<string> {
+  try {
+    const { input } = await import('@inquirer/prompts');
+    const answer = await input({
+      message: 'Workspace directory',
+      default: defaultPath,
+      validate: (value: string) => {
+        if (!value || value.trim().length === 0) return 'Workspace directory is required';
+        return true;
+      },
+    });
+    return resolveAbsolutePath((answer || defaultPath).trim());
+  } catch {
+    console.log('ℹ️  Non-interactive mode — using configured workspace directory.');
+    return resolveAbsolutePath(defaultPath);
+  }
+}
+
+export async function promptGatewayUrl(defaultValue: string): Promise<string> {
+  try {
+    const { input } = await import('@inquirer/prompts');
+    const answer = await input({
+      message: 'OpenClaw gateway URL (leave blank to skip)',
+      default: defaultValue,
+      validate: (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) return true;
+        try {
+          normalizeGatewayUrl(trimmed);
+          return true;
+        } catch (error) {
+          return (error as Error).message;
+        }
+      },
+    });
+    return normalizeGatewayUrl((answer || defaultValue).trim());
+  } catch {
+    console.log('ℹ️  Non-interactive mode — skipping gateway URL prompt.');
+    return normalizeGatewayUrl(defaultValue);
+  }
+}
+
 export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string): {
   config: ZigrixConfig;
   changed: boolean;
@@ -834,7 +975,7 @@ function ensureConfig(): { configPath: string; isNew: boolean } {
   if (existing.configPath && fs.existsSync(existing.configPath)) {
     return { configPath: existing.configPath, isNew: false };
   }
-  const configPath = writeDefaultConfig(undefined, false);
+  const configPath = writeDefaultConfig(false);
   return { configPath, isNew: true };
 }
 
@@ -848,10 +989,25 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     if (!silent) console.log(msg);
   };
 
-  // 1. Ensure ~/.zigrix base state (idempotent)
+  // 1. Ensure config.paths.baseDir state (idempotent)
   const { configPath } = ensureConfig();
   const loaded = loadConfig({ configPath });
-  const paths = resolvePaths(loaded.config);
+  let nextConfig = structuredClone(loaded.config);
+
+  const configuredWorkspace = nextConfig.workspace.projectsBaseDir?.trim() || path.join(nextConfig.paths.baseDir, 'workspace');
+  const desiredWorkspace = options.projectsBaseDir
+    ? resolveAbsolutePath(options.projectsBaseDir)
+    : options.yes
+      ? resolveAbsolutePath(configuredWorkspace)
+      : await promptWorkspaceBaseDir(configuredWorkspace);
+
+  if (nextConfig.workspace.projectsBaseDir !== desiredWorkspace) {
+    nextConfig.workspace.projectsBaseDir = desiredWorkspace;
+    writeConfigFile(configPath, nextConfig);
+    log(`✅ Workspace base dir set to: ${desiredWorkspace}`);
+  }
+
+  const paths = resolvePaths(nextConfig);
   ensureBaseState(paths);
   rebuildIndex(paths);
 
@@ -875,6 +1031,24 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     }
   }
 
+  const storedGatewayUrl = nextConfig.openclaw.gatewayUrl?.trim() ?? '';
+  const detectedGatewayUrl = resolveOpenClawGatewayUrl(openclawConfig);
+  const resolvedGatewayUrl = (() => {
+    if (typeof options.gatewayUrl === 'string' && options.gatewayUrl.trim().length > 0) {
+      return normalizeGatewayUrl(options.gatewayUrl);
+    }
+    if (storedGatewayUrl && !shouldReplaceStoredGatewayUrl(storedGatewayUrl, detectedGatewayUrl)) {
+      return normalizeGatewayUrl(storedGatewayUrl);
+    }
+    if (detectedGatewayUrl) {
+      return detectedGatewayUrl;
+    }
+    if (openclawExists && !options.yes) {
+      return '';
+    }
+    return storedGatewayUrl ? normalizeGatewayUrl(storedGatewayUrl) : '';
+  })();
+
   // 3. Agent selection and registration
   let agentsRegistered: string[] = [];
   let agentsSkipped: string[] = [];
@@ -891,8 +1065,6 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     } else {
       selectedAgents = await promptAgentSelection(allAgents);
     }
-
-    let nextConfig = loaded.config;
 
     if (selectedAgents.length > 0) {
       const roleAssignments = options.yes
@@ -928,7 +1100,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   }
 
   if (!openclawConfig && options.orchestratorId) {
-    const orchResult = ensureOrchestratorId(loaded.config, options.orchestratorId);
+    const orchResult = ensureOrchestratorId(nextConfig, options.orchestratorId);
     if (orchResult.warning) {
       warnings.push(orchResult.warning);
       log(`⚠️  ${orchResult.warning}`);
@@ -940,23 +1112,26 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   }
 
   // 4. Seed rules
-  const projectDir = options.projectDir ?? process.cwd();
-  const rulesSourceDir = path.join(projectDir, 'orchestration', 'rules');
   const rulesTargetDir = paths.rulesDir;
+  const ruleSeed = resolveRuleSeedSource(options.projectDir);
+  let rulesCopied: string[] = [];
+  let rulesSkipped: string[] = [];
 
-  if (!fs.existsSync(rulesSourceDir)) {
-    warnings.push(
-      `orchestration/rules/ not found at ${rulesSourceDir}. Rules seeding skipped.`,
-    );
+  if (!ruleSeed.sourceDir) {
+    warnings.push('No bundled rule templates available. Rules seeding skipped.');
     log(`⚠️  ${warnings[warnings.length - 1]}`);
-  }
+  } else {
+    if (options.projectDir && ruleSeed.source === 'bundled') {
+      log(`ℹ️  No external rule templates found under ${options.projectDir}; using bundled defaults.`);
+    }
 
-  const { copied: rulesCopied, skipped: rulesSkipped } = seedRules(rulesSourceDir, rulesTargetDir);
-  if (rulesCopied.length > 0) {
-    log(`✅ Rules copied: ${rulesCopied.join(', ')}`);
-  }
-  if (rulesSkipped.length > 0) {
-    log(`⏭️  Rules already exist (skipped): ${rulesSkipped.join(', ')}`);
+    ({ copied: rulesCopied, skipped: rulesSkipped } = seedRules(ruleSeed.sourceDir, rulesTargetDir));
+    if (rulesCopied.length > 0) {
+      log(`✅ Rules copied: ${rulesCopied.join(', ')}`);
+    }
+    if (rulesSkipped.length > 0) {
+      log(`⏭️  Rules already exist (skipped): ${rulesSkipped.join(', ')}`);
+    }
   }
 
   // 5. Stabilize PATH — ensure zigrix is reachable
@@ -982,16 +1157,32 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       log(`⚠️  ${warnings[warnings.length - 1]}`);
     }
 
-    // Persist openclaw integration config
+    // Persist openclaw integration config (home, binPath, gatewayUrl)
     const currentConfig = loadConfig({ configPath }).config;
+
+    // Gateway URL: explicit flag > autodiscovery > interactive prompt > stored value
+    let finalGatewayUrl = resolvedGatewayUrl;
+    if (!finalGatewayUrl && openclawExists && !options.yes) {
+      const suggested = detectedGatewayUrl || '';
+      finalGatewayUrl = await promptGatewayUrl(suggested);
+    }
+    if (finalGatewayUrl) {
+      log(`✅ OpenClaw gateway URL: ${finalGatewayUrl}`);
+    } else if (openclawExists) {
+      warnings.push('OpenClaw gateway URL not configured. Dashboard gateway features may be limited. Set later with `zigrix configure --section openclaw` or `zigrix onboard --gateway-url <url>`.');
+      log(`⚠️  ${warnings[warnings.length - 1]}`);
+    }
+
     const needsUpdate =
       currentConfig.openclaw.home !== openclawHome ||
-      currentConfig.openclaw.binPath !== openclawBinPath;
+      currentConfig.openclaw.binPath !== openclawBinPath ||
+      currentConfig.openclaw.gatewayUrl !== (finalGatewayUrl || '');
     if (needsUpdate) {
       currentConfig.openclaw.home = openclawHome;
       currentConfig.openclaw.binPath = openclawBinPath;
+      currentConfig.openclaw.gatewayUrl = finalGatewayUrl || '';
       writeConfigFile(configPath, currentConfig);
-      log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'})`);
+      log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'}, gateway: ${finalGatewayUrl || 'not set'})`);
     }
   }
 
@@ -1044,11 +1235,13 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     ok: true,
     action: 'onboard',
     baseDir: paths.baseDir,
+    workspaceBaseDir: nextConfig.workspace.projectsBaseDir,
     configPath,
     paths,
     openclawDetected: openclawExists,
     openclawHome,
     openclawBinPath,
+    openclawGatewayUrl: resolvedGatewayUrl || null,
     agentsRegistered,
     agentsSkipped,
     rulesCopied,

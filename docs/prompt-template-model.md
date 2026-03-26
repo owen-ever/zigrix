@@ -1,13 +1,12 @@
 # Prompt Template Model
 
 ## 목적
-`orchestration/rules/*.md`에 있는 프롬프트 성격의 내용을 Zigrix에서 설정 가능한 template asset으로 옮길 때 필요한 모델.
+`rules/defaults/*.md`에 있는 프롬프트 성격의 내용을 Zigrix에서 설정 가능한 template asset으로 옮길 때 필요한 모델.
 
 ## source precedence
 1. built-in template
-2. user override
-3. project override
-4. CLI inline override (debug only)
+2. `zigrix.config.json` override
+3. CLI inline override (debug only)
 
 ## supported template kinds
 - `workerPrompt`

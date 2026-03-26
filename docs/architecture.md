@@ -9,7 +9,7 @@
 
 ### 2. Core state layer
 - resolves portable paths
-- manages `~/.zigrix/` global runtime state
+- manages global runtime state from `zigrix.config.json` (`paths.*`)
 - persists tasks (sidecar model: `.meta.json` + `.md`), prompts, evidence, and index files
 - appends events to `tasks.jsonl`
 - renders user-facing reports from merged evidence
@@ -26,14 +26,14 @@
 Global runtime state:
 
 ```text
-~/.zigrix/
-├─ zigrix.config.json
+~/.zigrix/zigrix.config.json        # config location
+<paths.baseDir>/
 ├─ tasks/
 │  ├─ <taskId>.meta.json    # machine-readable metadata
 │  └─ <taskId>.md           # human-readable spec
 ├─ prompts/
 ├─ evidence/
-├─ rules/                   # seeded from orchestration/rules/
+├─ rules/                   # seeded from bundled rules/defaults/
 ├─ runs/
 ├─ tasks.jsonl              # append-only event log
 └─ index.json               # derived projection (rebuildable)
@@ -45,8 +45,8 @@ Global runtime state:
 - Global state avoids scattering `.zigrix/` across unrelated repos
 - `meta.json` records `projectDir` per task when relevant
 
-## Future boundary
-The existing `orchestration/scripts/*.py` are the migration source. Zigrix CLI replaces them:
-- `dev_dispatch.py` → `zigrix task dispatch`
-- `dev_finalize.py` → `zigrix task finalize`
-- Worker scripts → `zigrix worker prepare/register/complete`
+## CLI chain
+- `zigrix task dispatch` — creates task with full orchestration metadata
+- `zigrix task finalize` — merges evidence, checks units, auto-reports
+- `zigrix worker prepare/register/complete` — worker lifecycle management
+rker prepare/register/complete` — worker lifecycle management

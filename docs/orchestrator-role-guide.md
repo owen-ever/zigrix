@@ -3,7 +3,7 @@
 ## 개요
 
 Zigrix는 6가지 표준 에이전트 역할을 정의하고, 태스크 디스패치 시 역할 기반으로 에이전트를 자동 선택한다.
-더 이상 `pro-zig`, `qa-zig` 같은 agent id가 코드에 하드코딩되어 있지 않다.
+더 이상 `orchestrator-agent`, `qa-agent` 같은 agent id가 코드에 하드코딩되어 있지 않다.
 설정을 통해 어떤 에이전트가 어떤 역할을 맡을지 제어할 수 있다.
 
 ## 표준 역할 (6종)
@@ -28,7 +28,7 @@ zigrix onboard --yes
 ```
 
 OpenClaw의 `openclaw.json`에 등록된 에이전트를 자동 감지하여:
-1. 에이전트 id / theme에서 역할을 추론 (예: `qa-zig` → `qa`, `back-zig` → `backend`)
+1. 에이전트 id / theme에서 역할을 추론 (예: `qa-agent` → `qa`, `backend-agent` → `backend`)
 2. `orchestratorId`를 자동 설정 (첫 번째 orchestrator 역할 에이전트)
 
 인터랙티브 모드 (`--yes` 없이):
@@ -58,7 +58,7 @@ zigrix configure --section agents --orchestrator-id my-orch-agent --yes
 ### 3. 에이전트 역할 변경
 
 ```bash
-zigrix agent set-role back-zig --role system
+zigrix agent set-role backend-agent --role system
 ```
 
 ## 태스크 디스패치 흐름
@@ -84,17 +84,17 @@ zigrix task dispatch \
 {
   "ok": true,
   "taskId": "ZIG-20260319-001",
-  "orchestratorId": "pro-zig",
-  "qaAgentId": "qa-zig",
-  "baselineRequiredAgents": ["pro-zig", "qa-zig"],
-  "candidateAgents": ["front-zig", "back-zig"],
+  "orchestratorId": "orchestrator-agent",
+  "qaAgentId": "qa-agent",
+  "baselineRequiredAgents": ["orchestrator-agent", "qa-agent"],
+  "candidateAgents": ["frontend-agent", "backend-agent"],
   "requiredRoles": ["orchestrator", "qa"],
   "optionalRoles": ["frontend", "backend"],
   "roleAgentMap": {
-    "orchestrator": ["pro-zig"],
-    "qa": ["qa-zig"],
-    "frontend": ["front-zig"],
-    "backend": ["back-zig"]
+    "orchestrator": ["orchestrator-agent"],
+    "qa": ["qa-agent"],
+    "frontend": ["frontend-agent"],
+    "backend": ["backend-agent"]
   }
 }
 ```
@@ -111,7 +111,7 @@ zigrix task dispatch \
 
 ## FAQ
 
-### Q: 기존에 하드코딩된 `pro-zig` / `qa-zig`는 어떻게 되나?
+### Q: 기존에 하드코딩된 `orchestrator-agent` / `qa-agent`는 어떻게 되나?
 A: 기본값으로 남아 있지만, 설정으로 오버라이드 가능. `orchestratorId`를 변경하면 실행 유닛의 owner, 부트 프롬프트, 필수 에이전트 목록이 모두 연동 변경된다.
 
 ### Q: 에이전트 하나가 여러 역할을 가질 수 있나?
