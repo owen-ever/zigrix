@@ -2,6 +2,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 export const CONFIG_FILENAME = 'zigrix.config.json';
+export const LEGACY_DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
 
 export function expandTilde(input: string): string {
   const homeDir = os.homedir();
@@ -82,7 +83,7 @@ export function buildDefaultConfig(baseDir = resolveCanonicalConfigHome()) {
     openclaw: {
       home: '',
       binPath: null,
-      gatewayUrl: 'http://127.0.0.1:18789',
+      gatewayUrl: '',
     },
     runtime: {
       outputMode: 'text',

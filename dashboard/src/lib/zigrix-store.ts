@@ -11,7 +11,7 @@ import {
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 const DEFAULT_SUBAGENT_RUNS_PATH = path.join(os.homedir(), '.openclaw', 'subagents', 'runs.json');
-const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
+const FALLBACK_GATEWAY_URL = 'http://127.0.0.1:18789';
 const DEFAULT_SESSIONS_HISTORY_LIMIT = 200;
 
 type ZigrixConfigSnapshot = {
@@ -77,7 +77,7 @@ function readZigrixOpenClawConfig(snapshot: ZigrixConfigSnapshot | null): {
   return {
     home: typeof oc.home === 'string' && oc.home ? toAbsolute(oc.home, os.homedir()) : '',
     binPath: typeof oc.binPath === 'string' && oc.binPath ? toAbsolute(oc.binPath, os.homedir()) : null,
-    gatewayUrl: typeof oc.gatewayUrl === 'string' && oc.gatewayUrl ? oc.gatewayUrl : DEFAULT_GATEWAY_URL,
+    gatewayUrl: typeof oc.gatewayUrl === 'string' && oc.gatewayUrl ? oc.gatewayUrl : '',
   };
 }
 
@@ -1066,7 +1066,7 @@ function buildGatewayInvoker(options?: {
   const url =
     options?.gatewayUrl ||
     process.env.OPENCLAW_GATEWAY_URL ||
-    DEFAULT_GATEWAY_URL;
+    FALLBACK_GATEWAY_URL;
   const token = options?.gatewayToken || process.env.OPENCLAW_GATEWAY_TOKEN || null;
   const fetchImpl = options?.fetchImpl || fetch;
   const endpoint = `${url.replace(/\/+$/, '')}/tools/invoke`;
@@ -1154,7 +1154,7 @@ export function createZigrixStore(options?: {
   };
 
   // Use gateway URL from zigrix config (set during onboard) as fallback
-  const resolvedGatewayUrl = options?.gatewayUrl || process.env.OPENCLAW_GATEWAY_URL || zigrixOcConfig?.gatewayUrl || DEFAULT_GATEWAY_URL;
+  const resolvedGatewayUrl = options?.gatewayUrl || process.env.OPENCLAW_GATEWAY_URL || zigrixOcConfig?.gatewayUrl || FALLBACK_GATEWAY_URL;
 
   const invokeTool =
     options?.invokeTool ||

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
 import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
-import { resolveAbsolutePath } from './config/defaults.js';
+import { LEGACY_DEFAULT_GATEWAY_URL, resolveAbsolutePath } from './config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { ensureBaseState, resolvePaths, type ZigrixPaths } from './state/paths.js';
@@ -27,6 +27,23 @@ export interface OpenClawAgent {
 export interface OpenClawConfig {
   agents?: {
     list?: OpenClawAgent[];
+  };
+  gateway?: {
+    port?: number | string;
+    bind?: string;
+    mode?: string;
+    auth?: {
+      token?: string;
+    };
+  };
+  plugins?: {
+    entries?: {
+      'device-pair'?: {
+        config?: {
+          publicUrl?: string;
+        };
+      };
+    };
   };
 }
 
@@ -55,6 +72,7 @@ export interface OnboardResult {
   openclawDetected: boolean;
   openclawHome: string;
   openclawBinPath: string | null;
+  openclawGatewayUrl: string | null;
   agentsRegistered: string[];
   agentsSkipped: string[];
   rulesCopied: string[];
@@ -77,6 +95,7 @@ export interface RunOnboardOptions {
   projectDir?: string;
   projectsBaseDir?: string;
   orchestratorId?: string;
+  gatewayUrl?: string;
   silent?: boolean;
 }
 
@@ -98,6 +117,51 @@ export function loadOpenClawConfig(openclawHome: string): OpenClawConfig | null 
   } catch {
     return null;
   }
+}
+
+function normalizeGatewayUrl(input?: string | null): string {
+  const trimmed = input?.trim() ?? '';
+  if (!trimmed) return '';
+  const withScheme = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  const parsed = new URL(withScheme);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`unsupported gateway url protocol: ${parsed.protocol}`);
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
+
+function coerceGatewayPort(value: unknown): number | null {
+  const n = typeof value === 'string' && value.trim().length > 0 ? Number(value) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n) || n <= 0 || n > 65535) return null;
+  return Math.trunc(n);
+}
+
+export function resolveOpenClawGatewayUrl(openclawConfig: OpenClawConfig | null): string | null {
+  if (!openclawConfig || typeof openclawConfig !== 'object') return null;
+
+  const directUrl = (openclawConfig as { gateway?: { url?: unknown } }).gateway?.url;
+  if (typeof directUrl === 'string' && directUrl.trim().length > 0) {
+    return normalizeGatewayUrl(directUrl);
+  }
+
+  const port = coerceGatewayPort(openclawConfig.gateway?.port);
+  if (port) {
+    return `http://127.0.0.1:${port}`;
+  }
+
+  return null;
+}
+
+export function resolveOpenClawGatewayToken(openclawConfig: OpenClawConfig | null): string | null {
+  const token = openclawConfig?.gateway?.auth?.token;
+  return typeof token === 'string' && token.trim().length > 0 ? token : null;
+}
+
+function shouldReplaceStoredGatewayUrl(stored: string, detected: string | null): boolean {
+  const trimmed = stored.trim();
+  if (!trimmed) return Boolean(detected);
+  if (!detected) return false;
+  return trimmed === LEGACY_DEFAULT_GATEWAY_URL;
 }
 
 /**
@@ -826,6 +890,30 @@ export async function promptWorkspaceBaseDir(defaultPath: string): Promise<strin
   }
 }
 
+export async function promptGatewayUrl(defaultValue: string): Promise<string> {
+  try {
+    const { input } = await import('@inquirer/prompts');
+    const answer = await input({
+      message: 'OpenClaw gateway URL (leave blank to skip)',
+      default: defaultValue,
+      validate: (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) return true;
+        try {
+          normalizeGatewayUrl(trimmed);
+          return true;
+        } catch (error) {
+          return (error as Error).message;
+        }
+      },
+    });
+    return normalizeGatewayUrl((answer || defaultValue).trim());
+  } catch {
+    console.log('ℹ️  Non-interactive mode — skipping gateway URL prompt.');
+    return normalizeGatewayUrl(defaultValue);
+  }
+}
+
 export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string): {
   config: ZigrixConfig;
   changed: boolean;
@@ -943,6 +1031,24 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     }
   }
 
+  const storedGatewayUrl = nextConfig.openclaw.gatewayUrl?.trim() ?? '';
+  const detectedGatewayUrl = resolveOpenClawGatewayUrl(openclawConfig);
+  const resolvedGatewayUrl = (() => {
+    if (typeof options.gatewayUrl === 'string' && options.gatewayUrl.trim().length > 0) {
+      return normalizeGatewayUrl(options.gatewayUrl);
+    }
+    if (storedGatewayUrl && !shouldReplaceStoredGatewayUrl(storedGatewayUrl, detectedGatewayUrl)) {
+      return normalizeGatewayUrl(storedGatewayUrl);
+    }
+    if (detectedGatewayUrl) {
+      return detectedGatewayUrl;
+    }
+    if (openclawExists && !options.yes) {
+      return '';
+    }
+    return storedGatewayUrl ? normalizeGatewayUrl(storedGatewayUrl) : '';
+  })();
+
   // 3. Agent selection and registration
   let agentsRegistered: string[] = [];
   let agentsSkipped: string[] = [];
@@ -1051,16 +1157,32 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       log(`⚠️  ${warnings[warnings.length - 1]}`);
     }
 
-    // Persist openclaw integration config
+    // Persist openclaw integration config (home, binPath, gatewayUrl)
     const currentConfig = loadConfig({ configPath }).config;
+
+    // Gateway URL: explicit flag > autodiscovery > interactive prompt > stored value
+    let finalGatewayUrl = resolvedGatewayUrl;
+    if (!finalGatewayUrl && openclawExists && !options.yes) {
+      const suggested = detectedGatewayUrl || '';
+      finalGatewayUrl = await promptGatewayUrl(suggested);
+    }
+    if (finalGatewayUrl) {
+      log(`✅ OpenClaw gateway URL: ${finalGatewayUrl}`);
+    } else if (openclawExists) {
+      warnings.push('OpenClaw gateway URL not configured. Dashboard gateway features may be limited. Set later with `zigrix configure --section openclaw` or `zigrix onboard --gateway-url <url>`.');
+      log(`⚠️  ${warnings[warnings.length - 1]}`);
+    }
+
     const needsUpdate =
       currentConfig.openclaw.home !== openclawHome ||
-      currentConfig.openclaw.binPath !== openclawBinPath;
+      currentConfig.openclaw.binPath !== openclawBinPath ||
+      currentConfig.openclaw.gatewayUrl !== (finalGatewayUrl || '');
     if (needsUpdate) {
       currentConfig.openclaw.home = openclawHome;
       currentConfig.openclaw.binPath = openclawBinPath;
+      currentConfig.openclaw.gatewayUrl = finalGatewayUrl || '';
       writeConfigFile(configPath, currentConfig);
-      log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'})`);
+      log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'}, gateway: ${finalGatewayUrl || 'not set'})`);
     }
   }
 
@@ -1119,6 +1241,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     openclawDetected: openclawExists,
     openclawHome,
     openclawBinPath,
+    openclawGatewayUrl: resolvedGatewayUrl || null,
     agentsRegistered,
     agentsSkipped,
     rulesCopied,

@@ -187,12 +187,14 @@ program
   .option('--project-dir <path>', 'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used')
   .option('--projects-base-dir <path>', 'workspace base directory to persist in zigrix.config.json')
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
+  .option('--gateway-url <url>', 'OpenClaw gateway URL (auto-detected from openclaw.json when available)')
   .action(async (options) => {
     const result = await runOnboard({
       yes: Boolean(options.yes),
       projectDir: options.projectDir,
       projectsBaseDir: options.projectsBaseDir,
       orchestratorId: options.orchestratorId,
+      gatewayUrl: options.gatewayUrl,
       silent: Boolean(options.json),
     });
     printValue(result, options.json ?? true);

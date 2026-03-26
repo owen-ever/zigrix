@@ -127,8 +127,8 @@ export const zigrixConfigSchema = z.object({
   openclaw: z.object({
     home: z.string().default(''),
     binPath: z.string().nullable().default(null),
-    gatewayUrl: z.string().default('http://127.0.0.1:18789'),
-  }).default({ home: '', binPath: null, gatewayUrl: 'http://127.0.0.1:18789' }),
+    gatewayUrl: z.string().default(''),
+  }).default({ home: '', binPath: null, gatewayUrl: '' }),
   runtime: z.object({
     outputMode: z.enum(['text', 'json']),
     jsonIndent: z.number().int().min(0).max(8),
