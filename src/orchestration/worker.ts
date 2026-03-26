@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
-import { loadTask, saveTask, type ZigrixTask } from '../state/tasks.js';
+import { loadTask, resolveTaskPaths, saveTask, type ZigrixTask } from '../state/tasks.js';
 
 export const DEFAULT_REQUIRED_ROLES = ['orchestrator', 'qa'] as const;
 
@@ -138,7 +138,17 @@ export function prepareWorker(paths: ZigrixPaths, params: {
     workPackage: params.workPackage,
     payload: { agentId: params.agentId, description: params.description, constraints: params.constraints ?? '', dod: params.dod ?? '', promptPath },
   });
-  return { ok: true, taskId: params.taskId, agentId: params.agentId, promptPath, prompt, unitId: params.unitId, workPackage: params.workPackage };
+  return {
+    ok: true,
+    taskId: params.taskId,
+    agentId: params.agentId,
+    promptPath,
+    prompt,
+    unitId: params.unitId,
+    workPackage: params.workPackage,
+    projectDir: projectDir ?? null,
+    ...resolveTaskPaths(paths, params.taskId),
+  };
 }
 
 /**

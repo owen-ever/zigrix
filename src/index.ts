@@ -39,6 +39,7 @@ import {
   loadTask,
   rebuildIndex,
   recordTaskProgress,
+  resolveTaskPaths,
   updateTaskStatus,
 } from './state/tasks.js';
 import { verifyState } from './state/verify.js';
@@ -98,6 +99,61 @@ function loadRuntime() {
   return { ...loaded, paths: resolvePaths(loaded.config) };
 }
 
+function listRuntimePathValues(loaded: ReturnType<typeof loadRuntime>): Record<string, string | null> {
+  return {
+    configPath: loaded.configPath,
+    'paths.baseDir': loaded.paths.baseDir,
+    'paths.tasksDir': loaded.paths.tasksDir,
+    'paths.evidenceDir': loaded.paths.evidenceDir,
+    'paths.promptsDir': loaded.paths.promptsDir,
+    'paths.eventsFile': loaded.paths.eventsFile,
+    'paths.indexFile': loaded.paths.indexFile,
+    'paths.runsDir': loaded.paths.runsDir,
+    'paths.rulesDir': loaded.paths.rulesDir,
+    'workspace.projectsBaseDir': loaded.config.workspace.projectsBaseDir,
+  };
+}
+
+function resolveRuntimePathValue(loaded: ReturnType<typeof loadRuntime>, requestedKey: string): {
+  requestedKey: string;
+  canonicalKey: string;
+  value: string | null;
+} {
+  const normalized = requestedKey.trim();
+  const aliases: Record<string, string> = {
+    configPath: 'configPath',
+    baseDir: 'paths.baseDir',
+    tasksDir: 'paths.tasksDir',
+    evidenceDir: 'paths.evidenceDir',
+    promptsDir: 'paths.promptsDir',
+    eventsFile: 'paths.eventsFile',
+    indexFile: 'paths.indexFile',
+    runsDir: 'paths.runsDir',
+    rulesDir: 'paths.rulesDir',
+    projectsBaseDir: 'workspace.projectsBaseDir',
+    workspaceBaseDir: 'workspace.projectsBaseDir',
+    'paths.baseDir': 'paths.baseDir',
+    'paths.tasksDir': 'paths.tasksDir',
+    'paths.evidenceDir': 'paths.evidenceDir',
+    'paths.promptsDir': 'paths.promptsDir',
+    'paths.eventsFile': 'paths.eventsFile',
+    'paths.indexFile': 'paths.indexFile',
+    'paths.runsDir': 'paths.runsDir',
+    'paths.rulesDir': 'paths.rulesDir',
+    'workspace.projectsBaseDir': 'workspace.projectsBaseDir',
+  };
+  const canonicalKey = aliases[normalized];
+  if (!canonicalKey) {
+    throw new Error(`unknown path key: ${requestedKey}`);
+  }
+  const values = listRuntimePathValues(loaded);
+  return {
+    requestedKey,
+    canonicalKey,
+    value: values[canonicalKey] ?? null,
+  };
+}
+
 const { version: pkgVersion } = JSON.parse(
   fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8')
 ) as { version: string };
@@ -109,6 +165,7 @@ program
   .version(pkgVersion);
 
 const config = program.command('config').description('Inspect Zigrix config');
+const pathCmd = program.command('path').description('Resolve runtime paths from Zigrix config');
 const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
 const rule = program.command('rule').description('Inspect and validate rule assets');
 const template = program.command('template').description('Inspect and modify prompt templates');
@@ -194,6 +251,38 @@ program
       return;
     }
     console.log(renderDoctorText(payload));
+  });
+
+// ─── path ───────────────────────────────────────────────────────────────────
+
+pathCmd
+  .command('get <key>')
+  .description('Resolve one runtime path by key or alias (for example: tasksDir, paths.tasksDir, workspace.projectsBaseDir)')
+  .option('--json', 'JSON output')
+  .action((key, options) => {
+    const loaded = loadRuntime();
+    const resolved = resolveRuntimePathValue(loaded, key);
+    if (options.json) {
+      printValue({ ok: true, ...resolved }, true);
+      return;
+    }
+    printValue(resolved.value, false);
+  });
+
+pathCmd
+  .command('list')
+  .description('List resolved runtime paths')
+  .option('--json', 'JSON output')
+  .action((options) => {
+    const loaded = loadRuntime();
+    const values = listRuntimePathValues(loaded);
+    if (options.json) {
+      printValue({ ok: true, values }, true);
+      return;
+    }
+    for (const [key, value] of Object.entries(values)) {
+      console.log(`${key}=${value ?? ''}`);
+    }
   });
 
 // ─── config ─────────────────────────────────────────────────────────────────
@@ -581,7 +670,10 @@ task
       requestedBy: options.requestedBy,
       prefix: options.prefix,
     });
-    printValue(created, true);
+    printValue({
+      ...created,
+      ...resolveTaskPaths(loaded.paths, created.taskId),
+    }, true);
   });
 
 task
@@ -593,9 +685,13 @@ task
   .command('status <taskId>')
   .option('--json')
   .action((taskId, options) => {
-    const payload = loadTask(loadRuntime().paths, taskId);
+    const loaded = loadRuntime();
+    const payload = loadTask(loaded.paths, taskId);
     if (!payload) throw new Error(`task not found: ${taskId}`);
-    printValue(payload, true);
+    printValue({
+      ...payload,
+      ...resolveTaskPaths(loaded.paths, taskId),
+    }, true);
   });
 
 task
