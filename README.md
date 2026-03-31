@@ -21,7 +21,8 @@
   <a href="#quick-start">Quick Start</a> ·
   <a href="#core-workflow">Core Workflow</a> ·
   <a href="#openclaw-integration">OpenClaw Integration</a> ·
-  <a href="#dashboard--docs">Dashboard / Docs</a>
+  <a href="#dashboard">Dashboard</a> ·
+  <a href="#docs">Docs</a>
 </p>
 
 ---
@@ -167,15 +168,49 @@ Read the full integration contract in [docs/openclaw-integration.md](docs/opencl
 
 ---
 
-## Dashboard / Docs
+## Dashboard
 
-Start dashboard:
+Zigrix ships with a built-in dashboard for real-time visibility into task orchestration.
 
 ```bash
 zigrix dashboard --port 3838
 ```
 
-Key docs:
+### Task Detail
+
+Track execution units, evidence submissions, and spec previews — all in one view.
+
+<p align="center">
+  <img src="docs/assets/dashboard-task-detail.png" alt="Task detail view showing execution units, evidence, and spec preview" width="720">
+</p>
+
+### Event Log
+
+Every state change is recorded as an immutable event — from dispatch through finalization.
+
+<p align="center">
+  <img src="docs/assets/dashboard-event-log.png" alt="Chronological event log with timestamps and status transitions" width="720">
+</p>
+
+### Live Progress
+
+Monitor in-progress tasks with real-time execution unit status and one-click cancellation.
+
+<p align="center">
+  <img src="docs/assets/dashboard-task-progress.png" alt="In-progress task with open execution units" width="720">
+</p>
+
+### Task Spec
+
+Full task specification with metadata, scope definition, and routing rules — visible before and during execution.
+
+<p align="center">
+  <img src="docs/assets/dashboard-task-spec.png" alt="Task specification detail with metadata and scope" width="720">
+</p>
+
+---
+
+## Docs
 
 - [Quickstart](docs/quickstart.md)
 - [Install](docs/install.md)
