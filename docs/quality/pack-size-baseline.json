@@ -1,0 +1,11 @@
+{
+  "description": "npm pack --dry-run --json --ignore-scripts baseline for zigrix package",
+  "tolerancePercent": 1,
+  "forbiddenPrefixes": ["dist/dashboard/node_modules/"],
+  "requiredPaths": ["dist/dashboard/server.js"],
+  "metrics": {
+    "packageSize": 685486,
+    "unpackedSize": 2584586,
+    "entryCount": 184
+  }
+}

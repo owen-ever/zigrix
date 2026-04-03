@@ -57,4 +57,16 @@ if [ -d "$DASHBOARD_DIR/public" ]; then
   cp -r "$DASHBOARD_DIR/public/." "$DIST_DASHBOARD/public/"
 fi
 
-echo "✅ Dashboard built → dist/dashboard/"
+# 7. 패키지 경계 정리
+# npm tarball에는 dashboard 전용 node_modules를 싣지 않는다.
+# published package는 root package.json dependencies 설치 결과(<pkg>/node_modules)로
+# dashboard 런타임 모듈을 해석하게 한다. dist/dashboard는 prebuilt server/static만 포함.
+echo "🧹 Pruning dashboard bundle for npm package boundary..."
+rm -rf "$DIST_DASHBOARD/node_modules"
+
+# 런타임과 무관한 sourcemap 제거
+if [ -d "$DIST_DASHBOARD/.next/static" ]; then
+  find "$DIST_DASHBOARD/.next/static" -type f -name "*.map" -delete
+fi
+
+echo "✅ Dashboard built → dist/dashboard/ (without dist/dashboard/node_modules)"
