@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeThreshold,
+  evaluatePackContents,
   evaluatePackMetrics,
+  findForbiddenPackPaths,
   parsePackOutput,
 } from '../scripts/lib/pack-size-gate.mjs';
 
@@ -29,6 +31,7 @@ describe('pack-size-gate', () => {
       packageSize: 1000,
       unpackedSize: 4000,
       entryCount: 2,
+      files: ['a', 'b'],
     });
   });
 
@@ -60,10 +63,24 @@ describe('pack-size-gate', () => {
     expect(result.pass).toBe(true);
   });
 
-  it('keeps baseline config file with numeric metrics', () => {
+  it('flags forbidden pack paths such as dist/dashboard/node_modules', () => {
+    const files = [
+      'dist/index.js',
+      'dist/dashboard/server.js',
+      'dist/dashboard/node_modules/next/package.json',
+    ];
+
+    expect(findForbiddenPackPaths(files, ['dist/dashboard/node_modules/'])).toEqual([
+      'dist/dashboard/node_modules/next/package.json',
+    ]);
+    expect(evaluatePackContents(files, ['dist/dashboard/node_modules/']).pass).toBe(false);
+  });
+
+  it('keeps baseline config file with numeric metrics and forbidden prefixes', () => {
     const baselinePath = path.join(repoRoot, 'docs', 'quality', 'pack-size-baseline.json');
     const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')) as {
       tolerancePercent: number;
+      forbiddenPrefixes: string[];
       metrics: {
         packageSize: number;
         unpackedSize: number;
@@ -72,6 +89,7 @@ describe('pack-size-gate', () => {
     };
 
     expect(baseline.tolerancePercent).toBeGreaterThanOrEqual(0);
+    expect(baseline.forbiddenPrefixes).toContain('dist/dashboard/node_modules/');
     expect(baseline.metrics.packageSize).toBeGreaterThan(0);
     expect(baseline.metrics.unpackedSize).toBeGreaterThan(0);
     expect(baseline.metrics.entryCount).toBeGreaterThan(0);

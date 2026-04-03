@@ -79,7 +79,12 @@ if [[ "$PACK_LIST" != *"dist/dashboard/server.js"* ]]; then
   echo "❌ dist/dashboard/server.js not found in pack"
   exit 1
 fi
+if [[ "$PACK_LIST" == *"dist/dashboard/node_modules/"* ]]; then
+  echo "❌ dist/dashboard/node_modules should not be present in pack"
+  exit 1
+fi
 echo "  ✅ dist/dashboard/server.js found in pack"
+echo "  ✅ dist/dashboard/node_modules omitted from pack"
 
 echo ""
 echo "=== All smoke tests passed ==="

@@ -4,7 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { evaluatePackMetrics, formatBytes, parsePackOutput } from './lib/pack-size-gate.mjs';
+import {
+  evaluatePackContents,
+  evaluatePackMetrics,
+  formatBytes,
+  parsePackOutput,
+} from './lib/pack-size-gate.mjs';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(dirname, '..');
@@ -20,6 +25,9 @@ const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
 const tolerancePercent = Number(
   process.env.ZIGRIX_PACK_TOLERANCE_PERCENT ?? baseline.tolerancePercent ?? 0,
 );
+const forbiddenPrefixes = Array.isArray(baseline.forbiddenPrefixes)
+  ? baseline.forbiddenPrefixes
+  : [];
 
 const rawPackOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
   cwd: repoRoot,
@@ -28,25 +36,32 @@ const rawPackOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--ign
 });
 
 const actual = parsePackOutput(rawPackOutput);
-const result = evaluatePackMetrics(actual, baseline.metrics, tolerancePercent);
+const sizeResult = evaluatePackMetrics(actual, baseline.metrics, tolerancePercent);
+const contentsResult = evaluatePackContents(actual.files, forbiddenPrefixes);
 
-console.log('=== zigrix npm pack size report ===');
+console.log('=== zigrix npm pack report ===');
 console.log(`file:          ${actual.filename}`);
 console.log(`packageSize:   ${formatBytes(actual.packageSize)} (${actual.packageSize})`);
 console.log(`unpackedSize:  ${formatBytes(actual.unpackedSize)} (${actual.unpackedSize})`);
 console.log(`entryCount:    ${actual.entryCount}`);
 console.log(`tolerance:     ${tolerancePercent}%`);
 console.log(
-  `limits:        package=${formatBytes(result.limits.packageSize)}, unpacked=${formatBytes(result.limits.unpackedSize)}, entries=${result.limits.entryCount}`,
+  `limits:        package=${formatBytes(sizeResult.limits.packageSize)}, unpacked=${formatBytes(sizeResult.limits.unpackedSize)}, entries=${sizeResult.limits.entryCount}`,
+);
+console.log(
+  `forbidden:     ${forbiddenPrefixes.length > 0 ? forbiddenPrefixes.join(', ') : '(none)'}`,
 );
 
 if (reportOnly) {
   process.exit(0);
 }
 
-if (!result.pass) {
+let failed = false;
+
+if (!sizeResult.pass) {
+  failed = true;
   console.error('\n❌ Pack size gate failed.');
-  for (const violation of result.violations) {
+  for (const violation of sizeResult.violations) {
     const label = violation.key.padEnd(12, ' ');
     const actualLabel = violation.key.includes('Size')
       ? formatBytes(violation.actual)
@@ -57,7 +72,21 @@ if (!result.pass) {
 
     console.error(`- ${label} actual=${actualLabel} limit=${limitLabel}`);
   }
+}
+
+if (!contentsResult.pass) {
+  failed = true;
+  console.error('\n❌ Pack contents gate failed. Forbidden paths found:');
+  for (const violation of contentsResult.violations.slice(0, 20)) {
+    console.error(`- ${violation}`);
+  }
+  if (contentsResult.violations.length > 20) {
+    console.error(`- ... and ${contentsResult.violations.length - 20} more`);
+  }
+}
+
+if (failed) {
   process.exit(1);
 }
 
-console.log('\n✅ Pack size gate passed.');
+console.log('\n✅ Pack size/content gate passed.');

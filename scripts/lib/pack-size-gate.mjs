@@ -10,11 +10,16 @@ export function parsePackOutput(raw) {
     throw new Error('Unexpected npm pack output shape.');
   }
 
+  const files = Array.isArray(packResult.files)
+    ? packResult.files.map((file) => String(file?.path ?? '')).filter(Boolean)
+    : [];
+
   return {
     packageSize: Number(packResult.size ?? 0),
     unpackedSize: Number(packResult.unpackedSize ?? 0),
-    entryCount: Array.isArray(packResult.files) ? packResult.files.length : 0,
+    entryCount: files.length,
     filename: String(packResult.filename ?? ''),
+    files,
   };
 }
 
@@ -53,6 +58,18 @@ export function evaluatePackMetrics(actual, baseline, tolerancePercent = 0) {
   return {
     pass: violations.length === 0,
     limits,
+    violations,
+  };
+}
+
+export function findForbiddenPackPaths(files, forbiddenPrefixes = []) {
+  return files.filter((file) => forbiddenPrefixes.some((prefix) => file.startsWith(prefix)));
+}
+
+export function evaluatePackContents(files, forbiddenPrefixes = []) {
+  const violations = findForbiddenPackPaths(files, forbiddenPrefixes);
+  return {
+    pass: violations.length === 0,
     violations,
   };
 }
