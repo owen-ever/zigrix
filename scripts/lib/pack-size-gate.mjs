@@ -74,6 +74,18 @@ export function evaluatePackContents(files, forbiddenPrefixes = []) {
   };
 }
 
+export function findMissingRequiredPackPaths(files, requiredPaths = []) {
+  return requiredPaths.filter((requiredPath) => !files.includes(requiredPath));
+}
+
+export function evaluateRequiredPackPaths(files, requiredPaths = []) {
+  const missing = findMissingRequiredPackPaths(files, requiredPaths);
+  return {
+    pass: missing.length === 0,
+    missing,
+  };
+}
+
 export function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   evaluatePackContents,
   evaluatePackMetrics,
+  evaluateRequiredPackPaths,
   formatBytes,
   parsePackOutput,
 } from './lib/pack-size-gate.mjs';
@@ -28,6 +29,7 @@ const tolerancePercent = Number(
 const forbiddenPrefixes = Array.isArray(baseline.forbiddenPrefixes)
   ? baseline.forbiddenPrefixes
   : [];
+const requiredPaths = Array.isArray(baseline.requiredPaths) ? baseline.requiredPaths : [];
 
 const rawPackOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
   cwd: repoRoot,
@@ -38,6 +40,7 @@ const rawPackOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--ign
 const actual = parsePackOutput(rawPackOutput);
 const sizeResult = evaluatePackMetrics(actual, baseline.metrics, tolerancePercent);
 const contentsResult = evaluatePackContents(actual.files, forbiddenPrefixes);
+const requiredResult = evaluateRequiredPackPaths(actual.files, requiredPaths);
 
 console.log('=== zigrix npm pack report ===');
 console.log(`file:          ${actual.filename}`);
@@ -51,6 +54,7 @@ console.log(
 console.log(
   `forbidden:     ${forbiddenPrefixes.length > 0 ? forbiddenPrefixes.join(', ') : '(none)'}`,
 );
+console.log(`required:      ${requiredPaths.length > 0 ? requiredPaths.join(', ') : '(none)'}`);
 
 if (reportOnly) {
   process.exit(0);
@@ -82,6 +86,14 @@ if (!contentsResult.pass) {
   }
   if (contentsResult.violations.length > 20) {
     console.error(`- ... and ${contentsResult.violations.length - 20} more`);
+  }
+}
+
+if (!requiredResult.pass) {
+  failed = true;
+  console.error('\n❌ Pack contents gate failed. Required paths missing:');
+  for (const missingPath of requiredResult.missing) {
+    console.error(`- ${missingPath}`);
   }
 }
 

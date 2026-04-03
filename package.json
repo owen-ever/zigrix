@@ -50,8 +50,8 @@
     "lint": "eslint . --max-warnings=0",
     "lint:dashboard": "npm --prefix dashboard run lint",
     "lint:all": "npm run lint && npm run lint:dashboard",
-    "format": "prettier --write \"package.json\" \"package-lock.json\" \"eslint.config.mjs\" \".prettierrc.json\" \".github/workflows/ci.yml\" \"scripts/check-pack-size.mjs\" \"scripts/lib/pack-size-gate.mjs\" \"docs/quality/pack-size-baseline.md\" \"docs/quality/pack-size-baseline.json\" \"tests/pack-size-gate.test.ts\" \"tests/quality-scripts.test.ts\" \"tests/ci-workflow.test.ts\"",
-    "format:check": "prettier --check \"package.json\" \"package-lock.json\" \"eslint.config.mjs\" \".prettierrc.json\" \".github/workflows/ci.yml\" \"scripts/check-pack-size.mjs\" \"scripts/lib/pack-size-gate.mjs\" \"docs/quality/pack-size-baseline.md\" \"docs/quality/pack-size-baseline.json\" \"tests/pack-size-gate.test.ts\" \"tests/quality-scripts.test.ts\" \"tests/ci-workflow.test.ts\"",
+    "format": "prettier --write \"package.json\" \"package-lock.json\" \"eslint.config.mjs\" \".prettierrc.json\" \".github/workflows/ci.yml\" \"scripts/check-pack-size.mjs\" \"scripts/update-pack-baseline.mjs\" \"scripts/lib/pack-size-gate.mjs\" \"docs/quality/pack-size-baseline.md\" \"docs/quality/pack-size-baseline.json\" \"tests/pack-size-gate.test.ts\" \"tests/quality-scripts.test.ts\" \"tests/ci-workflow.test.ts\"",
+    "format:check": "prettier --check \"package.json\" \"package-lock.json\" \"eslint.config.mjs\" \".prettierrc.json\" \".github/workflows/ci.yml\" \"scripts/check-pack-size.mjs\" \"scripts/update-pack-baseline.mjs\" \"scripts/lib/pack-size-gate.mjs\" \"docs/quality/pack-size-baseline.md\" \"docs/quality/pack-size-baseline.json\" \"tests/pack-size-gate.test.ts\" \"tests/quality-scripts.test.ts\" \"tests/ci-workflow.test.ts\"",
     "format:dashboard": "npm --prefix dashboard run format",
     "format:check:dashboard": "npm --prefix dashboard run format:check",
     "format:check:all": "npm run format:check && npm run format:check:dashboard",
@@ -60,6 +60,7 @@
     "typecheck:all": "npm run typecheck && npm run typecheck:dashboard",
     "size:check": "node scripts/check-pack-size.mjs",
     "size:report": "node scripts/check-pack-size.mjs --report-only",
+    "size:baseline:update": "node scripts/update-pack-baseline.mjs && prettier --write docs/quality/pack-size-baseline.json",
     "audit:prod": "npm audit --omit=dev --audit-level=high && npm --prefix dashboard audit --omit=dev --audit-level=high"
   },
   "engines": {

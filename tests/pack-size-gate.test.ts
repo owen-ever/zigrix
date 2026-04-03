@@ -8,7 +8,9 @@ import {
   computeThreshold,
   evaluatePackContents,
   evaluatePackMetrics,
+  evaluateRequiredPackPaths,
   findForbiddenPackPaths,
+  findMissingRequiredPackPaths,
   parsePackOutput,
 } from '../scripts/lib/pack-size-gate.mjs';
 
@@ -76,11 +78,24 @@ describe('pack-size-gate', () => {
     expect(evaluatePackContents(files, ['dist/dashboard/node_modules/']).pass).toBe(false);
   });
 
-  it('keeps baseline config file with numeric metrics and forbidden prefixes', () => {
+  it('requires essential pack paths such as dist/dashboard/server.js', () => {
+    const files = ['dist/index.js', 'dist/dashboard/server.js'];
+
+    expect(findMissingRequiredPackPaths(files, ['dist/dashboard/server.js'])).toEqual([]);
+    expect(evaluateRequiredPackPaths(files, ['dist/dashboard/server.js']).pass).toBe(true);
+    expect(
+      evaluateRequiredPackPaths(['dist/index.js'], ['dist/dashboard/server.js']).missing,
+    ).toEqual(['dist/dashboard/server.js']);
+  });
+
+  it('keeps baseline config file canonical and automation-friendly', () => {
     const baselinePath = path.join(repoRoot, 'docs', 'quality', 'pack-size-baseline.json');
     const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')) as {
+      generatedAt?: string;
+      description: string;
       tolerancePercent: number;
       forbiddenPrefixes: string[];
+      requiredPaths: string[];
       metrics: {
         packageSize: number;
         unpackedSize: number;
@@ -88,8 +103,11 @@ describe('pack-size-gate', () => {
       };
     };
 
+    expect(baseline.generatedAt).toBeUndefined();
+    expect(baseline.description).toContain('npm pack --dry-run --json --ignore-scripts');
     expect(baseline.tolerancePercent).toBeGreaterThanOrEqual(0);
     expect(baseline.forbiddenPrefixes).toContain('dist/dashboard/node_modules/');
+    expect(baseline.requiredPaths).toContain('dist/dashboard/server.js');
     expect(baseline.metrics.packageSize).toBeGreaterThan(0);
     expect(baseline.metrics.unpackedSize).toBeGreaterThan(0);
     expect(baseline.metrics.entryCount).toBeGreaterThan(0);
