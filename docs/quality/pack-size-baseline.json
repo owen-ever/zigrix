@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-04-03T10:30:11Z",
+  "description": "npm pack --dry-run --json --ignore-scripts baseline for zigrix package",
+  "tolerancePercent": 1,
+  "metrics": {
+    "packageSize": 14810259,
+    "unpackedSize": 49817756,
+    "entryCount": 2048
+  }
+}

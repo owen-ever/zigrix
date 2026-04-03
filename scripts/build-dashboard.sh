@@ -57,4 +57,22 @@ if [ -d "$DASHBOARD_DIR/public" ]; then
   cp -r "$DASHBOARD_DIR/public/." "$DIST_DASHBOARD/public/"
 fi
 
+# 7. 패키지 크기 최적화 (런타임 불필요 산출물 제거)
+echo "🧹 Pruning dashboard bundle for npm package size..."
+
+# Next standalone 런타임에는 TypeScript 패키지가 필요하지 않음
+rm -rf "$DIST_DASHBOARD/node_modules/typescript"
+
+# 런타임과 무관한 sourcemap / 테스트 / 문서 디렉토리 제거
+if [ -d "$DIST_DASHBOARD/node_modules" ]; then
+  find "$DIST_DASHBOARD/node_modules" -type f -name "*.map" -delete
+  find "$DIST_DASHBOARD/node_modules" \
+    -type d \( -name "__tests__" -o -name "test" -o -name "tests" -o -name "docs" -o -name "doc" \) \
+    -prune -exec rm -rf {} +
+fi
+
+if [ -d "$DIST_DASHBOARD/.next/static" ]; then
+  find "$DIST_DASHBOARD/.next/static" -type f -name "*.map" -delete
+fi
+
 echo "✅ Dashboard built → dist/dashboard/"

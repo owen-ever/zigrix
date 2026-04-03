@@ -5,13 +5,12 @@ on:
   pull_request:
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
+  quality:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        node-version: ['22']
+        node-version: ['22', '24']
 
     steps:
       - name: Checkout
@@ -22,11 +21,26 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            dashboard/package-lock.json
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
 
-      - name: Run tests
+      - name: Install dashboard dependencies
+        run: npm --prefix dashboard ci
+
+      - name: Lint (root + dashboard)
+        run: npm run lint:all
+
+      - name: Typecheck (root + dashboard)
+        run: npm run typecheck:all
+
+      - name: Format check (root + dashboard)
+        run: npm run format:check:all
+
+      - name: Run unit tests
         run: npm run test
 
       - name: Build CLI
@@ -38,5 +52,8 @@ jobs:
       - name: Build dashboard
         run: npm run build:dashboard
 
-      - name: Dry-run pack
-        run: npm pack --dry-run
+      - name: Pack size gate
+        run: npm run size:check
+
+      - name: Production dependency audit
+        run: npm run audit:prod
