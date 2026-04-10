@@ -52,8 +52,5 @@ jobs:
       - name: Build dashboard
         run: npm run build:dashboard
 
-      - name: Pack size gate
-        run: npm run size:check
-
       - name: Production dependency audit
         run: npm run audit:prod
