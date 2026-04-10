@@ -100,7 +100,7 @@ zigrix
 ## Key commands
 
 ### `zigrix onboard`
-Creates runtime state from `zigrix.config.json` (`paths.baseDir` and derived paths), writes default config, seeds directories, stabilizes PATH (symlink if needed), registers skill packs into OpenClaw, and initializes role-based agent/orchestrator defaults. Primary human entrypoint.
+Creates runtime state from `zigrix.config.json` (`paths.baseDir` and derived paths), writes default config, seeds directories, stabilizes PATH (symlink if needed), registers bundled OpenClaw skills (including `oz`) into OpenClaw, and initializes role-based agent/orchestrator defaults. Primary human entrypoint.
 
 ### `zigrix configure`
 Reconfigures one or more sections after initial onboarding. Sections: `agents`, `rules`, `workspace`, `path`, `skills`. Supports `--section <name>` for targeted reconfiguration. Use `--projects-base-dir <path>` to set the workspace base directory and `--orchestrator-id <agentId>` to override orchestrator ownership.

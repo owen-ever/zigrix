@@ -838,7 +838,7 @@ export function resolveSkillsDir(): string | null {
 }
 
 /**
- * Register zigrix skill packs into OpenClaw's skills directory.
+ * Register bundled Zigrix OpenClaw skills into OpenClaw's skills directory.
  * Creates symlinks from ~/.openclaw/skills/<skill-name> → zigrix/skills/<skill-name>.
  * Idempotent: skips skills that already exist (unless they point elsewhere).
  */
@@ -1336,7 +1336,7 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     }
   }
 
-  // 8. Register OpenClaw skills (symlink skill packs)
+  // 8. Register bundled OpenClaw skills (symlink bundled skill dirs)
   let skillsRegistered: string[] = [];
   let skillsSkipped: string[] = [];
   let skillsFailed: string[] = [];

@@ -240,6 +240,7 @@ describe('resolveSkillsDir', () => {
       expect(fs.existsSync(dir)).toBe(true);
       const entries = fs.readdirSync(dir);
       expect(entries.some((e) => e.startsWith('zigrix-'))).toBe(true);
+      expect(entries).toContain('oz');
     }
   });
 });
@@ -264,6 +265,7 @@ describe('registerSkills', () => {
     // Should have registered some skills (from the repo's skills/ dir)
     if (resolveSkillsDir()) {
       expect(result.registered.length + result.skipped.length).toBeGreaterThan(0);
+      expect([...result.registered, ...result.skipped]).toContain('oz');
 
       // Each registered skill should be a symlink
       for (const name of result.registered) {

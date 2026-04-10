@@ -23,7 +23,7 @@ rm -f ~/.local/bin/zigrix
 Onboard or `--with-openclaw-skills` creates symlinks in `~/.openclaw/skills/`:
 
 ```bash
-rm -f ~/.openclaw/skills/zigrix-*
+rm -f ~/.openclaw/skills/oz ~/.openclaw/skills/zigrix-*
 ```
 
 ## Keep or remove global state
