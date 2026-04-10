@@ -14,12 +14,18 @@ import {
   setAgentRole,
 } from './agents/registry.js';
 import { runConfigure } from './configure.js';
-import { diffValues, getValueAtPath, parseConfigInput, resetValueAtPath, setValueAtPath } from './config/mutate.js';
+import {
+  diffValues,
+  getValueAtPath,
+  parseConfigInput,
+  resetValueAtPath,
+  setValueAtPath,
+} from './config/mutate.js';
 import { defaultConfig, resolveAbsolutePath } from './config/defaults.js';
 import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
-import { gatherDoctor, renderDoctorText } from './doctor.js';
+import { gatherDoctor, gatherDoctorFailure, renderDoctorText } from './doctor.js';
 import { importOrchestrationState } from './migrate/import-orchestration.js';
 import { runOnboard } from './onboard.js';
 import { dispatchTask, resolveConfiguredProjectDir } from './orchestration/dispatch.js';
@@ -74,7 +80,10 @@ function persistAndPrintMutation(params: {
 }): void {
   const targetPath = requireConfigPath(params.configPath);
   writeConfigFile(targetPath, params.nextConfig);
-  printValue({ ok: true, action: params.action, agentId: params.agentId, configPath: targetPath }, params.json);
+  printValue(
+    { ok: true, action: params.action, agentId: params.agentId, configPath: targetPath },
+    params.json,
+  );
 }
 
 function persistConfigMutation(params: {
@@ -87,7 +96,10 @@ function persistConfigMutation(params: {
 }): void {
   const targetPath = requireConfigPath(params.configPath);
   writeConfigFile(targetPath, params.nextConfig);
-  printValue({ ok: true, action: params.action, path: params.path ?? null, configPath: targetPath }, params.json);
+  printValue(
+    { ok: true, action: params.action, path: params.path ?? null, configPath: targetPath },
+    params.json,
+  );
 }
 
 function requireYes(yes?: boolean, action = 'perform this action'): void {
@@ -102,7 +114,8 @@ function loadRuntime() {
 }
 
 function resolveAgentsStateDir(config: ZigrixConfig): string | null {
-  const configuredHome = typeof config.openclaw.home === 'string' ? config.openclaw.home.trim() : '';
+  const configuredHome =
+    typeof config.openclaw.home === 'string' ? config.openclaw.home.trim() : '';
   const openclawHome = configuredHome || process.env.OPENCLAW_HOME || '';
   if (!openclawHome) return null;
   return path.join(openclawHome, 'agents');
@@ -124,7 +137,9 @@ function runImportOrchestrationCommand(fromDir: string, yes?: boolean): Record<s
   return importOrchestrationState(loaded.paths, { fromDir });
 }
 
-function listRuntimePathValues(loaded: ReturnType<typeof loadRuntime>): Record<string, string | null> {
+function listRuntimePathValues(
+  loaded: ReturnType<typeof loadRuntime>,
+): Record<string, string | null> {
   return {
     configPath: loaded.configPath,
     'paths.baseDir': loaded.paths.baseDir,
@@ -139,7 +154,10 @@ function listRuntimePathValues(loaded: ReturnType<typeof loadRuntime>): Record<s
   };
 }
 
-function resolveRuntimePathValue(loaded: ReturnType<typeof loadRuntime>, requestedKey: string): {
+function resolveRuntimePathValue(
+  loaded: ReturnType<typeof loadRuntime>,
+  requestedKey: string,
+): {
   requestedKey: string;
   canonicalKey: string;
   value: string | null;
@@ -180,7 +198,7 @@ function resolveRuntimePathValue(loaded: ReturnType<typeof loadRuntime>, request
 }
 
 const { version: pkgVersion } = JSON.parse(
-  fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8')
+  fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
 ) as { version: string };
 
 const program = new Command();
@@ -191,15 +209,21 @@ program
 
 const config = program.command('config').description('Inspect Zigrix config');
 const pathCmd = program.command('path').description('Resolve runtime paths from Zigrix config');
-const agent = program.command('agent').description('Manage Zigrix agent registry and orchestration membership');
+const agent = program
+  .command('agent')
+  .description('Manage Zigrix agent registry and orchestration membership');
 const rule = program.command('rule').description('Inspect and validate rule assets');
 const template = program.command('template').description('Inspect and modify prompt templates');
-const reset = program.command('reset').description('Restore default config sections or clean runtime state');
+const reset = program
+  .command('reset')
+  .description('Restore default config sections or clean runtime state');
 const state = program.command('state').description('Inspect and verify runtime state');
 const migrate = program.command('migrate').description('Import legacy runtime state into Zigrix');
 const task = program.command('task').description('Task operations');
 const worker = program.command('worker').description('Worker lifecycle operations');
-const evidence = program.command('evidence').description('Evidence collection and merge operations');
+const evidence = program
+  .command('evidence')
+  .description('Evidence collection and merge operations');
 const report = program.command('report').description('User-facing reporting helpers');
 const pipeline = program.command('pipeline').description('High-level orchestration helpers');
 
@@ -207,13 +231,21 @@ const pipeline = program.command('pipeline').description('High-level orchestrati
 
 program
   .command('onboard')
-  .description('Set up Zigrix for first use (creates config.paths.baseDir state, seeds rules, registers agents, and captures workspace defaults)')
+  .description(
+    'Set up Zigrix for first use (creates config.paths.baseDir state, seeds rules, registers agents, and captures workspace defaults)',
+  )
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
-  .option('--project-dir <path>', 'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used')
+  .option(
+    '--project-dir <path>',
+    'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used',
+  )
   .option('--projects-base-dir <path>', 'workspace base directory to persist in zigrix.config.json')
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
-  .option('--gateway-url <url>', 'OpenClaw gateway URL (auto-detected from openclaw.json when available)')
+  .option(
+    '--gateway-url <url>',
+    'OpenClaw gateway URL (auto-detected from openclaw.json when available)',
+  )
   .action(async (options) => {
     const result = await runOnboard({
       yes: Boolean(options.yes),
@@ -231,9 +263,17 @@ program
 program
   .command('configure')
   .description('Reconfigure agents, rules, PATH, skills, or workspace settings')
-  .option('--section <section>', 'reconfigure specific section (agents|rules|workspace|path|skills), repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option(
+    '--section <section>',
+    'reconfigure specific section (agents|rules|workspace|path|skills), repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
   .option('--projects-base-dir <path>', 'set projects base directory')
-  .option('--project-dir <path>', 'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used')
+  .option(
+    '--project-dir <path>',
+    'optional directory to import rule templates from (`rules/defaults` or `rules`); otherwise bundled defaults are used',
+  )
   .option('--orchestrator-id <agentId>', 'set orchestration orchestrator agent id')
   .option('--yes', 'non-interactive confirmation')
   .option('--json', 'JSON output')
@@ -262,7 +302,10 @@ program
     const loaded = loadRuntime();
     ensureBaseState(loaded.paths);
     rebuildIndex(loaded.paths);
-    printValue({ ok: true, path: configPath, deprecated: true, useInstead: 'zigrix onboard' }, options.json);
+    printValue(
+      { ok: true, path: configPath, deprecated: true, useInstead: 'zigrix onboard' },
+      options.json,
+    );
   });
 
 // ─── doctor ─────────────────────────────────────────────────────────────────
@@ -272,8 +315,14 @@ program
   .description('Inspect environment, config, and runtime readiness')
   .option('--json')
   .action((options) => {
-    const loaded = loadRuntime();
-    const payload = gatherDoctor(loaded, loaded.paths);
+    let payload: Record<string, unknown>;
+    try {
+      const loaded = loadRuntime();
+      payload = gatherDoctor(loaded, loaded.paths);
+    } catch (error) {
+      payload = gatherDoctorFailure(error);
+    }
+
     if (options.json) {
       printValue(payload, true);
       return;
@@ -285,7 +334,9 @@ program
 
 pathCmd
   .command('get <key>')
-  .description('Resolve one runtime path by key or alias (for example: tasksDir, paths.tasksDir, workspace.projectsBaseDir)')
+  .description(
+    'Resolve one runtime path by key or alias (for example: tasksDir, paths.tasksDir, workspace.projectsBaseDir)',
+  )
   .option('--json', 'JSON output')
   .action((key, options) => {
     const loaded = loadRuntime();
@@ -352,7 +403,11 @@ config
   .option('--json', 'JSON output')
   .action((dottedPath, options) => {
     const loaded = loadConfig();
-    const nextConfig = setValueAtPath(loaded.config as unknown as Record<string, unknown>, dottedPath, parseConfigInput(options.value)) as unknown as ZigrixConfig;
+    const nextConfig = setValueAtPath(
+      loaded.config as unknown as Record<string, unknown>,
+      dottedPath,
+      parseConfigInput(options.value),
+    ) as unknown as ZigrixConfig;
     persistConfigMutation({
       configPath: loaded.configPath,
       baseDir: loaded.baseDir,
@@ -368,7 +423,13 @@ config
   .option('--json', 'JSON output')
   .action((dottedPath, options) => {
     const loaded = loadConfig();
-    printValue(diffValues(getValueAtPath(loaded.config, dottedPath), getValueAtPath(defaultConfig, dottedPath)), true);
+    printValue(
+      diffValues(
+        getValueAtPath(loaded.config, dottedPath),
+        getValueAtPath(defaultConfig, dottedPath),
+      ),
+      true,
+    );
   });
 
 config
@@ -408,8 +469,22 @@ agent
   .option('--json')
   .action((options) => {
     const loaded = loadConfig();
-    const result = addAgent(loaded.config, { id: options.id, role: options.role, runtime: options.runtime, label: options.label, enabled: !options.disabled, include: Boolean(options.include) });
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.add', agentId: result.agentId });
+    const result = addAgent(loaded.config, {
+      id: options.id,
+      role: options.role,
+      runtime: options.runtime,
+      label: options.label,
+      enabled: !options.disabled,
+      include: Boolean(options.include),
+    });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.add',
+      agentId: result.agentId,
+    });
   });
 
 agent
@@ -418,7 +493,14 @@ agent
   .action((agentId, options) => {
     const loaded = loadConfig();
     const result = removeAgent(loaded.config, agentId);
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.remove', agentId: result.agentId });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.remove',
+      agentId: result.agentId,
+    });
   });
 
 agent
@@ -427,7 +509,14 @@ agent
   .action((agentId, options) => {
     const loaded = loadConfig();
     const result = includeAgent(loaded.config, agentId);
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.include', agentId: result.agentId });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.include',
+      agentId: result.agentId,
+    });
   });
 
 agent
@@ -436,7 +525,14 @@ agent
   .action((agentId, options) => {
     const loaded = loadConfig();
     const result = excludeAgent(loaded.config, agentId);
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.exclude', agentId: result.agentId });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.exclude',
+      agentId: result.agentId,
+    });
   });
 
 agent
@@ -445,7 +541,14 @@ agent
   .action((agentId, options) => {
     const loaded = loadConfig();
     const result = setAgentEnabled(loaded.config, agentId, true);
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.enable', agentId: result.agentId });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.enable',
+      agentId: result.agentId,
+    });
   });
 
 agent
@@ -454,7 +557,14 @@ agent
   .action((agentId, options) => {
     const loaded = loadConfig();
     const result = setAgentEnabled(loaded.config, agentId, false);
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.disable', agentId: result.agentId });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.disable',
+      agentId: result.agentId,
+    });
   });
 
 agent
@@ -464,7 +574,14 @@ agent
   .action((agentId, options) => {
     const loaded = loadConfig();
     const result = setAgentRole(loaded.config, agentId, options.role);
-    persistAndPrintMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig: result.config, json: options.json, action: 'agent.set-role', agentId: result.agentId });
+    persistAndPrintMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig: result.config,
+      json: options.json,
+      action: 'agent.set-role',
+      agentId: result.agentId,
+    });
   });
 
 // ─── rule ───────────────────────────────────────────────────────────────────
@@ -477,7 +594,9 @@ rule
 rule
   .command('get <path>')
   .option('--json')
-  .action((dottedPath, options) => printValue(getConfigValue(loadConfig().config, dottedPath) ?? null, true));
+  .action((dottedPath, options) =>
+    printValue(getConfigValue(loadConfig().config, dottedPath) ?? null, true),
+  );
 
 rule
   .command('validate')
@@ -490,9 +609,15 @@ rule
   .option('--json')
   .action((templateKind: string, options) => {
     const loaded = loadConfig();
-    const tpl = getConfigValue(loaded.config, `templates.${templateKind}`) as { body?: string } | undefined;
+    const tpl = getConfigValue(loaded.config, `templates.${templateKind}`) as
+      | { body?: string }
+      | undefined;
     if (!tpl?.body) throw new Error(`template not found: ${templateKind}`);
-    const rendered = renderTemplate(templateKind as TemplateKind, tpl.body, JSON.parse(options.context) as Record<string, unknown>);
+    const rendered = renderTemplate(
+      templateKind as TemplateKind,
+      tpl.body,
+      JSON.parse(options.context) as Record<string, unknown>,
+    );
     printValue({ ok: true, templateKind, rendered }, true);
   });
 
@@ -503,8 +628,19 @@ rule
   .action((dottedPath, options) => {
     if (!dottedPath.startsWith('rules.')) throw new Error('rule path must start with rules.');
     const loaded = loadConfig();
-    const nextConfig = setValueAtPath(loaded.config as unknown as Record<string, unknown>, dottedPath, parseConfigInput(options.value)) as unknown as ZigrixConfig;
-    persistConfigMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig, json: options.json, action: 'rule.set', path: dottedPath });
+    const nextConfig = setValueAtPath(
+      loaded.config as unknown as Record<string, unknown>,
+      dottedPath,
+      parseConfigInput(options.value),
+    ) as unknown as ZigrixConfig;
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig,
+      json: options.json,
+      action: 'rule.set',
+      path: dottedPath,
+    });
   });
 
 rule
@@ -513,7 +649,13 @@ rule
   .action((dottedPath, options) => {
     if (!dottedPath.startsWith('rules.')) throw new Error('rule path must start with rules.');
     const loaded = loadConfig();
-    printValue(diffValues(getValueAtPath(loaded.config, dottedPath), getValueAtPath(defaultConfig, dottedPath)), true);
+    printValue(
+      diffValues(
+        getValueAtPath(loaded.config, dottedPath),
+        getValueAtPath(defaultConfig, dottedPath),
+      ),
+      true,
+    );
   });
 
 rule
@@ -526,7 +668,14 @@ rule
     requireYes(options.yes, 'reset rule config');
     const loaded = loadConfig();
     const nextConfig = resetValueAtPath(loaded.config, options.path);
-    persistConfigMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig, json: options.json, action: 'rule.reset', path: options.path });
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig,
+      json: options.json,
+      action: 'rule.reset',
+      path: options.path,
+    });
   });
 
 // ─── template ───────────────────────────────────────────────────────────────
@@ -536,7 +685,10 @@ template
   .option('--json')
   .action((options) => {
     const loaded = loadConfig();
-    printValue(Object.keys(loaded.config.templates).map((name) => ({ name, path: `templates.${name}` })), true);
+    printValue(
+      Object.keys(loaded.config.templates).map((name) => ({ name, path: `templates.${name}` })),
+      true,
+    );
   });
 
 template
@@ -556,7 +708,9 @@ template
   .option('--json')
   .action((name, options) => {
     const loaded = loadConfig();
-    const current = getValueAtPath(loaded.config, `templates.${name}`) as Record<string, unknown> | undefined;
+    const current = getValueAtPath(loaded.config, `templates.${name}`) as
+      | Record<string, unknown>
+      | undefined;
     if (!current) throw new Error(`template not found: ${name}`);
     const nextTemplate = {
       ...current,
@@ -565,8 +719,19 @@ template
       ...(options.version ? { version: Number(options.version) } : {}),
       ...(options.placeholders ? { placeholders: parseConfigInput(options.placeholders) } : {}),
     };
-    const nextConfig = setValueAtPath(loaded.config as unknown as Record<string, unknown>, `templates.${name}`, nextTemplate) as unknown as ZigrixConfig;
-    persistConfigMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig, json: options.json, action: 'template.set', path: `templates.${name}` });
+    const nextConfig = setValueAtPath(
+      loaded.config as unknown as Record<string, unknown>,
+      `templates.${name}`,
+      nextTemplate,
+    ) as unknown as ZigrixConfig;
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig,
+      json: options.json,
+      action: 'template.set',
+      path: `templates.${name}`,
+    });
   });
 
 template
@@ -574,7 +739,13 @@ template
   .option('--json')
   .action((name, options) => {
     const loaded = loadConfig();
-    printValue(diffValues(getValueAtPath(loaded.config, `templates.${name}`), getValueAtPath(defaultConfig, `templates.${name}`)), true);
+    printValue(
+      diffValues(
+        getValueAtPath(loaded.config, `templates.${name}`),
+        getValueAtPath(defaultConfig, `templates.${name}`),
+      ),
+      true,
+    );
   });
 
 template
@@ -585,7 +756,14 @@ template
     requireYes(options.yes, 'reset template config');
     const loaded = loadConfig();
     const nextConfig = resetValueAtPath(loaded.config, `templates.${name}`);
-    persistConfigMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig, json: options.json, action: 'template.reset', path: `templates.${name}` });
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig,
+      json: options.json,
+      action: 'template.reset',
+      path: `templates.${name}`,
+    });
   });
 
 template
@@ -594,9 +772,22 @@ template
   .option('--json')
   .action((name, options) => {
     const loaded = loadConfig();
-    const item = getValueAtPath(loaded.config, `templates.${name}`) as { body?: string } | undefined;
+    const item = getValueAtPath(loaded.config, `templates.${name}`) as
+      | { body?: string }
+      | undefined;
     if (!item?.body) throw new Error(`template not found: ${name}`);
-    printValue({ ok: true, name, rendered: renderTemplate(name as TemplateKind, item.body, JSON.parse(options.context) as Record<string, unknown>) }, true);
+    printValue(
+      {
+        ok: true,
+        name,
+        rendered: renderTemplate(
+          name as TemplateKind,
+          item.body,
+          JSON.parse(options.context) as Record<string, unknown>,
+        ),
+      },
+      true,
+    );
   });
 
 // ─── reset ──────────────────────────────────────────────────────────────────
@@ -610,7 +801,14 @@ reset
     requireYes(options.yes, 'reset config');
     const loaded = loadConfig();
     const nextConfig = resetValueAtPath(loaded.config, options.path);
-    persistConfigMutation({ configPath: loaded.configPath, baseDir: loaded.baseDir, nextConfig, json: options.json, action: 'reset.config', path: options.path });
+    persistConfigMutation({
+      configPath: loaded.configPath,
+      baseDir: loaded.baseDir,
+      nextConfig,
+      json: options.json,
+      action: 'reset.config',
+      path: options.path,
+    });
   });
 
 reset
@@ -621,7 +819,12 @@ reset
     requireYes(options.yes, 'reset runtime state');
     const loaded = loadRuntime();
     // Remove task data but preserve config and rules
-    for (const dir of [loaded.paths.tasksDir, loaded.paths.evidenceDir, loaded.paths.promptsDir, loaded.paths.runsDir]) {
+    for (const dir of [
+      loaded.paths.tasksDir,
+      loaded.paths.evidenceDir,
+      loaded.paths.promptsDir,
+      loaded.paths.runsDir,
+    ]) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
     fs.rmSync(loaded.paths.eventsFile, { force: true });
@@ -699,7 +902,12 @@ task
   .requiredOption('--title <title>')
   .requiredOption('--description <description>')
   .option('--scale <scale>', 'simple|normal|risky|large', 'normal')
-  .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option(
+    '--required-agent <agent>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
   .option('--project-dir <path>', 'target project directory for this task')
   .option('--requested-by <name>', 'who requested this task')
   .option('--prefix <prefix>', 'task ID prefix (DEV|TEST)', 'DEV')
@@ -718,10 +926,13 @@ task
       requestedBy: options.requestedBy,
       prefix: options.prefix,
     });
-    printValue({
-      ...created,
-      ...resolveTaskPaths(loaded.paths, created.taskId),
-    }, true);
+    printValue(
+      {
+        ...created,
+        ...resolveTaskPaths(loaded.paths, created.taskId),
+      },
+      true,
+    );
   });
 
 task
@@ -736,10 +947,13 @@ task
     const loaded = loadRuntime();
     const payload = loadTask(loaded.paths, taskId);
     if (!payload) throw new Error(`task not found: ${taskId}`);
-    printValue({
-      ...payload,
-      ...resolveTaskPaths(loaded.paths, taskId),
-    }, true);
+    printValue(
+      {
+        ...payload,
+        ...resolveTaskPaths(loaded.paths, taskId),
+      },
+      true,
+    );
   });
 
 task
@@ -756,7 +970,13 @@ task
   .option('--work-package <workPackage>')
   .option('--json')
   .action((options) => {
-    const payload = recordTaskProgress(loadRuntime().paths, { taskId: options.taskId, actor: options.actor, message: options.message, unitId: options.unitId, workPackage: options.workPackage });
+    const payload = recordTaskProgress(loadRuntime().paths, {
+      taskId: options.taskId,
+      actor: options.actor,
+      message: options.message,
+      unitId: options.unitId,
+      workPackage: options.workPackage,
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -771,7 +991,10 @@ task
     const loaded = loadRuntime();
     const hours = Number(options.hours);
     const agentsStateDir = resolveAgentsStateDir(loaded.config);
-    const preview = findStaleTasks(loaded.paths, hours, { agentsStateDir, fallbackReason: options.reason });
+    const preview = findStaleTasks(loaded.paths, hours, {
+      agentsStateDir,
+      fallbackReason: options.reason,
+    });
     const payload = options.apply
       ? applyStalePolicy(loaded.paths, hours, options.reason, { agentsStateDir })
       : { ok: true, hours, requestedReason: options.reason, count: preview.length, tasks: preview };
@@ -822,7 +1045,16 @@ worker
   .option('--project-dir <path>', 'working directory for this worker')
   .option('--json')
   .action((options) => {
-    const payload = prepareWorker(loadRuntime().paths, { taskId: options.taskId, agentId: options.agentId, description: options.description, constraints: options.constraints, unitId: options.unitId, workPackage: options.workPackage, dod: options.dod, projectDir: options.projectDir });
+    const payload = prepareWorker(loadRuntime().paths, {
+      taskId: options.taskId,
+      agentId: options.agentId,
+      description: options.description,
+      constraints: options.constraints,
+      unitId: options.unitId,
+      workPackage: options.workPackage,
+      dod: options.dod,
+      projectDir: options.projectDir,
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -839,7 +1071,16 @@ worker
   .option('--reason <reason>')
   .option('--json')
   .action((options) => {
-    const payload = registerWorker(loadRuntime().paths, { taskId: options.taskId, agentId: options.agentId, sessionKey: options.sessionKey, runId: options.runId, sessionId: options.sessionId, unitId: options.unitId, workPackage: options.workPackage, reason: options.reason });
+    const payload = registerWorker(loadRuntime().paths, {
+      taskId: options.taskId,
+      agentId: options.agentId,
+      sessionKey: options.sessionKey,
+      runId: options.runId,
+      sessionId: options.sessionId,
+      unitId: options.unitId,
+      workPackage: options.workPackage,
+      reason: options.reason,
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -856,7 +1097,16 @@ worker
   .option('--work-package <workPackage>')
   .option('--json')
   .action((options) => {
-    const payload = completeWorker(loadRuntime().paths, { taskId: options.taskId, agentId: options.agentId, sessionKey: options.sessionKey, runId: options.runId, sessionId: options.sessionId, result: options.result, unitId: options.unitId, workPackage: options.workPackage });
+    const payload = completeWorker(loadRuntime().paths, {
+      taskId: options.taskId,
+      agentId: options.agentId,
+      sessionKey: options.sessionKey,
+      runId: options.runId,
+      sessionId: options.sessionId,
+      result: options.result,
+      unitId: options.unitId,
+      workPackage: options.workPackage,
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -873,11 +1123,31 @@ evidence
   .option('--session-id <sessionId>')
   .option('--transcript <transcript>')
   .option('--summary <summary>')
-  .option('--tool-result <toolResult>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option(
+    '--tool-result <toolResult>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
   .option('--notes <notes>')
-  .option('--dod-item <dodItem>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
-  .option('--test-case <testCase>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
-  .option('--verification-map <mapping>', 'repeatable dod=test mapping', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option(
+    '--dod-item <dodItem>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
+  .option(
+    '--test-case <testCase>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
+  .option(
+    '--verification-map <mapping>',
+    'repeatable dod=test mapping',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
   .option('--limit <limit>', 'transcript line limit', '40')
   .option('--json')
   .action((options) => {
@@ -894,7 +1164,9 @@ evidence
       notes: options.notes,
       dodItems: options.dodItem,
       testCases: options.testCase,
-      verificationMappings: (options.verificationMap ?? []).map((item: string) => parseVerificationMap(item)),
+      verificationMappings: (options.verificationMap ?? []).map((item: string) =>
+        parseVerificationMap(item),
+      ),
       limit: Number(options.limit),
     });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
@@ -904,11 +1176,20 @@ evidence
 evidence
   .command('merge')
   .requiredOption('--task-id <taskId>')
-  .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option(
+    '--required-agent <agent>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
   .option('--require-qa')
   .option('--json')
   .action((options) => {
-    const payload = mergeEvidence(loadRuntime().paths, { taskId: options.taskId, requiredAgents: options.requiredAgent, requireQa: Boolean(options.requireQa) });
+    const payload = mergeEvidence(loadRuntime().paths, {
+      taskId: options.taskId,
+      requiredAgents: options.requiredAgent,
+      requireQa: Boolean(options.requireQa),
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -921,7 +1202,10 @@ report
   .option('--record-events')
   .option('--json')
   .action((options) => {
-    const payload = renderReport(loadRuntime().paths, { taskId: options.taskId, recordEvents: Boolean(options.recordEvents) });
+    const payload = renderReport(loadRuntime().paths, {
+      taskId: options.taskId,
+      recordEvents: Boolean(options.recordEvents),
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -933,9 +1217,24 @@ pipeline
   .requiredOption('--title <title>')
   .requiredOption('--description <description>')
   .option('--scale <scale>', 'simple|normal|risky|large', 'normal')
-  .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
-  .option('--evidence-summary <agentEqSummary>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
-  .option('--verification-map <agentEqDodEqTest>', 'repeatable agentId=dod=test', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option(
+    '--required-agent <agent>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
+  .option(
+    '--evidence-summary <agentEqSummary>',
+    'repeatable',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
+  .option(
+    '--verification-map <agentEqDodEqTest>',
+    'repeatable agentId=dod=test',
+    (value: string, prev: string[] = []) => [...prev, value],
+    [],
+  )
   .option('--require-qa')
   .option('--auto-report')
   .option('--record-feedback')
@@ -986,7 +1285,11 @@ program
 program
   .command('dashboard')
   .description('Start the zigrix web dashboard (Next.js) in the foreground')
-  .option('--port <n>', `TCP port to listen on (default: ${DASHBOARD_DEFAULT_PORT})`, String(DASHBOARD_DEFAULT_PORT))
+  .option(
+    '--port <n>',
+    `TCP port to listen on (default: ${DASHBOARD_DEFAULT_PORT})`,
+    String(DASHBOARD_DEFAULT_PORT),
+  )
   .action(async (options) => {
     const port = parseInt(options.port, 10);
     if (isNaN(port) || port < 1 || port > 65535) {

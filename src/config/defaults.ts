@@ -55,7 +55,14 @@ export function buildDefaultConfig(baseDir = resolveCanonicalConfigHome()) {
       scales: {
         simple: { requiredRoles: ['orchestrator'], optionalRoles: ['qa'] },
         normal: { requiredRoles: ['orchestrator', 'qa'], optionalRoles: ['frontend', 'backend'] },
-        risky: { requiredRoles: ['orchestrator', 'qa', 'security'], optionalRoles: ['frontend', 'backend', 'system'] },
+        risky: {
+          requiredRoles: ['orchestrator', 'qa', 'security'],
+          optionalRoles: ['frontend', 'backend', 'system'],
+        },
+        large: {
+          requiredRoles: ['orchestrator', 'qa', 'security', 'system'],
+          optionalRoles: ['frontend', 'backend'],
+        },
       },
       completion: {
         requireQa: true,
