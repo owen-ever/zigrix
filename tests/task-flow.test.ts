@@ -52,7 +52,12 @@ describe('task parity flow', () => {
     const completed = completeWorker(paths, { taskId: task.taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'run-001' });
     expect(completed?.allEvidenceCollected).toBe(false);
 
-    const evidence = collectEvidence(paths, { taskId: task.taskId, agentId: 'qa-main', summary: 'QA passed' });
+    const evidence = collectEvidence(paths, {
+      taskId: task.taskId,
+      agentId: 'qa-main',
+      summary: 'QA passed',
+      verificationMappings: [{ dod: 'qa evidence attached', test: 'tests/task-flow.test.ts parity flow' }],
+    });
     expect(evidence?.ok).toBe(true);
     const merged = mergeEvidence(paths, { taskId: task.taskId, requireQa: true });
     expect(merged?.complete).toBe(true);
@@ -72,6 +77,7 @@ describe('task parity flow', () => {
       description: 'Pipeline test',
       requiredAgents: ['qa-main'],
       evidenceSummaries: ['qa-main=Looks good'],
+      verificationMappings: ['qa-main=qa evidence attached=tests/task-flow.test.ts pipeline'],
       requireQa: true,
       autoReport: true,
       recordFeedback: true,

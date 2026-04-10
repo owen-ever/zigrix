@@ -35,7 +35,17 @@ describe('cli parity smoke', () => {
     execFileSync(nodeBin, ['dist/index.js', 'onboard', '--yes'], { cwd: repoRoot, env });
     const createRaw = execFileSync(nodeBin, ['dist/index.js', 'task', 'create', '--title', 'CLI task', '--description', 'smoke', '--required-agent', 'qa-main', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
     const created = JSON.parse(createRaw) as { taskId: string };
-    execFileSync(nodeBin, ['dist/index.js', 'evidence', 'collect', '--task-id', created.taskId, '--agent-id', 'qa-main', '--summary', 'done'], { cwd: repoRoot, env });
+    execFileSync(nodeBin, [
+      'dist/index.js',
+      'evidence',
+      'collect',
+      '--task-id', created.taskId,
+      '--agent-id', 'qa-main',
+      '--summary', 'done',
+      '--dod-item', 'qa evidence attached',
+      '--test-case', 'tests/cli-parity-smoke.test.ts',
+      '--verification-map', 'qa evidence attached=tests/cli-parity-smoke.test.ts',
+    ], { cwd: repoRoot, env });
     const mergedRaw = execFileSync(nodeBin, ['dist/index.js', 'evidence', 'merge', '--task-id', created.taskId, '--require-qa', '--json'], { cwd: repoRoot, encoding: 'utf8', env });
     const merged = JSON.parse(mergedRaw) as { complete: boolean };
     expect(merged.complete).toBe(true);
