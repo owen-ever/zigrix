@@ -5,7 +5,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { addAgent } from './agents/registry.js';
-import { inferStandardAgentRole, STANDARD_AGENT_ROLES, type StandardAgentRole } from './agents/roles.js';
+import {
+  inferStandardAgentRole,
+  STANDARD_AGENT_ROLES,
+  type StandardAgentRole,
+} from './agents/roles.js';
 import { LEGACY_DEFAULT_GATEWAY_URL, resolveAbsolutePath } from './config/defaults.js';
 import { loadConfig, writeConfigFile, writeDefaultConfig } from './config/load.js';
 import type { ZigrixConfig } from './config/schema.js';
@@ -131,7 +135,12 @@ function normalizeGatewayUrl(input?: string | null): string {
 }
 
 function coerceGatewayPort(value: unknown): number | null {
-  const n = typeof value === 'string' && value.trim().length > 0 ? Number(value) : typeof value === 'number' ? value : NaN;
+  const n =
+    typeof value === 'string' && value.trim().length > 0
+      ? Number(value)
+      : typeof value === 'number'
+        ? value
+        : NaN;
   if (!Number.isFinite(n) || n <= 0 || n > 65535) return null;
   return Math.trunc(n);
 }
@@ -157,6 +166,44 @@ export function resolveOpenClawGatewayToken(openclawConfig: OpenClawConfig | nul
   return typeof token === 'string' && token.trim().length > 0 ? token : null;
 }
 
+function resolveExistingExecutablePath(candidate: string): string | null {
+  try {
+    const stat = fs.lstatSync(candidate);
+    if (stat.isSymbolicLink()) {
+      return path.resolve(fs.realpathSync(candidate));
+    }
+    return fs.existsSync(candidate) ? path.resolve(candidate) : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveGlobalPackageBin(params: { packageName: string; binName: string }): string | null {
+  try {
+    const globalRoot = execSync('npm root -g', { encoding: 'utf8', timeout: 3000 }).trim();
+    if (!globalRoot) return null;
+
+    const packageRoot = path.join(globalRoot, params.packageName);
+    const packageJsonPath = path.join(packageRoot, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) return null;
+
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as {
+      bin?: string | Record<string, string>;
+    };
+    const binEntry =
+      typeof pkg.bin === 'string'
+        ? pkg.bin
+        : pkg.bin && typeof pkg.bin === 'object'
+          ? pkg.bin[params.binName]
+          : null;
+    if (typeof binEntry !== 'string' || binEntry.trim().length === 0) return null;
+
+    return resolveExistingExecutablePath(path.resolve(packageRoot, binEntry));
+  } catch {
+    return null;
+  }
+}
+
 function shouldReplaceStoredGatewayUrl(stored: string, detected: string | null): boolean {
   const trimmed = stored.trim();
   if (!trimmed) return Boolean(detected);
@@ -175,10 +222,16 @@ function shouldReplaceStoredGatewayUrl(stored: string, detected: string | null):
  * Returns the resolved absolute path or null.
  */
 export function resolveOpenClawBin(openclawHome?: string): string | null {
+  const pickCandidate = (candidate: string | null | undefined): string | null => {
+    if (!candidate) return null;
+    return resolveExistingExecutablePath(candidate);
+  };
+
   // Strategy 1: which/where
   try {
     const result = execSync('which openclaw', { encoding: 'utf8', timeout: 3000 }).trim();
-    if (result && fs.existsSync(result)) return path.resolve(result);
+    const resolved = pickCandidate(result);
+    if (resolved) return resolved;
   } catch {
     // not in PATH
   }
@@ -187,49 +240,77 @@ export function resolveOpenClawBin(openclawHome?: string): string | null {
   const home = process.env.HOME ?? '';
   const nodeVersion = process.versions.node;
   const majorMinorPatch = nodeVersion; // e.g., "25.5.0"
-  const nvmCandidate = path.join(home, '.nvm', 'versions', 'node', `v${majorMinorPatch}`, 'bin', 'openclaw');
-  if (fs.existsSync(nvmCandidate)) return path.resolve(nvmCandidate);
+  const nvmCandidate = path.join(
+    home,
+    '.nvm',
+    'versions',
+    'node',
+    `v${majorMinorPatch}`,
+    'bin',
+    'openclaw',
+  );
+  const nvmResolved = pickCandidate(nvmCandidate);
+  if (nvmResolved) return nvmResolved;
 
   // Also try nvm current symlink
   const nvmCurrent = path.join(home, '.nvm', 'current', 'bin', 'openclaw');
-  if (fs.existsSync(nvmCurrent)) return path.resolve(nvmCurrent);
+  const nvmCurrentResolved = pickCandidate(nvmCurrent);
+  if (nvmCurrentResolved) return nvmCurrentResolved;
 
   // Volta
   const voltaCandidate = path.join(home, '.volta', 'bin', 'openclaw');
-  if (fs.existsSync(voltaCandidate)) return path.resolve(voltaCandidate);
+  const voltaResolved = pickCandidate(voltaCandidate);
+  if (voltaResolved) return voltaResolved;
 
   // fnm
-  const fnmCandidate = path.join(home, '.fnm', 'node-versions', `v${majorMinorPatch}`, 'installation', 'bin', 'openclaw');
-  if (fs.existsSync(fnmCandidate)) return path.resolve(fnmCandidate);
+  const fnmCandidate = path.join(
+    home,
+    '.fnm',
+    'node-versions',
+    `v${majorMinorPatch}`,
+    'installation',
+    'bin',
+    'openclaw',
+  );
+  const fnmResolved = pickCandidate(fnmCandidate);
+  if (fnmResolved) return fnmResolved;
 
   // Strategy 3: well-known system paths
   for (const dir of ['/usr/local/bin', path.join(home, '.local', 'bin')]) {
     const candidate = path.join(dir, 'openclaw');
-    if (fs.existsSync(candidate)) return path.resolve(candidate);
+    const resolved = pickCandidate(candidate);
+    if (resolved) return resolved;
   }
 
-  // Strategy 4: node global lib path (npm root -g)
+  // Strategy 4: resolve the actual global package bin target (not the wrapper path)
+  const globalPackageBin = resolveGlobalPackageBin({
+    packageName: 'openclaw',
+    binName: 'openclaw',
+  });
+  if (globalPackageBin) return globalPackageBin;
+
+  // Strategy 5: node global bin wrapper path (npm root -g)
   try {
     const globalRoot = execSync('npm root -g', { encoding: 'utf8', timeout: 3000 }).trim();
     if (globalRoot) {
       const candidate = path.join(path.dirname(globalRoot), 'bin', 'openclaw');
-      if (fs.existsSync(candidate)) return path.resolve(candidate);
+      const resolved = pickCandidate(candidate);
+      if (resolved) return resolved;
     }
   } catch {
     // npm not available or timed out
   }
 
-  // Strategy 5: from openclaw home
+  // Strategy 6: from openclaw home
   if (openclawHome) {
     // Some installations place a bin reference inside the home dir
     const homeBin = path.join(openclawHome, 'bin', 'openclaw');
-    if (fs.existsSync(homeBin)) return path.resolve(homeBin);
+    const resolved = pickCandidate(homeBin);
+    if (resolved) return resolved;
   }
 
   return null;
 }
-
-
 
 // ─── Agent filtering ──────────────────────────────────────────────────────────
 
@@ -255,10 +336,12 @@ export function registerAgents(
       continue;
     }
 
-    const role = roleAssignments?.[agent.id] ?? inferStandardAgentRole({
-      agentId: agent.id,
-      theme: agent.identity?.theme ?? null,
-    });
+    const role =
+      roleAssignments?.[agent.id] ??
+      inferStandardAgentRole({
+        agentId: agent.id,
+        theme: agent.identity?.theme ?? null,
+      });
 
     const result = addAgent(current, {
       id: agent.id,
@@ -450,9 +533,7 @@ export function findSystemBinDir(): string | null {
  */
 export function findUserBinDir(): string {
   const home = process.env.HOME ?? '~';
-  const candidates = [
-    path.join(home, '.local', 'bin'),
-  ];
+  const candidates = [path.join(home, '.local', 'bin')];
 
   // Also check PATH dirs that are user-writable
   const pathEnv = process.env.PATH ?? '';
@@ -471,6 +552,10 @@ export function findUserBinDir(): string {
   return candidates[0];
 }
 
+function pathTargetsSameLocation(sourcePath: string, targetPath: string): boolean {
+  return path.resolve(sourcePath) === path.resolve(targetPath);
+}
+
 /**
  * Ensure zigrix is reachable from PATH.
  * Priority:
@@ -480,7 +565,10 @@ export function findUserBinDir(): string {
  * @param opts._overrideSystemBinDir - Override system bin dir selection (for testing)
  * @param opts._overrideStablePaths  - Override stable paths list (for testing)
  */
-export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | null; _overrideStablePaths?: string[] }): PathStabilizeResult {
+export function ensureZigrixInPath(opts?: {
+  _overrideSystemBinDir?: string | null;
+  _overrideStablePaths?: string[];
+}): PathStabilizeResult {
   if (checkZigrixInPath({ _overrideStablePaths: opts?._overrideStablePaths })) {
     return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
   }
@@ -503,6 +591,9 @@ export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | nul
 
   if (systemBinDir) {
     const symlinkPath = path.join(systemBinDir, 'zigrix');
+    if (pathTargetsSameLocation(binEntry, symlinkPath)) {
+      return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
+    }
     try {
       // Remove stale entry if present
       try {
@@ -542,6 +633,9 @@ export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | nul
   }
 
   const symlinkPath = path.join(userBinDir, 'zigrix');
+  if (pathTargetsSameLocation(binEntry, symlinkPath)) {
+    return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
+  }
 
   try {
     // Remove existing if present (stale symlink or old wrapper)
@@ -575,7 +669,9 @@ export function ensureZigrixInPath(opts?: { _overrideSystemBinDir?: string | nul
 
   // Check if userBinDir is actually in PATH
   const pathEnv = process.env.PATH ?? '';
-  const inPath = pathEnv.split(path.delimiter).some((d) => path.resolve(d) === path.resolve(userBinDir));
+  const inPath = pathEnv
+    .split(path.delimiter)
+    .some((d) => path.resolve(d) === path.resolve(userBinDir));
 
   const warning: string | null = inPath
     ? null
@@ -611,7 +707,10 @@ export function checkOpenClawInPath(opts?: { _overrideStablePaths?: string[] }):
  * @param opts._overrideSystemBinDir - Override system bin dir selection (for testing)
  * @param opts._overrideStablePaths  - Override stable paths list (for testing)
  */
-export function ensureOpenClawInPath(opts?: { _overrideSystemBinDir?: string | null; _overrideStablePaths?: string[] }): PathStabilizeResult {
+export function ensureOpenClawInPath(opts?: {
+  _overrideSystemBinDir?: string | null;
+  _overrideStablePaths?: string[];
+}): PathStabilizeResult {
   if (checkOpenClawInPath({ _overrideStablePaths: opts?._overrideStablePaths })) {
     return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
   }
@@ -634,6 +733,9 @@ export function ensureOpenClawInPath(opts?: { _overrideSystemBinDir?: string | n
 
   if (systemBinDir) {
     const symlinkPath = path.join(systemBinDir, 'openclaw');
+    if (pathTargetsSameLocation(binPath, symlinkPath)) {
+      return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
+    }
     try {
       // Remove stale entry if present
       try {
@@ -673,6 +775,9 @@ export function ensureOpenClawInPath(opts?: { _overrideSystemBinDir?: string | n
   }
 
   const symlinkPath = path.join(userBinDir, 'openclaw');
+  if (pathTargetsSameLocation(binPath, symlinkPath)) {
+    return { alreadyInPath: true, symlinkCreated: false, symlinkPath: null, warning: null };
+  }
 
   try {
     // Remove existing if present (stale symlink)
@@ -697,7 +802,9 @@ export function ensureOpenClawInPath(opts?: { _overrideSystemBinDir?: string | n
 
   // Check if userBinDir is actually in PATH
   const pathEnv = process.env.PATH ?? '';
-  const inPath = pathEnv.split(path.delimiter).some((d) => path.resolve(d) === path.resolve(userBinDir));
+  const inPath = pathEnv
+    .split(path.delimiter)
+    .some((d) => path.resolve(d) === path.resolve(userBinDir));
 
   const warning: string | null = inPath
     ? null
@@ -749,7 +856,13 @@ export function registerSkills(openclawHome: string): SkillRegistrationResult {
   try {
     fs.mkdirSync(openclawSkillsDir, { recursive: true });
   } catch (e) {
-    return { registered, skipped, failed: [`Could not create ${openclawSkillsDir}: ${e instanceof Error ? e.message : String(e)}`] };
+    return {
+      registered,
+      skipped,
+      failed: [
+        `Could not create ${openclawSkillsDir}: ${e instanceof Error ? e.message : String(e)}`,
+      ],
+    };
   }
 
   let skillDirs: string[];
@@ -801,9 +914,7 @@ export function registerSkills(openclawHome: string): SkillRegistrationResult {
  * Interactive agent picker using @inquirer/prompts checkbox.
  * Space to toggle, Enter to confirm. All agents pre-selected by default.
  */
-export async function promptAgentSelection(
-  agents: OpenClawAgent[],
-): Promise<OpenClawAgent[]> {
+export async function promptAgentSelection(agents: OpenClawAgent[]): Promise<OpenClawAgent[]> {
   if (agents.length === 0) return [];
 
   try {
@@ -837,7 +948,10 @@ export async function promptAgentRoleAssignments(
   agents: OpenClawAgent[],
 ): Promise<AgentRoleAssignments> {
   const defaults: AgentRoleAssignments = Object.fromEntries(
-    agents.map((agent) => [agent.id, inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null })]),
+    agents.map((agent) => [
+      agent.id,
+      inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null }),
+    ]),
   ) as AgentRoleAssignments;
 
   if (agents.length === 0) return defaults;
@@ -914,7 +1028,10 @@ export async function promptGatewayUrl(defaultValue: string): Promise<string> {
   }
 }
 
-export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string): {
+export function ensureOrchestratorId(
+  config: ZigrixConfig,
+  preferredId?: string,
+): {
   config: ZigrixConfig;
   changed: boolean;
   warning?: string;
@@ -960,7 +1077,8 @@ export function ensureOrchestratorId(config: ZigrixConfig, preferredId?: string)
     return {
       config: next,
       changed: false,
-      warning: 'no eligible orchestrator role agent found. set one with --orchestrator-id after assigning roles.',
+      warning:
+        'no eligible orchestrator role agent found. set one with --orchestrator-id after assigning roles.',
     };
   }
 
@@ -994,7 +1112,9 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   const loaded = loadConfig({ configPath });
   let nextConfig = structuredClone(loaded.config);
 
-  const configuredWorkspace = nextConfig.workspace.projectsBaseDir?.trim() || path.join(nextConfig.paths.baseDir, 'workspace');
+  const configuredWorkspace =
+    nextConfig.workspace.projectsBaseDir?.trim() ||
+    path.join(nextConfig.paths.baseDir, 'workspace');
   const desiredWorkspace = options.projectsBaseDir
     ? resolveAbsolutePath(options.projectsBaseDir)
     : options.yes
@@ -1017,16 +1137,12 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
   let openclawConfig: OpenClawConfig | null = null;
 
   if (!openclawExists) {
-    warnings.push(
-      `OpenClaw not found at ${openclawHome}. Running in zigrix-only mode.`,
-    );
+    warnings.push(`OpenClaw not found at ${openclawHome}. Running in zigrix-only mode.`);
     log(`⚠️  ${warnings[warnings.length - 1]}`);
   } else {
     openclawConfig = loadOpenClawConfig(openclawHome);
     if (!openclawConfig) {
-      warnings.push(
-        `openclaw.json not found or invalid at ${openclawHome}. Agent import skipped.`,
-      );
+      warnings.push(`openclaw.json not found or invalid at ${openclawHome}. Agent import skipped.`);
       log(`⚠️  ${warnings[warnings.length - 1]}`);
     }
   }
@@ -1068,7 +1184,12 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
 
     if (selectedAgents.length > 0) {
       const roleAssignments = options.yes
-        ? Object.fromEntries(selectedAgents.map((agent) => [agent.id, inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null })])) as AgentRoleAssignments
+        ? (Object.fromEntries(
+            selectedAgents.map((agent) => [
+              agent.id,
+              inferStandardAgentRole({ agentId: agent.id, theme: agent.identity?.theme ?? null }),
+            ]),
+          ) as AgentRoleAssignments)
         : await promptAgentRoleAssignments(selectedAgents);
 
       const result = registerAgents(nextConfig, selectedAgents, roleAssignments);
@@ -1122,10 +1243,15 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     log(`⚠️  ${warnings[warnings.length - 1]}`);
   } else {
     if (options.projectDir && ruleSeed.source === 'bundled') {
-      log(`ℹ️  No external rule templates found under ${options.projectDir}; using bundled defaults.`);
+      log(
+        `ℹ️  No external rule templates found under ${options.projectDir}; using bundled defaults.`,
+      );
     }
 
-    ({ copied: rulesCopied, skipped: rulesSkipped } = seedRules(ruleSeed.sourceDir, rulesTargetDir));
+    ({ copied: rulesCopied, skipped: rulesSkipped } = seedRules(
+      ruleSeed.sourceDir,
+      rulesTargetDir,
+    ));
     if (rulesCopied.length > 0) {
       log(`✅ Rules copied: ${rulesCopied.join(', ')}`);
     }
@@ -1169,7 +1295,9 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
     if (finalGatewayUrl) {
       log(`✅ OpenClaw gateway URL: ${finalGatewayUrl}`);
     } else if (openclawExists) {
-      warnings.push('OpenClaw gateway URL not configured. Dashboard gateway features may be limited. Set later with `zigrix configure --section openclaw` or `zigrix onboard --gateway-url <url>`.');
+      warnings.push(
+        'OpenClaw gateway URL not configured. Dashboard gateway features may be limited. Set later with `zigrix configure --section openclaw` or `zigrix onboard --gateway-url <url>`.',
+      );
       log(`⚠️  ${warnings[warnings.length - 1]}`);
     }
 
@@ -1182,12 +1310,19 @@ export async function runOnboard(options: RunOnboardOptions): Promise<OnboardRes
       currentConfig.openclaw.binPath = openclawBinPath;
       currentConfig.openclaw.gatewayUrl = finalGatewayUrl || '';
       writeConfigFile(configPath, currentConfig);
-      log(`✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'}, gateway: ${finalGatewayUrl || 'not set'})`);
+      log(
+        `✅ OpenClaw config persisted (home: ${openclawHome}, bin: ${openclawBinPath ?? 'not found'}, gateway: ${finalGatewayUrl || 'not set'})`,
+      );
     }
   }
 
   // 7. Stabilize PATH — ensure openclaw is reachable from non-login shells
-  let openclawPathResult: PathStabilizeResult = { alreadyInPath: false, symlinkCreated: false, symlinkPath: null, warning: null };
+  let openclawPathResult: PathStabilizeResult = {
+    alreadyInPath: false,
+    symlinkCreated: false,
+    symlinkPath: null,
+    warning: null,
+  };
   if (openclawBinPath) {
     openclawPathResult = ensureOpenClawInPath();
     if (openclawPathResult.symlinkCreated) {
