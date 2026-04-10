@@ -12,7 +12,7 @@ import { finalizeTask } from '../src/orchestration/finalize.js';
 import { renderReport } from '../src/orchestration/report.js';
 import { completeWorker, registerWorker } from '../src/orchestration/worker.js';
 import { resolvePaths } from '../src/state/paths.js';
-import { loadTask, updateTaskStatus } from '../src/state/tasks.js';
+import { bindOrchestratorSession, loadTask, updateTaskStatus } from '../src/state/tasks.js';
 
 function makeTempSetup() {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-dispatch-'));
@@ -86,6 +86,32 @@ describe('dispatch and finalize', () => {
 
     // Verify dispatch prompt written
     expect(fs.existsSync(String(result.promptPath))).toBe(true);
+    expect(String(result.orchestratorPrompt)).toContain('# orchestrator-agent Rules');
+    expect(String(result.orchestratorPrompt)).toContain('zigrix-main-agent-guide');
+    expect(result.orchestratorLabel).toBe(`[orch-main] ${taskId}`);
+    expect(fs.readFileSync(String(result.promptPath), 'utf8')).toContain('Runtime Task Overlay');
+  });
+
+  it('binds real orchestrator session references into task meta', () => {
+    const { paths, config } = makeTempSetup();
+    const dispatched = dispatchTask(paths, config, {
+      title: 'Bind orchestrator test',
+      description: 'Verify orchestrator session binding',
+      scale: 'simple',
+    }) as Record<string, unknown>;
+    const taskId = String(dispatched.taskId);
+
+    const bound = bindOrchestratorSession(paths, {
+      taskId,
+      agentId: 'orch-main',
+      sessionKey: 'agent:orch-main:subagent:orch-session-123',
+    }) as Record<string, unknown>;
+
+    expect(bound.ok).toBe(true);
+    expect(bound.sessionId).toBe('orch-session-123');
+    const task = loadTask(paths, taskId);
+    expect(task?.orchestratorSessionKey).toBe('agent:orch-main:subagent:orch-session-123');
+    expect(task?.orchestratorSessionId).toBe('orch-session-123');
   });
 
   it('finalizes a complete task with auto-report', () => {
@@ -96,15 +122,30 @@ describe('dispatch and finalize', () => {
       scale: 'simple',
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
 
     // Simulate work
     updateTaskStatus(paths, taskId, 'IN_PROGRESS');
-    registerWorker(paths, { taskId, agentId: 'orch-main', sessionKey: 'agent:test:pro', runId: 'r1' });
-    completeWorker(paths, { taskId, agentId: 'orch-main', sessionKey: 'agent:test:pro', runId: 'r1' });
+    registerWorker(paths, {
+      taskId,
+      agentId: 'orch-main',
+      sessionKey: 'agent:orch-main:subagent:pro-r1',
+      runId: 'r1',
+      label: `[orch-main] ${taskId}`,
+      projectDir,
+    });
+    completeWorker(paths, { taskId, agentId: 'orch-main', sessionKey: 'agent:orch-main:subagent:pro-r1', runId: 'r1' });
     collectEvidence(paths, { taskId, agentId: 'orch-main', summary: 'orchestrated' });
 
-    registerWorker(paths, { taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'r2' });
-    completeWorker(paths, { taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'r2' });
+    registerWorker(paths, {
+      taskId,
+      agentId: 'qa-main',
+      sessionKey: 'agent:qa-main:subagent:qa-r2',
+      runId: 'r2',
+      label: `[qa-main] ${taskId}`,
+      projectDir,
+    });
+    completeWorker(paths, { taskId, agentId: 'qa-main', sessionKey: 'agent:qa-main:subagent:qa-r2', runId: 'r2' });
     collectEvidence(paths, {
       taskId,
       agentId: 'qa-main',
@@ -179,6 +220,7 @@ describe('dispatch and finalize', () => {
     expect(String(result.orchestratorPrompt)).toContain('custom-qa');
 
     const taskId = String(result.taskId);
+    const projectDir = String(result.projectDir);
     const metaFile = path.join(paths.tasksDir, `${taskId}.meta.json`);
     const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8')) as Record<string, unknown>;
     expect(meta.orchestratorId).toBe('custom-orch');
@@ -192,12 +234,26 @@ describe('dispatch and finalize', () => {
 
     // Verify dynamic QA evidence path (not hardcoded qa-main)
     updateTaskStatus(paths, taskId, 'IN_PROGRESS');
-    registerWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:test:custom-orch', runId: 'r1' });
-    completeWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:test:custom-orch', runId: 'r1' });
+    registerWorker(paths, {
+      taskId,
+      agentId: 'custom-orch',
+      sessionKey: 'agent:custom-orch:subagent:custom-orch-r1',
+      runId: 'r1',
+      label: `[custom-orch] ${taskId}`,
+      projectDir,
+    });
+    completeWorker(paths, { taskId, agentId: 'custom-orch', sessionKey: 'agent:custom-orch:subagent:custom-orch-r1', runId: 'r1' });
     collectEvidence(paths, { taskId, agentId: 'custom-orch', summary: 'orchestrated' });
 
-    registerWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:test:custom-qa', runId: 'r2' });
-    completeWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:test:custom-qa', runId: 'r2' });
+    registerWorker(paths, {
+      taskId,
+      agentId: 'custom-qa',
+      sessionKey: 'agent:custom-qa:subagent:custom-qa-r2',
+      runId: 'r2',
+      label: `[custom-qa] ${taskId}`,
+      projectDir,
+    });
+    completeWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:custom-qa:subagent:custom-qa-r2', runId: 'r2' });
     collectEvidence(paths, {
       taskId,
       agentId: 'custom-qa',

@@ -4,8 +4,9 @@ import path from 'node:path';
 import { ROLE_HINTS, type StandardAgentRole } from '../agents/roles.js';
 import { resolveAbsolutePath } from '../config/defaults.js';
 import type { ZigrixConfig } from '../config/schema.js';
+import { composeOrchestratorPrompt, buildSpawnLabel } from './prompt-compose.js';
 import { appendEvent } from '../state/events.js';
-import { type ExecutionUnit, type WorkPackage, type ZigrixTask, createTask, rebuildIndex, saveTask } from '../state/tasks.js';
+import { type ExecutionUnit, type WorkPackage, createTask, rebuildIndex, resolveTaskPaths, saveTask } from '../state/tasks.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 
 const BASELINE_REQUIRED_ROLES: StandardAgentRole[] = ['orchestrator', 'qa'];
@@ -171,48 +172,6 @@ function defaultExecutionUnits(scale: string, owners: { orchestratorId: string; 
   ];
 }
 
-function buildBootPrompt(task: ZigrixTask, options: { orchestratorId: string; qaAgentId: string }): string {
-  return `## Orchestration Task Boot: ${task.taskId}
-- **Title:** ${task.title}
-- **Scale:** ${task.scale}
-- **Orchestrator:** ${options.orchestratorId}
-
----
-
-## ⚠️ 절대 규칙: QA 역할 워커 호출 필수
-
-**이 태스크는 QA 역할(${options.qaAgentId}) 워커 완료가 필수다.**
-
----
-
-## ⚡ 필수 첫 단계 (건너뛰기 금지)
-
-아래 명령을 **가장 먼저** 실행하라:
-
-\`\`\`bash
-zigrix task start ${task.taskId} --json
-\`\`\`
-
-그 후 태스크 메타를 확인하라:
-
-\`\`\`bash
-zigrix task status ${task.taskId} --json
-\`\`\`
-
-워커 호출 시:
-\`\`\`bash
-zigrix worker prepare --task-id ${task.taskId} --agent-id <workerId> --description "..." --json
-zigrix worker register --task-id ${task.taskId} --agent-id <workerId> --session-key <key> --json
-zigrix worker complete --task-id ${task.taskId} --agent-id <workerId> --session-key <key> --run-id <rid> --json
-\`\`\`
-
-최종 완료:
-\`\`\`bash
-zigrix task finalize ${task.taskId} --json
-\`\`\`
-`;
-}
-
 export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
   title: string;
   description: string;
@@ -250,38 +209,21 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
   task.qaAgentId = selection.qaAgentId;
   saveTask(paths, task);
 
+  const taskPaths = resolveTaskPaths(paths, task.taskId);
   const promptPath = path.join(paths.promptsDir, `${task.taskId}-dispatch.md`);
-  const dispatchPrompt = [
-    `## Orchestration Task: ${task.taskId}`,
-    '',
-    '### 기본 정보',
-    `- **Title:** ${task.title}`,
-    `- **Scale:** ${task.scale}`,
-    `- **Orchestrator:** ${selection.orchestratorId}`,
-    `- **Baseline Required Agents:** ${selection.requiredAgents.join(', ')}`,
-    `- **Candidate Agents:** ${selection.candidateAgents.length > 0 ? selection.candidateAgents.join(', ') : '(none)'}`,
-    `- **Required Roles:** ${selection.requiredRoles.join(', ')}`,
-    `- **Optional Roles:** ${selection.optionalRoles.length > 0 ? selection.optionalRoles.join(', ') : '(none)'}`,
-    projectDir ? `- **Project Dir:** ${projectDir}` : '',
-    '',
-    '### 요청 내용',
-    params.description,
-    params.constraints ? `\n### 제약사항\n${params.constraints}` : '',
-    '',
-    '### 역할 매핑',
-    ...Object.entries(selection.roleAgentMap)
-      .filter(([, agentIds]) => agentIds.length > 0)
-      .map(([role, agentIds]) => `- ${role}: ${agentIds.join(', ')}`),
-    '',
-    '### 선택 규칙',
-    ...Object.entries(selection.selectionHints).map(([agentId, hint]) => `- ${agentId}: ${hint}`),
-  ].filter(Boolean).join('\n');
-  fs.writeFileSync(promptPath, `${dispatchPrompt}\n`, 'utf8');
-
-  const orchestratorPrompt = buildBootPrompt(task, {
+  const orchestratorLabel = buildSpawnLabel(task.taskId, selection.orchestratorId);
+  const orchestratorPrompt = composeOrchestratorPrompt({
+    paths,
+    task,
     orchestratorId: selection.orchestratorId,
     qaAgentId: selection.qaAgentId,
+    promptPath,
+    specPath: taskPaths.specPath,
+    metaPath: taskPaths.metaPath,
+    projectDir: projectDir ?? null,
+    constraints: params.constraints,
   });
+  fs.writeFileSync(promptPath, `${orchestratorPrompt}\n`, 'utf8');
 
   appendEvent(paths.eventsFile, {
     event: 'task_dispatched',
@@ -314,10 +256,11 @@ export function dispatchTask(paths: ZigrixPaths, config: ZigrixConfig, params: {
     requiredRoles: selection.requiredRoles,
     optionalRoles: selection.optionalRoles,
     roleAgentMap: selection.roleAgentMap,
-    specPath: path.join(paths.tasksDir, `${task.taskId}.md`),
-    metaPath: path.join(paths.tasksDir, `${task.taskId}.meta.json`),
+    specPath: taskPaths.specPath,
+    metaPath: taskPaths.metaPath,
     promptPath,
     orchestratorPrompt,
+    orchestratorLabel,
     projectDir: projectDir ?? null,
   };
 }

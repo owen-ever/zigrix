@@ -40,6 +40,7 @@ import { loadRunRecord } from './runner/store.js';
 import { ensureBaseState, resolvePaths } from './state/paths.js';
 import {
   applyStalePolicy,
+  bindOrchestratorSession,
   createTask,
   findStaleTasks,
   listTaskEvents,
@@ -957,6 +958,24 @@ task
   });
 
 task
+  .command('bind-orchestrator')
+  .requiredOption('--task-id <taskId>')
+  .requiredOption('--agent-id <agentId>')
+  .requiredOption('--session-key <sessionKey>')
+  .option('--session-id <sessionId>')
+  .option('--json')
+  .action((options) => {
+    const payload = bindOrchestratorSession(loadRuntime().paths, {
+      taskId: options.taskId,
+      agentId: options.agentId,
+      sessionKey: options.sessionKey,
+      sessionId: options.sessionId,
+    });
+    if (!payload) throw new Error(`task not found: ${options.taskId}`);
+    printValue(payload, true);
+  });
+
+task
   .command('events [taskId]')
   .option('--json')
   .action((taskId, options) => printValue(listTaskEvents(loadRuntime().paths, taskId), true));
@@ -1045,7 +1064,8 @@ worker
   .option('--project-dir <path>', 'working directory for this worker')
   .option('--json')
   .action((options) => {
-    const payload = prepareWorker(loadRuntime().paths, {
+    const runtime = loadRuntime();
+    const payload = prepareWorker(runtime.paths, runtime.config, {
       taskId: options.taskId,
       agentId: options.agentId,
       description: options.description,
@@ -1064,6 +1084,8 @@ worker
   .requiredOption('--task-id <taskId>')
   .requiredOption('--agent-id <agentId>')
   .requiredOption('--session-key <sessionKey>')
+  .requiredOption('--label <label>')
+  .option('--project-dir <path>', 'worker project directory from prepare response')
   .option('--run-id <runId>')
   .option('--session-id <sessionId>')
   .option('--unit-id <unitId>')
@@ -1080,6 +1102,8 @@ worker
       unitId: options.unitId,
       workPackage: options.workPackage,
       reason: options.reason,
+      label: options.label,
+      projectDir: options.projectDir,
     });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
