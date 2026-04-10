@@ -49,6 +49,39 @@ export type ZigrixTask = {
   qaAgentId?: string;
   orchestratorSessionKey?: string;
   orchestratorSessionId?: string;
+  nextAction?: string;
+  resumeHint?: string;
+  staleReason?: string;
+  staleReasons?: string[];
+};
+
+export type StaleReasonCode = 'stale_timeout' | 'session_dead' | 'missing_session_mapping';
+
+export type SessionDiagnosis = {
+  scope: 'orchestrator' | 'worker';
+  agentId: string;
+  sessionKey: string;
+  sessionId: string | null;
+  mappingSource: 'explicit' | 'parsed' | 'sessions_json' | 'none';
+  state: 'active' | 'deleted' | 'missing';
+  reason: 'session_dead' | 'missing_session_mapping' | null;
+  activePath: string | null;
+  deletedPath: string | null;
+};
+
+export type StaleTaskSummary = {
+  taskId: string;
+  title: string;
+  updatedAt: string;
+  hoursThreshold: number;
+  timedOut: boolean;
+  reason: string;
+  reasonCode: StaleReasonCode;
+  reasons: StaleReasonCode[];
+  nextAction: string;
+  resumeHint: string;
+  reportLine: string;
+  sessions: SessionDiagnosis[];
 };
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
@@ -282,28 +315,296 @@ export function recordTaskProgress(paths: ZigrixPaths, params: {
 
 // ─── Stale policy ───────────────────────────────────────────────────────────
 
-export function findStaleTasks(paths: ZigrixPaths, hours = 24): ZigrixTask[] {
-  const cutoff = Date.now() - hours * 3600 * 1000;
-  return listTasks(paths).filter((task) => task.status === 'IN_PROGRESS' && Date.parse(task.updatedAt) < cutoff);
+type StalePolicyOptions = {
+  agentsStateDir?: string | null;
+  fallbackReason?: string;
+};
+
+type TaskSessionRef = {
+  scope: 'orchestrator' | 'worker';
+  agentId: string;
+  sessionKey: string;
+  sessionId: string | null;
+};
+
+function toNonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
-export function applyStalePolicy(paths: ZigrixPaths, hours = 24, reason = 'stale_timeout'): Record<string, unknown> {
-  const staleTasks = findStaleTasks(paths, hours);
-  const changed = staleTasks.map((task) => {
+function parseAgentSubagentSessionKey(sessionKey: string): { agentId: string; sessionId: string } | null {
+  const matched = sessionKey.match(/^agent:([^:]+):subagent:([^:\s]+)$/);
+  if (!matched) return null;
+  return { agentId: matched[1], sessionId: matched[2] };
+}
+
+function resolveSessionIdFromSessionsJson(agentsStateDir: string, agentId: string, sessionKey: string): string | null {
+  try {
+    const sessionsJsonPath = path.join(agentsStateDir, agentId, 'sessions', 'sessions.json');
+    const raw = JSON.parse(fs.readFileSync(sessionsJsonPath, 'utf8')) as Record<string, unknown>;
+    const entry = raw[sessionKey];
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    return toNonEmptyString((entry as Record<string, unknown>).sessionId);
+  } catch {
+    return null;
+  }
+}
+
+function listDeletedSessionPaths(agentsStateDir: string, agentId: string, sessionId: string): string[] {
+  const sessionsDir = path.join(agentsStateDir, agentId, 'sessions');
+  if (!fs.existsSync(sessionsDir)) return [];
+  const prefix = `${sessionId}.jsonl.deleted.`;
+  try {
+    return fs.readdirSync(sessionsDir)
+      .filter((name) => name.startsWith(prefix))
+      .sort((a, b) => b.localeCompare(a))
+      .map((name) => path.join(sessionsDir, name));
+  } catch {
+    return [];
+  }
+}
+
+function collectTaskSessionRefs(task: ZigrixTask): TaskSessionRef[] {
+  const refs: TaskSessionRef[] = [];
+
+  if (task.orchestratorSessionKey && task.orchestratorId) {
+    refs.push({
+      scope: 'orchestrator',
+      agentId: task.orchestratorId,
+      sessionKey: task.orchestratorSessionKey,
+      sessionId: task.orchestratorSessionId ?? null,
+    });
+  }
+
+  for (const [agentId, raw] of Object.entries(task.workerSessions ?? {})) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+    const data = raw as Record<string, unknown>;
+    const sessionKey = toNonEmptyString(data.sessionKey);
+    if (!sessionKey) continue;
+    refs.push({
+      scope: 'worker',
+      agentId,
+      sessionKey,
+      sessionId: toNonEmptyString(data.sessionId),
+    });
+  }
+
+  return refs;
+}
+
+function diagnoseTaskSessions(task: ZigrixTask, agentsStateDir?: string | null): SessionDiagnosis[] {
+  if (!agentsStateDir) return [];
+
+  return collectTaskSessionRefs(task).map((ref) => {
+    const parsed = parseAgentSubagentSessionKey(ref.sessionKey);
+    const agentId = parsed?.agentId ?? ref.agentId;
+
+    let resolvedSessionId = ref.sessionId;
+    let mappingSource: SessionDiagnosis['mappingSource'] = ref.sessionId ? 'explicit' : 'none';
+
+    if (!resolvedSessionId && parsed) {
+      resolvedSessionId = parsed.sessionId;
+      mappingSource = 'parsed';
+    }
+
+    if (!resolvedSessionId) {
+      const mappedSessionId = resolveSessionIdFromSessionsJson(agentsStateDir, agentId, ref.sessionKey);
+      if (mappedSessionId) {
+        resolvedSessionId = mappedSessionId;
+        mappingSource = 'sessions_json';
+      }
+    }
+
+    if (!resolvedSessionId) {
+      return {
+        scope: ref.scope,
+        agentId,
+        sessionKey: ref.sessionKey,
+        sessionId: null,
+        mappingSource,
+        state: 'missing',
+        reason: 'missing_session_mapping',
+        activePath: null,
+        deletedPath: null,
+      };
+    }
+
+    const activePath = path.join(agentsStateDir, agentId, 'sessions', `${resolvedSessionId}.jsonl`);
+    if (fs.existsSync(activePath)) {
+      return {
+        scope: ref.scope,
+        agentId,
+        sessionKey: ref.sessionKey,
+        sessionId: resolvedSessionId,
+        mappingSource,
+        state: 'active',
+        reason: null,
+        activePath,
+        deletedPath: null,
+      };
+    }
+
+    const deletedPaths = listDeletedSessionPaths(agentsStateDir, agentId, resolvedSessionId);
+    if (deletedPaths.length > 0) {
+      return {
+        scope: ref.scope,
+        agentId,
+        sessionKey: ref.sessionKey,
+        sessionId: resolvedSessionId,
+        mappingSource,
+        state: 'deleted',
+        reason: 'session_dead',
+        activePath: null,
+        deletedPath: deletedPaths[0],
+      };
+    }
+
+    return {
+      scope: ref.scope,
+      agentId,
+      sessionKey: ref.sessionKey,
+      sessionId: resolvedSessionId,
+      mappingSource,
+      state: 'missing',
+      reason: null,
+      activePath: null,
+      deletedPath: null,
+    };
+  });
+}
+
+function joinUniqueAgentIds(diagnoses: SessionDiagnosis[], reason: SessionDiagnosis['reason']): string {
+  const agentIds = Array.from(new Set(diagnoses.filter((item) => item.reason === reason).map((item) => item.agentId)));
+  return agentIds.join(', ') || 'unknown-agent';
+}
+
+function buildStaleGuidance(task: ZigrixTask, reasonCode: StaleReasonCode, hours: number, diagnoses: SessionDiagnosis[]): {
+  reason: string;
+  nextAction: string;
+  resumeHint: string;
+  reportLine: string;
+} {
+  if (reasonCode === 'session_dead') {
+    const agents = joinUniqueAgentIds(diagnoses, 'session_dead');
+    return {
+      reason: 'session_dead',
+      nextAction: `respawn the deleted OpenClaw session for ${agents} and re-register it before resuming ${task.taskId}`,
+      resumeHint: `start a fresh session for ${agents}, then update zigrix with the new session key/sessionId before continuing the blocked task`,
+      reportLine: `${task.taskId}: BLOCKED session_dead (${agents})`,
+    };
+  }
+
+  if (reasonCode === 'missing_session_mapping') {
+    const agents = joinUniqueAgentIds(diagnoses, 'missing_session_mapping');
+    return {
+      reason: 'missing_session_mapping',
+      nextAction: `repair or re-register the missing session mapping for ${agents} before resuming ${task.taskId}`,
+      resumeHint: `re-run worker/orchestrator registration with --session-key and --session-id so zigrix can resolve the backing OpenClaw session`,
+      reportLine: `${task.taskId}: BLOCKED missing_session_mapping (${agents})`,
+    };
+  }
+
+  return {
+    reason: 'stale_timeout',
+    nextAction: `inspect the latest progress for ${task.taskId} and either report, refresh progress, or respawn the worker after ${hours}h of inactivity`,
+    resumeHint: 'check task status/events/evidence, then continue with a fresh worker registration if the original session is no longer active',
+    reportLine: `${task.taskId}: BLOCKED stale_timeout (> ${hours}h)`, 
+  };
+}
+
+function buildStaleTaskSummary(task: ZigrixTask, hours: number, agentsStateDir?: string | null, fallbackReason = 'stale_timeout'): StaleTaskSummary | null {
+  const cutoff = Date.now() - hours * 3600 * 1000;
+  const timedOut = Date.parse(task.updatedAt) < cutoff;
+  const diagnoses = diagnoseTaskSessions(task, agentsStateDir);
+  const hasDeletedSession = diagnoses.some((item) => item.reason === 'session_dead');
+  const hasMissingMapping = diagnoses.some((item) => item.reason === 'missing_session_mapping');
+
+  if (!hasDeletedSession && !timedOut) return null;
+
+  const reasons = new Set<StaleReasonCode>();
+  if (timedOut) reasons.add('stale_timeout');
+  if (hasDeletedSession) reasons.add('session_dead');
+  if (hasMissingMapping) reasons.add('missing_session_mapping');
+
+  const reasonCode: StaleReasonCode = hasDeletedSession
+    ? 'session_dead'
+    : hasMissingMapping && timedOut
+      ? 'missing_session_mapping'
+      : 'stale_timeout';
+
+  const guidance = buildStaleGuidance(task, reasonCode, hours, diagnoses);
+  const reason = reasonCode === 'stale_timeout' ? fallbackReason : guidance.reason;
+
+  return {
+    taskId: task.taskId,
+    title: task.title,
+    updatedAt: task.updatedAt,
+    hoursThreshold: hours,
+    timedOut,
+    reason,
+    reasonCode,
+    reasons: Array.from(reasons),
+    nextAction: guidance.nextAction,
+    resumeHint: guidance.resumeHint,
+    reportLine: guidance.reportLine,
+    sessions: diagnoses,
+  };
+}
+
+export function findStaleTasks(paths: ZigrixPaths, hours = 24, options: StalePolicyOptions = {}): StaleTaskSummary[] {
+  return listTasks(paths)
+    .filter((task) => task.status === 'IN_PROGRESS')
+    .map((task) => buildStaleTaskSummary(task, hours, options.agentsStateDir, options.fallbackReason ?? 'stale_timeout'))
+    .filter((task): task is StaleTaskSummary => task !== null);
+}
+
+export function applyStalePolicy(paths: ZigrixPaths, hours = 24, reason = 'stale_timeout', options: StalePolicyOptions = {}): Record<string, unknown> {
+  const staleTasks = findStaleTasks(paths, hours, { ...options, fallbackReason: reason });
+  const changed = staleTasks.map((summary) => {
+    const task = loadTask(paths, summary.taskId);
+    if (!task) return null;
+
     task.status = 'BLOCKED';
+    task.nextAction = summary.nextAction;
+    task.resumeHint = summary.resumeHint;
+    task.staleReason = summary.reasonCode;
+    task.staleReasons = summary.reasons;
     saveTask(paths, task);
+
     const event = appendEvent(paths.eventsFile, {
       event: 'task_blocked',
       taskId: task.taskId,
       phase: 'recovery',
       actor: 'zigrix',
       status: 'BLOCKED',
-      payload: { reason, previousStatus: 'IN_PROGRESS', hoursThreshold: hours },
+      payload: {
+        reason: summary.reason,
+        reasonCode: summary.reasonCode,
+        reasons: summary.reasons,
+        previousStatus: 'IN_PROGRESS',
+        hoursThreshold: hours,
+        timedOut: summary.timedOut,
+        nextAction: summary.nextAction,
+        resumeHint: summary.resumeHint,
+        reportLine: summary.reportLine,
+        sessions: summary.sessions,
+      },
     });
-    return { taskId: task.taskId, event };
-  });
+
+    return {
+      taskId: task.taskId,
+      reason: summary.reason,
+      reasonCode: summary.reasonCode,
+      reasons: summary.reasons,
+      nextAction: summary.nextAction,
+      resumeHint: summary.resumeHint,
+      reportLine: summary.reportLine,
+      sessions: summary.sessions,
+      event,
+    };
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
+
   rebuildIndex(paths);
-  return { ok: true, hours, reason, count: changed.length, changed };
+  return { ok: true, hours, requestedReason: reason, count: changed.length, changed };
 }
 
 // ─── Index ──────────────────────────────────────────────────────────────────

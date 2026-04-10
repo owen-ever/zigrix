@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import path from 'node:path';
 
 import { Command } from 'commander';
 
@@ -97,6 +98,13 @@ function requireYes(yes?: boolean, action = 'perform this action'): void {
 function loadRuntime() {
   const loaded = loadConfig();
   return { ...loaded, paths: resolvePaths(loaded.config) };
+}
+
+function resolveAgentsStateDir(config: ZigrixConfig): string | null {
+  const configuredHome = typeof config.openclaw.home === 'string' ? config.openclaw.home.trim() : '';
+  const openclawHome = configuredHome || process.env.OPENCLAW_HOME || '';
+  if (!openclawHome) return null;
+  return path.join(openclawHome, 'agents');
 }
 
 function listRuntimePathValues(loaded: ReturnType<typeof loadRuntime>): Record<string, string | null> {
@@ -722,9 +730,13 @@ task
   .option('--reason <reason>', 'block reason', 'stale_timeout')
   .option('--json')
   .action((options) => {
-    const paths = loadRuntime().paths;
+    const loaded = loadRuntime();
     const hours = Number(options.hours);
-    const payload = options.apply ? applyStalePolicy(paths, hours, options.reason) : { ok: true, hours, count: findStaleTasks(paths, hours).length, tasks: findStaleTasks(paths, hours) };
+    const agentsStateDir = resolveAgentsStateDir(loaded.config);
+    const preview = findStaleTasks(loaded.paths, hours, { agentsStateDir, fallbackReason: options.reason });
+    const payload = options.apply
+      ? applyStalePolicy(loaded.paths, hours, options.reason, { agentsStateDir })
+      : { ok: true, hours, requestedReason: options.reason, count: preview.length, tasks: preview };
     printValue(payload, true);
   });
 
