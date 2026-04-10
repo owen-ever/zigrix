@@ -107,6 +107,16 @@ function resolveAgentsStateDir(config: ZigrixConfig): string | null {
   return path.join(openclawHome, 'agents');
 }
 
+function parseVerificationMap(raw: string): { dod: string; test: string } {
+  const [dod, test] = raw.split(/=(.*)/s, 2);
+  const left = dod?.trim() ?? '';
+  const right = test?.trim() ?? '';
+  if (!left || !right) {
+    throw new Error(`invalid verification map format: ${raw} (expected dod=test)`);
+  }
+  return { dod: left, test: right };
+}
+
 function listRuntimePathValues(loaded: ReturnType<typeof loadRuntime>): Record<string, string | null> {
   return {
     configPath: loaded.configPath,
@@ -837,10 +847,28 @@ evidence
   .option('--summary <summary>')
   .option('--tool-result <toolResult>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--notes <notes>')
+  .option('--dod-item <dodItem>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--test-case <testCase>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--verification-map <mapping>', 'repeatable dod=test mapping', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--limit <limit>', 'transcript line limit', '40')
   .option('--json')
   .action((options) => {
-    const payload = collectEvidence(loadRuntime().paths, { taskId: options.taskId, agentId: options.agentId, runId: options.runId, unitId: options.unitId, sessionKey: options.sessionKey, sessionId: options.sessionId, transcript: options.transcript, summary: options.summary, toolResults: options.toolResult, notes: options.notes, limit: Number(options.limit) });
+    const payload = collectEvidence(loadRuntime().paths, {
+      taskId: options.taskId,
+      agentId: options.agentId,
+      runId: options.runId,
+      unitId: options.unitId,
+      sessionKey: options.sessionKey,
+      sessionId: options.sessionId,
+      transcript: options.transcript,
+      summary: options.summary,
+      toolResults: options.toolResult,
+      notes: options.notes,
+      dodItems: options.dodItem,
+      testCases: options.testCase,
+      verificationMappings: (options.verificationMap ?? []).map((item: string) => parseVerificationMap(item)),
+      limit: Number(options.limit),
+    });
     if (!payload) throw new Error(`task not found: ${options.taskId}`);
     printValue(payload, true);
   });
@@ -879,12 +907,23 @@ pipeline
   .option('--scale <scale>', 'simple|normal|risky|large', 'normal')
   .option('--required-agent <agent>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--evidence-summary <agentEqSummary>', 'repeatable', (value: string, prev: string[] = []) => [...prev, value], [])
+  .option('--verification-map <agentEqDodEqTest>', 'repeatable agentId=dod=test', (value: string, prev: string[] = []) => [...prev, value], [])
   .option('--require-qa')
   .option('--auto-report')
   .option('--record-feedback')
   .option('--json')
   .action((options) => {
-    const payload = runPipeline(loadRuntime().paths, { title: options.title, description: options.description, scale: options.scale, requiredAgents: options.requiredAgent, evidenceSummaries: options.evidenceSummary, requireQa: Boolean(options.requireQa), autoReport: Boolean(options.autoReport), recordFeedback: Boolean(options.recordFeedback) });
+    const payload = runPipeline(loadRuntime().paths, {
+      title: options.title,
+      description: options.description,
+      scale: options.scale,
+      requiredAgents: options.requiredAgent,
+      evidenceSummaries: options.evidenceSummary,
+      verificationMappings: options.verificationMap,
+      requireQa: Boolean(options.requireQa),
+      autoReport: Boolean(options.autoReport),
+      recordFeedback: Boolean(options.recordFeedback),
+    });
     printValue(payload, true);
   });
 

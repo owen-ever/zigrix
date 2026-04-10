@@ -9,6 +9,7 @@ export function runPipeline(paths: ZigrixPaths, params: {
   scale?: string;
   requiredAgents?: string[];
   evidenceSummaries?: string[];
+  verificationMappings?: string[];
   requireQa?: boolean;
   autoReport?: boolean;
   recordFeedback?: boolean;
@@ -18,10 +19,35 @@ export function runPipeline(paths: ZigrixPaths, params: {
   const taskId = task.taskId;
   steps.push({ step: 'task_create', result: task });
   steps.push({ step: 'task_start', result: updateTaskStatus(paths, taskId, 'IN_PROGRESS') });
+  const verificationMappings = new Map<string, Array<{ dod: string; test: string }>>();
+  for (const raw of params.verificationMappings ?? []) {
+    if (!raw.includes('=')) throw new Error(`invalid verification mapping format: ${raw} (expected agentId=dod=test)`);
+    const [agentId, rest] = raw.split(/=(.*)/s, 2);
+    const trimmedAgentId = agentId.trim();
+    const [dod, test] = (rest ?? '').split(/=(.*)/s, 2);
+    if (!trimmedAgentId || !dod?.trim() || !test?.trim()) {
+      throw new Error(`invalid verification mapping format: ${raw} (expected agentId=dod=test)`);
+    }
+    verificationMappings.set(trimmedAgentId, [
+      ...(verificationMappings.get(trimmedAgentId) ?? []),
+      { dod: dod.trim(), test: test.trim() },
+    ]);
+  }
+
   for (const raw of params.evidenceSummaries ?? []) {
     if (!raw.includes('=')) throw new Error(`invalid evidence summary format: ${raw} (expected agentId=summary)`);
     const [agentId, summary] = raw.split(/=(.*)/s, 2);
-    steps.push({ step: 'evidence_collect', agentId: agentId.trim(), result: collectEvidence(paths, { taskId, agentId: agentId.trim(), summary: summary.trim() }) });
+    const trimmedAgentId = agentId.trim();
+    steps.push({
+      step: 'evidence_collect',
+      agentId: trimmedAgentId,
+      result: collectEvidence(paths, {
+        taskId,
+        agentId: trimmedAgentId,
+        summary: summary.trim(),
+        verificationMappings: verificationMappings.get(trimmedAgentId) ?? [],
+      }),
+    });
   }
   const merged = mergeEvidence(paths, { taskId, requiredAgents: params.requiredAgents, requireQa: params.requireQa });
   steps.push({ step: 'evidence_merge', result: merged });

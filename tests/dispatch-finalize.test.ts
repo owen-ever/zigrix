@@ -105,7 +105,12 @@ describe('dispatch and finalize', () => {
 
     registerWorker(paths, { taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'r2' });
     completeWorker(paths, { taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'r2' });
-    collectEvidence(paths, { taskId, agentId: 'qa-main', summary: 'QA passed' });
+    collectEvidence(paths, {
+      taskId,
+      agentId: 'qa-main',
+      summary: 'QA passed',
+      verificationMappings: [{ dod: 'qa evidence attached', test: 'tests/dispatch-finalize.test.ts auto-report' }],
+    });
 
     const result = finalizeTask(paths, { taskId, autoReport: true }) as Record<string, unknown>;
     expect(result.ok).toBe(true);
@@ -193,7 +198,12 @@ describe('dispatch and finalize', () => {
 
     registerWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:test:custom-qa', runId: 'r2' });
     completeWorker(paths, { taskId, agentId: 'custom-qa', sessionKey: 'agent:test:custom-qa', runId: 'r2' });
-    collectEvidence(paths, { taskId, agentId: 'custom-qa', summary: 'QA passed' });
+    collectEvidence(paths, {
+      taskId,
+      agentId: 'custom-qa',
+      summary: 'QA passed',
+      verificationMappings: [{ dod: 'qa evidence attached', test: 'tests/dispatch-finalize.test.ts custom qa' }],
+    });
 
     const finalized = finalizeTask(paths, { taskId, autoReport: true }) as Record<string, unknown>;
     expect(finalized.complete).toBe(true);

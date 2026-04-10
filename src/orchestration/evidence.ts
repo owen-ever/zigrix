@@ -6,6 +6,11 @@ import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { type ZigrixTask, loadTask, rebuildIndex } from '../state/tasks.js';
 import { resolveRequiredAgents } from './worker.js';
 
+export type VerificationMapping = {
+  dod: string;
+  test: string;
+};
+
 function readTranscript(transcriptPath: string, limit = 40): Array<Record<string, unknown>> {
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return [];
   return fs.readFileSync(transcriptPath, 'utf8')
@@ -59,6 +64,27 @@ function resolveQaAgentId(task: ZigrixTask): string | null {
   return fallback ? String(fallback).trim() : null;
 }
 
+function sanitizeVerificationMapping(mapping: VerificationMapping): VerificationMapping | null {
+  const dod = mapping.dod.trim();
+  const test = mapping.test.trim();
+  if (!dod || !test) return null;
+  return { dod, test };
+}
+
+function collectVerificationMappings(evidence: Record<string, unknown>): VerificationMapping[] {
+  const verification = evidence.verification;
+  if (!verification || typeof verification !== 'object' || Array.isArray(verification)) return [];
+  const rawMappings = (verification as Record<string, unknown>).mappings;
+  if (!Array.isArray(rawMappings)) return [];
+  return rawMappings.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const dod = typeof (item as Record<string, unknown>).dod === 'string' ? String((item as Record<string, unknown>).dod) : '';
+    const test = typeof (item as Record<string, unknown>).test === 'string' ? String((item as Record<string, unknown>).test) : '';
+    const sanitized = sanitizeVerificationMapping({ dod, test });
+    return sanitized ? [sanitized] : [];
+  });
+}
+
 export function collectEvidence(paths: ZigrixPaths, params: {
   taskId: string;
   agentId: string;
@@ -70,6 +96,9 @@ export function collectEvidence(paths: ZigrixPaths, params: {
   summary?: string;
   toolResults?: string[];
   notes?: string;
+  dodItems?: string[];
+  testCases?: string[];
+  verificationMappings?: VerificationMapping[];
   limit?: number;
 }): Record<string, unknown> | null {
   ensureBaseState(paths);
@@ -83,6 +112,19 @@ export function collectEvidence(paths: ZigrixPaths, params: {
   }
   if (params.toolResults?.length) extracted.toolResults = [...params.toolResults];
   if (params.notes) extracted.notes = params.notes;
+
+  const dodItems = (params.dodItems ?? []).map((item) => item.trim()).filter(Boolean);
+  const testCases = (params.testCases ?? []).map((item) => item.trim()).filter(Boolean);
+  const verificationMappings = (params.verificationMappings ?? [])
+    .map((mapping) => sanitizeVerificationMapping(mapping))
+    .filter((mapping): mapping is VerificationMapping => Boolean(mapping));
+  if (dodItems.length || testCases.length || verificationMappings.length) {
+    extracted.verification = {
+      dodItems,
+      testCases,
+      mappings: verificationMappings,
+    };
+  }
 
   const outDir = path.join(paths.evidenceDir, params.taskId);
   fs.mkdirSync(outDir, { recursive: true });
@@ -122,14 +164,56 @@ export function mergeEvidence(paths: ZigrixPaths, params: { taskId: string; requ
   const qaAgentId = resolveQaAgentId(task);
   const qaPresent = qaAgentId ? presentAgents.includes(qaAgentId) : false;
   const qaRequiredSatisfied = !(params.requireQa ?? false) || (qaAgentId !== null && qaPresent);
-  const complete = missingAgents.length === 0 && qaRequiredSatisfied;
-  const merged = { ts: nowIso(), taskId: params.taskId, requiredAgents, presentAgents, missingAgents, qaAgentId, qaPresent, complete, items };
+
+  const qaVerificationMappings = qaAgentId
+    ? items
+      .filter((item) => String(item.agentId) === qaAgentId)
+      .flatMap((item) => collectVerificationMappings(item.evidence as Record<string, unknown>))
+    : [];
+  const qaVerification = {
+    required: Boolean(params.requireQa),
+    mappingCount: qaVerificationMappings.length,
+    mappings: qaVerificationMappings,
+    complete: !(params.requireQa ?? false) || !qaPresent || qaVerificationMappings.length > 0,
+  };
+
+  const complete = missingAgents.length === 0 && qaRequiredSatisfied && qaVerification.complete;
+  const merged = {
+    ts: nowIso(),
+    taskId: params.taskId,
+    requiredAgents,
+    presentAgents,
+    missingAgents,
+    qaAgentId,
+    qaPresent,
+    qaVerification,
+    complete,
+    items,
+  };
   const outPath = path.join(taskDir, '_merged.json');
   fs.writeFileSync(outPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
   appendEvent(paths.eventsFile, {
     event: 'evidence_merged', taskId: params.taskId, phase: 'verification', actor: 'zigrix', status: complete ? 'DONE_PENDING_REPORT' : 'IN_PROGRESS',
-    payload: { requiredAgents, missingAgents, complete, mergedPath: outPath, qaPresent },
+    payload: {
+      requiredAgents,
+      missingAgents,
+      complete,
+      mergedPath: outPath,
+      qaPresent,
+      qaVerificationComplete: qaVerification.complete,
+      qaVerificationMappingCount: qaVerification.mappingCount,
+    },
   });
   rebuildIndex(paths);
-  return { ok: true, taskId: params.taskId, complete, missingAgents, qaAgentId, qaPresent, mergedPath: outPath };
+  return {
+    ok: true,
+    taskId: params.taskId,
+    complete,
+    missingAgents,
+    qaAgentId,
+    qaPresent,
+    qaVerificationComplete: qaVerification.complete,
+    qaVerificationMappingCount: qaVerification.mappingCount,
+    mergedPath: outPath,
+  };
 }
