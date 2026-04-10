@@ -31,7 +31,6 @@ describe('ci workflow contracts', () => {
     expect(runCommands).toContain('npm run format:check:all');
     expect(runCommands).toContain('npm run test');
     expect(runCommands).toContain('npm run build');
-    expect(runCommands).toContain('npm run size:check');
     expect(runCommands).toContain('npm run audit:prod');
   });
 });

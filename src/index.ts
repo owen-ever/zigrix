@@ -20,6 +20,7 @@ import { getConfigValue, loadConfig, writeConfigFile, writeDefaultConfig } from 
 import type { ZigrixConfig } from './config/schema.js';
 import { zigrixConfigJsonSchema } from './config/schema.js';
 import { gatherDoctor, renderDoctorText } from './doctor.js';
+import { importOrchestrationState } from './migrate/import-orchestration.js';
 import { runOnboard } from './onboard.js';
 import { dispatchTask, resolveConfiguredProjectDir } from './orchestration/dispatch.js';
 import { collectEvidence, mergeEvidence } from './orchestration/evidence.js';
@@ -117,6 +118,12 @@ function parseVerificationMap(raw: string): { dod: string; test: string } {
   return { dod: left, test: right };
 }
 
+function runImportOrchestrationCommand(fromDir: string, yes?: boolean): Record<string, unknown> {
+  requireYes(yes, 'import legacy orchestration state');
+  const loaded = loadRuntime();
+  return importOrchestrationState(loaded.paths, { fromDir });
+}
+
 function listRuntimePathValues(loaded: ReturnType<typeof loadRuntime>): Record<string, string | null> {
   return {
     configPath: loaded.configPath,
@@ -189,6 +196,7 @@ const rule = program.command('rule').description('Inspect and validate rule asse
 const template = program.command('template').description('Inspect and modify prompt templates');
 const reset = program.command('reset').description('Restore default config sections or clean runtime state');
 const state = program.command('state').description('Inspect and verify runtime state');
+const migrate = program.command('migrate').description('Import legacy runtime state into Zigrix');
 const task = program.command('task').description('Task operations');
 const worker = program.command('worker').description('Worker lifecycle operations');
 const evidence = program.command('evidence').description('Evidence collection and merge operations');
@@ -631,6 +639,26 @@ state
   .action((options) => {
     const loaded = loadRuntime();
     printValue(verifyState(loaded.paths), true);
+  });
+
+state
+  .command('import')
+  .description('Import legacy orchestration runtime state from a backup directory')
+  .requiredOption('--from <legacyDir>')
+  .option('--yes')
+  .option('--json')
+  .action((options) => {
+    printValue(runImportOrchestrationCommand(options.from, options.yes), true);
+  });
+
+migrate
+  .command('import-orchestration')
+  .description('Import legacy orchestration runtime state from a backup directory')
+  .requiredOption('--from <legacyDir>')
+  .option('--yes')
+  .option('--json')
+  .action((options) => {
+    printValue(runImportOrchestrationCommand(options.from, options.yes), true);
   });
 
 program
