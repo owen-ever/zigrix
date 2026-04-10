@@ -6,10 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   checkZigrixInPath,
+  ensureOpenClawInPath,
   ensureZigrixInPath,
   findSystemBinDir,
   findUserBinDir,
   registerSkills,
+  resolveOpenClawBin,
   resolveSkillsDir,
   resolveZigrixBin,
   type PathStabilizeResult,
@@ -90,7 +92,7 @@ describe('ensureZigrixInPath', () => {
     try {
       const result = ensureZigrixInPath({
         _overrideSystemBinDir: fakeSystemBin,
-        _overrideStablePaths: [],  // bypass stable-path check so symlink creation proceeds
+        _overrideStablePaths: [], // bypass stable-path check so symlink creation proceeds
       });
 
       if (resolveZigrixBin()) {
@@ -107,13 +109,124 @@ describe('ensureZigrixInPath', () => {
   it('falls back to user bin dir when _overrideSystemBinDir is null', () => {
     const result = ensureZigrixInPath({
       _overrideSystemBinDir: null,
-      _overrideStablePaths: [],  // bypass stable-path check
+      _overrideStablePaths: [], // bypass stable-path check
     });
 
     // Should either create a symlink in user dir, or warn (if binEntry not found)
     if (!result.alreadyInPath && !result.symlinkCreated) {
       expect(result.warning).toBeTruthy();
     }
+  });
+});
+
+// ─── resolveOpenClawBin / ensureOpenClawInPath ───────────────────────────────
+
+describe('openclaw path stabilization', () => {
+  let tmpHome: string;
+  const originalPath = process.env.PATH;
+  const originalHome = process.env.HOME;
+
+  beforeEach(() => {
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-openclaw-path-'));
+    process.env.HOME = tmpHome;
+  });
+
+  afterEach(() => {
+    process.env.PATH = originalPath;
+    if (originalHome === undefined) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  it('resolves the underlying openclaw package entry instead of returning the wrapper symlink path', () => {
+    const fakeBinDir = path.join(
+      tmpHome,
+      '.nvm',
+      'versions',
+      'node',
+      `v${process.versions.node}`,
+      'bin',
+    );
+    const packageDir = path.join(
+      tmpHome,
+      '.nvm',
+      'versions',
+      'node',
+      `v${process.versions.node}`,
+      'lib',
+      'node_modules',
+      'openclaw',
+    );
+    fs.mkdirSync(fakeBinDir, { recursive: true });
+    fs.mkdirSync(packageDir, { recursive: true });
+
+    const entryPath = path.join(packageDir, 'openclaw.mjs');
+    const wrapperPath = path.join(fakeBinDir, 'openclaw');
+    fs.writeFileSync(entryPath, '#!/usr/bin/env node\n', { mode: 0o755 });
+    fs.symlinkSync(entryPath, wrapperPath);
+    process.env.PATH = `${fakeBinDir}${path.delimiter}${originalPath ?? ''}`;
+
+    expect(fs.realpathSync(resolveOpenClawBin()!)).toBe(fs.realpathSync(entryPath));
+  });
+
+  it('does not replace an openclaw binary with a self-loop when source and destination match', () => {
+    const fakeBinDir = path.join(tmpHome, 'bin');
+    fs.mkdirSync(fakeBinDir, { recursive: true });
+
+    const sourcePath = path.join(fakeBinDir, 'openclaw');
+    fs.writeFileSync(sourcePath, '#!/usr/bin/env node\n', { mode: 0o755 });
+    process.env.PATH = `${fakeBinDir}${path.delimiter}${originalPath ?? ''}`;
+
+    const result = ensureOpenClawInPath({
+      _overrideSystemBinDir: null,
+      _overrideStablePaths: [],
+    });
+
+    expect(result.alreadyInPath).toBe(true);
+    expect(result.symlinkCreated).toBe(false);
+    expect(fs.lstatSync(sourcePath).isFile()).toBe(true);
+  });
+
+  it('relinks the user-bin wrapper to the real package entry instead of creating a self-loop', () => {
+    const fakeBinDir = path.join(
+      tmpHome,
+      '.nvm',
+      'versions',
+      'node',
+      `v${process.versions.node}`,
+      'bin',
+    );
+    const packageDir = path.join(
+      tmpHome,
+      '.nvm',
+      'versions',
+      'node',
+      `v${process.versions.node}`,
+      'lib',
+      'node_modules',
+      'openclaw',
+    );
+    fs.mkdirSync(fakeBinDir, { recursive: true });
+    fs.mkdirSync(packageDir, { recursive: true });
+
+    const entryPath = path.join(packageDir, 'openclaw.mjs');
+    const wrapperPath = path.join(fakeBinDir, 'openclaw');
+    fs.writeFileSync(entryPath, '#!/usr/bin/env node\n', { mode: 0o755 });
+    fs.symlinkSync(entryPath, wrapperPath);
+    process.env.PATH = `${fakeBinDir}${path.delimiter}${originalPath ?? ''}`;
+
+    const result = ensureOpenClawInPath({
+      _overrideSystemBinDir: null,
+      _overrideStablePaths: [],
+    });
+
+    expect(result.symlinkCreated).toBe(true);
+    expect(result.symlinkPath).toBe(wrapperPath);
+    expect(fs.realpathSync(wrapperPath)).toBe(fs.realpathSync(entryPath));
+    expect(path.resolve(fs.readlinkSync(wrapperPath))).not.toBe(path.resolve(wrapperPath));
   });
 });
 
