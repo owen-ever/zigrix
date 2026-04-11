@@ -1,12 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TaskListItem, ZigrixConversationData, ZigrixOverviewData, ZigrixTaskDetailData } from '@/types/dashboard';
+import type {
+  TaskListItem,
+  ZigrixConversationData,
+  ZigrixOverviewData,
+  ZigrixTaskDetailData,
+} from '@/types/dashboard';
 import { TaskList } from './TaskList';
 import { TaskDetailTab } from './TaskDetailTab';
 import { EventLogTab } from './EventLogTab';
 import { ConversationTab } from './ConversationTab';
 import { buildTaskListItems } from '../lib/task-list';
+import {
+  bindSelectedTaskConversation,
+  bindSelectedTaskDetail,
+  bindSelectedTaskEvents,
+} from '../lib/task-panel';
 import styles from './DashboardClient.module.css';
 
 type Props = {
@@ -14,6 +24,7 @@ type Props = {
   initialTaskDetail: ZigrixTaskDetailData | null;
   initialConversation: ZigrixConversationData | null;
   initialSelectedTaskId: string | null;
+  zigrixVersion: string;
 };
 
 type RightTab = 'detail' | 'events' | 'conversation';
@@ -36,6 +47,7 @@ export function DashboardClient({
   initialTaskDetail,
   initialConversation,
   initialSelectedTaskId,
+  zigrixVersion,
 }: Props) {
   const [overview, setOverview] = useState<ZigrixOverviewData>(initialOverview);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialSelectedTaskId);
@@ -50,19 +62,37 @@ export function DashboardClient({
   const lastEventTsRef = useRef<string | null>(initialOverview.recentEvents[0]?.ts || null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sourceRef = useRef<EventSource | null>(null);
+  const panelLoadTokenRef = useRef(0);
 
-  const filteredEvents = useMemo(() => {
-    if (selectedTaskId === null) return [];
-    return overview.recentEvents.filter((e) => e.taskId === selectedTaskId);
-  }, [overview.recentEvents, selectedTaskId]);
+  const selectedTaskDetail = useMemo(
+    () => bindSelectedTaskDetail(selectedTaskId, taskDetail),
+    [selectedTaskId, taskDetail],
+  );
+
+  const selectedConversation = useMemo(
+    () => bindSelectedTaskConversation(selectedTaskId, conversation),
+    [selectedTaskId, conversation],
+  );
+
+  const selectedTaskEvents = useMemo(
+    () => bindSelectedTaskEvents(selectedTaskId, taskDetail),
+    [selectedTaskId, taskDetail],
+  );
+
+  const eventLogLoading = selectedTaskId !== null && selectedTaskDetail === null;
 
   const tasks = useMemo<TaskListItem[]>(() => buildTaskListItems(overview), [overview]);
 
   const loadTaskPanels = useCallback(async (taskId: string) => {
+    const token = ++panelLoadTokenRef.current;
+
     const [detail, conv] = await Promise.all([
       fetchJson<ZigrixTaskDetailData>(`/api/tasks/${encodeURIComponent(taskId)}`),
       fetchJson<ZigrixConversationData>(`/api/tasks/${encodeURIComponent(taskId)}/conversation`),
     ]);
+
+    if (panelLoadTokenRef.current !== token) return;
+
     setTaskDetail(detail);
     setConversation(conv);
   }, []);
@@ -76,10 +106,10 @@ export function DashboardClient({
       const latestTs = nextOverview.recentEvents[0]?.ts || null;
       if (latestTs) lastEventTsRef.current = latestTs;
 
-      const nextSelectedTaskId = selectedTaskId || nextOverview.taskHistory[0]?.taskId || null;
-      if (nextSelectedTaskId) {
-        setSelectedTaskId(nextSelectedTaskId);
-        await loadTaskPanels(nextSelectedTaskId);
+      if (selectedTaskId) {
+        setTaskDetail(null);
+        setConversation(null);
+        await loadTaskPanels(selectedTaskId);
       }
     } catch (err) {
       setError((err as Error).message || '새로고침 실패');
@@ -107,7 +137,16 @@ export function DashboardClient({
   }, [refreshAll]);
 
   useEffect(() => {
-    if (!selectedTaskId) return;
+    if (!selectedTaskId) {
+      panelLoadTokenRef.current += 1;
+      setTaskDetail(null);
+      setConversation(null);
+      return;
+    }
+
+    setTaskDetail(null);
+    setConversation(null);
+
     void loadTaskPanels(selectedTaskId).catch((err) => {
       setError((err as Error).message || '태스크 로딩 실패');
     });
@@ -135,9 +174,6 @@ export function DashboardClient({
         if (payload.ts) lastEventTsRef.current = payload.ts;
         if (payload.overview) {
           setOverview(payload.overview);
-          if (!selectedTaskId && payload.overview.taskHistory[0]?.taskId) {
-            setSelectedTaskId(payload.overview.taskHistory[0].taskId);
-          }
           const latestTs = payload.overview.recentEvents[0]?.ts;
           if (latestTs) lastEventTsRef.current = latestTs;
         }
@@ -210,7 +246,10 @@ export function DashboardClient({
   return (
     <main className={styles.main}>
       <header className={styles.header}>
-        <div className={styles.brand}>Zigrix</div>
+        <div className={styles.brand}>
+          <span>Zigrix</span>
+          <small className={styles.brandVersion}>v{zigrixVersion}</small>
+        </div>
 
         <div className={styles.headerRight}>
           <div className={styles.sseWrap}>
@@ -246,10 +285,26 @@ export function DashboardClient({
 
           <div className={styles.panel}>
             {activeTab === 'detail' && (
-              <TaskDetailTab detail={taskDetail} onCancelTask={cancelTask} cancelling={cancelling} />
+              <TaskDetailTab
+                selectedTaskId={selectedTaskId}
+                detail={selectedTaskDetail}
+                onCancelTask={cancelTask}
+                cancelling={cancelling}
+              />
             )}
-            {activeTab === 'events' && <EventLogTab events={filteredEvents} />}
-            {activeTab === 'conversation' && <ConversationTab conversation={conversation} />}
+            {activeTab === 'events' && (
+              <EventLogTab
+                selectedTaskId={selectedTaskId}
+                events={selectedTaskEvents}
+                loading={eventLogLoading}
+              />
+            )}
+            {activeTab === 'conversation' && (
+              <ConversationTab
+                selectedTaskId={selectedTaskId}
+                conversation={selectedConversation}
+              />
+            )}
           </div>
         </section>
       </section>

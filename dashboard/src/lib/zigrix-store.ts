@@ -489,6 +489,7 @@ function buildTaskSnapshot(
   taskId: string,
   events: ZigrixEvent[],
   specsDir: string,
+  options?: { eventLimit?: number | null },
 ): {
   taskId: string;
   status: string | null;
@@ -521,6 +522,11 @@ function buildTaskSnapshot(
     return b - a;
   });
   const sortedEvents = indices.map((i) => taskEvents[i]);
+  const eventLimit = options?.eventLimit;
+  const selectedEvents =
+    typeof eventLimit === 'number' && Number.isFinite(eventLimit) && eventLimit >= 0
+      ? sortedEvents.slice(0, eventLimit)
+      : sortedEvents;
 
   return {
     taskId,
@@ -529,7 +535,7 @@ function buildTaskSnapshot(
     title: display.title || latest?.title || null,
     updatedAt: latest?.ts || null,
     latestEvent: latest?.event || null,
-    events: sortedEvents.slice(0, 50),
+    events: selectedEvents,
   };
 }
 
@@ -1044,7 +1050,6 @@ function buildTaskRecentEvents(
 ): ZigrixConversationEventRow[] {
   return sortByTsDesc(events)
     .filter((e) => e.taskId === taskId)
-    .slice(0, 50)
     .map((e) => ({
       ts: e.ts || null,
       event: e.event || e.action || null,
@@ -1188,7 +1193,7 @@ export function createZigrixStore(options?: {
 
     const activeTasks = Object.entries(index.activeTasks).map(([taskId, taskRaw]) => {
       const task = isObject(taskRaw) ? taskRaw : {};
-      const snapshot = buildTaskSnapshot(taskId, events, paths.specsDir);
+      const snapshot = buildTaskSnapshot(taskId, events, paths.specsDir, { eventLimit: 50 });
       return {
         taskId,
         status: typeof task.status === 'string' ? task.status : snapshot.status,
@@ -1245,7 +1250,7 @@ export function createZigrixStore(options?: {
 
   function loadTaskDetail(taskId: string): ZigrixTaskDetailData {
     const events = readJsonl(paths.eventsPath);
-    const snapshot = buildTaskSnapshot(taskId, events, paths.specsDir);
+    const snapshot = buildTaskSnapshot(taskId, events, paths.specsDir, { eventLimit: null });
     const spec = parseSpecSummary(taskId, paths.specsDir);
     const meta = parseMetaSummary(taskId, paths.specsDir);
     const evidence = parseEvidenceSummary(taskId, paths.evidenceDir);

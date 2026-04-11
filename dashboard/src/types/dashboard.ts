@@ -2,6 +2,19 @@ export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE_PENDING_REPO
 
 export type TaskScale = 'simple' | 'normal' | 'risky' | 'large' | string;
 
+export type ZigrixEventRow = {
+  ts?: string;
+  event?: string;
+  action?: string;
+  taskId?: string;
+  status?: string;
+  actor?: string;
+  agentId?: string;
+  targetAgent?: string;
+  title?: string;
+  [key: string]: unknown;
+};
+
 export type ZigrixOverviewData = {
   generatedAt: string;
   updatedAt: string | null;
@@ -14,16 +27,7 @@ export type ZigrixOverviewData = {
     scale: string | null;
     title: string | null;
   }>;
-  recentEvents: Array<{
-    ts?: string;
-    event?: string;
-    taskId?: string;
-    status?: string;
-    actor?: string;
-    agentId?: string;
-    targetAgent?: string;
-    title?: string;
-  }>;
+  recentEvents: ZigrixEventRow[];
   taskHistory: Array<{
     taskId: string;
     ts: string | null;
@@ -45,7 +49,7 @@ export type ZigrixTaskDetailData = {
     title: string | null;
     updatedAt: string | null;
     latestEvent: string | null;
-    events: Array<Record<string, unknown>>;
+    events: ZigrixEventRow[];
   };
   spec: {
     exists: boolean;

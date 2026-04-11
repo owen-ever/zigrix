@@ -302,4 +302,37 @@ describe('dashboard completed-task behavior regressions', () => {
     expect(conversation.stream.length).toBeGreaterThan(0);
     expect(conversation.openclawAvailable).toBe(true);
   });
+
+  it('returns full selected-task events without 50-item truncation', async () => {
+    const taskId = 'DEV-TEST-005';
+
+    writeTaskMeta(home.tasksDir, taskId, {
+      title: 'Long event history task',
+      scale: 'normal',
+      status: 'IN_PROGRESS',
+    });
+
+    const events = Array.from({ length: 120 }, (_, idx) => ({
+      ts: `2026-03-26T05:${String(Math.floor(idx / 60)).padStart(2, '0')}:${String(idx % 60).padStart(2, '0')}.000Z`,
+      event: `event_${idx}`,
+      taskId,
+      actor: 'backend-main',
+      status: 'IN_PROGRESS',
+    }));
+
+    writeEvents(home.zigrixHome, events);
+
+    const { createZigrixStore } = await import('../dashboard/src/lib/zigrix-store.js');
+    const store = createZigrixStore({
+      zigrixHome: home.zigrixHome,
+      agentsStateDir: home.agentsDir,
+      invokeTool: async () => ({ ok: true }),
+    });
+
+    const detail = store.loadTaskDetail(taskId);
+
+    expect(detail.task.events).toHaveLength(120);
+    expect(detail.task.events[0]?.event).toBe('event_119');
+    expect(detail.task.events[119]?.event).toBe('event_0');
+  });
 });
