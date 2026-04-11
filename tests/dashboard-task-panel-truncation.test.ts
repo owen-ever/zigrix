@@ -50,7 +50,7 @@ function buildTaskEvents(taskId: string, count: number, startMs: number): Record
       ts,
       event: idx === 0 ? 'task_created' : 'worker_done',
       taskId,
-      actor: idx === 0 ? 'orch-main' : 'back-zig',
+      actor: idx === 0 ? 'orch-main' : 'backend-main',
       status: idx === count - 1 ? 'REPORTED' : 'IN_PROGRESS',
       payload: idx === 0 ? { title: `Task ${taskId}`, scale: 'normal' } : undefined,
     };
