@@ -7,7 +7,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { defaultConfig } from '../src/config/defaults.js';
 import { zigrixConfigSchema } from '../src/config/schema.js';
 import { dispatchTask } from '../src/orchestration/dispatch.js';
-import { registerWorker, completeWorker } from '../src/orchestration/worker.js';
+import { registerWorker } from '../src/orchestration/worker.js';
 import { resolvePaths } from '../src/state/paths.js';
 import { loadTask } from '../src/state/tasks.js';
 
@@ -53,6 +53,7 @@ describe('registerWorker sessionId from sessionKey', () => {
       scale: 'simple',
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
 
     const sessionKey = 'agent:backend-main:subagent:abc-def-123';
     const result = registerWorker(paths, {
@@ -60,6 +61,8 @@ describe('registerWorker sessionId from sessionKey', () => {
       agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
+      label: `[backend-main] ${taskId}`,
+      projectDir,
       // sessionId intentionally omitted (empty)
     }) as Record<string, unknown>;
 
@@ -81,6 +84,7 @@ describe('registerWorker sessionId from sessionKey', () => {
       scale: 'simple',
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
 
     const sessionKey = 'agent:backend-main:subagent:abc-def-123';
     const result = registerWorker(paths, {
@@ -89,6 +93,8 @@ describe('registerWorker sessionId from sessionKey', () => {
       sessionKey,
       runId: 'run-1',
       sessionId: 'explicit-session-id',
+      label: `[backend-main] ${taskId}`,
+      projectDir,
     }) as Record<string, unknown>;
 
     expect(result.ok).toBe(true);
@@ -103,6 +109,7 @@ describe('registerWorker sessionId from sessionKey', () => {
       scale: 'simple',
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
 
     const sessionKey = 'custom-session-key-no-standard-format';
     const result = registerWorker(paths, {
@@ -110,6 +117,8 @@ describe('registerWorker sessionId from sessionKey', () => {
       agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
+      label: `[backend-main] ${taskId}`,
+      projectDir,
     }) as Record<string, unknown>;
 
     expect(result.ok).toBe(true);
@@ -124,6 +133,7 @@ describe('registerWorker sessionId from sessionKey', () => {
       scale: 'simple',
     }) as Record<string, unknown>;
     const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
 
     const sessionKey = 'agent:backend-main:subagent:event-sess-id-456';
     registerWorker(paths, {
@@ -131,6 +141,8 @@ describe('registerWorker sessionId from sessionKey', () => {
       agentId: 'backend-main',
       sessionKey,
       runId: 'run-1',
+      label: `[backend-main] ${taskId}`,
+      projectDir,
     });
 
     // Read events file and find the worker_dispatched event
@@ -142,6 +154,50 @@ describe('registerWorker sessionId from sessionKey', () => {
 
     expect(dispatchedEvent).toBeTruthy();
     expect(dispatchedEvent.sessionId).toBe('event-sess-id-456');
+  });
+
+  it('rejects worker register when label does not match expected spawn label', () => {
+    const { paths, config } = makeTempSetup();
+    const dispatched = dispatchTask(paths, config, {
+      title: 'Label mismatch test',
+      description: 'Test label validation guard',
+      scale: 'simple',
+    }) as Record<string, unknown>;
+    const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
+
+    expect(() =>
+      registerWorker(paths, {
+        taskId,
+        agentId: 'backend-main',
+        sessionKey: 'agent:backend-main:subagent:label-mismatch',
+        runId: 'run-1',
+        label: 'backend-main',
+        projectDir,
+      }),
+    ).toThrow(/label mismatch/i);
+  });
+
+  it('rejects worker register when sessionKey namespace does not match agentId', () => {
+    const { paths, config } = makeTempSetup();
+    const dispatched = dispatchTask(paths, config, {
+      title: 'Session key namespace test',
+      description: 'Test sessionKey namespace guard',
+      scale: 'simple',
+    }) as Record<string, unknown>;
+    const taskId = String(dispatched.taskId);
+    const projectDir = String(dispatched.projectDir);
+
+    expect(() =>
+      registerWorker(paths, {
+        taskId,
+        agentId: 'backend-main',
+        sessionKey: 'agent:qa-main:subagent:wrong-namespace',
+        runId: 'run-1',
+        label: `[backend-main] ${taskId}`,
+        projectDir,
+      }),
+    ).toThrow(/sessionKey belongs to/i);
   });
 });
 

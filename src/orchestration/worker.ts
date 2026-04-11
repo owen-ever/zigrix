@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import type { ZigrixConfig } from '../config/schema.js';
 import { appendEvent } from '../state/events.js';
 import { type ZigrixPaths, ensureBaseState } from '../state/paths.js';
 import { loadTask, resolveTaskPaths, saveTask, type ZigrixTask } from '../state/tasks.js';
+import { buildSpawnLabel, composeWorkerPrompt } from './prompt-compose.js';
 
 export const DEFAULT_REQUIRED_ROLES = ['orchestrator', 'qa'] as const;
 
@@ -16,7 +18,10 @@ function firstNonEmpty(...values: unknown[]): string | null {
   return null;
 }
 
-function roleFallback(task: Partial<ZigrixTask> & Record<string, unknown>, role: (typeof DEFAULT_REQUIRED_ROLES)[number]): string | null {
+function roleFallback(
+  task: Partial<ZigrixTask> & Record<string, unknown>,
+  role: (typeof DEFAULT_REQUIRED_ROLES)[number],
+): string | null {
   const roleMap = task.roleAgentMap;
   if (roleMap && typeof roleMap === 'object') {
     const mapped = (roleMap as Record<string, unknown>)[role];
@@ -28,7 +33,9 @@ function roleFallback(task: Partial<ZigrixTask> & Record<string, unknown>, role:
   return null;
 }
 
-function resolveDefaultRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
+function resolveDefaultRequiredAgents(
+  task: Partial<ZigrixTask> & Record<string, unknown>,
+): string[] {
   const resolvedByRole: Record<(typeof DEFAULT_REQUIRED_ROLES)[number], string | null> = {
     orchestrator: firstNonEmpty(task.orchestratorId) ?? roleFallback(task, 'orchestrator'),
     qa: firstNonEmpty(task.qaAgentId) ?? roleFallback(task, 'qa'),
@@ -41,7 +48,9 @@ function resolveDefaultRequiredAgents(task: Partial<ZigrixTask> & Record<string,
   return [...new Set(resolved)];
 }
 
-export function resolveRequiredAgents(task: Partial<ZigrixTask> & Record<string, unknown>): string[] {
+export function resolveRequiredAgents(
+  task: Partial<ZigrixTask> & Record<string, unknown>,
+): string[] {
   for (const key of ['requiredAgents', 'selectedAgents', 'baselineRequiredAgents']) {
     const value = task[key];
     if (Array.isArray(value) && value.length > 0) {
@@ -55,78 +64,74 @@ export function resolveRequiredAgents(task: Partial<ZigrixTask> & Record<string,
   return resolveDefaultRequiredAgents(task);
 }
 
-function renderPrompt(params: {
-  task: ZigrixTask;
-  agentId: string;
-  description: string;
-  constraints?: string;
-  unitId?: string;
-  workPackage?: string;
-  dod?: string;
-  projectDir?: string;
-}): string {
-  const sections = [
-    `## Worker Assignment: ${params.task.taskId}`,
-    '',
-    '| Field | Value |',
-    '|---|---|',
-    `| taskId | ${params.task.taskId} |`,
-    `| title | ${params.task.title} |`,
-    `| scale | ${params.task.scale} |`,
-    `| role | ${params.agentId} |`,
-    ...(params.projectDir ? [`| projectDir | ${params.projectDir} |`] : []),
-    '',
-    '### Assignment',
-    params.description,
-  ];
-  if (params.constraints) sections.push('', '### Constraints', params.constraints);
-  if (params.dod) sections.push('', '### Definition of Done', params.dod);
-  if (params.unitId || params.workPackage) {
-    sections.push('', '### Execution Context', `- unitId: ${params.unitId ?? 'N/A'}`, `- workPackage: ${params.workPackage ?? 'N/A'}`);
-  }
-  sections.push(
-    '',
-    '### Completion',
-    '작업 완료 후 다음 순서를 반드시 따르라:',
-    '',
-    '1. **증적(evidence) 수집** — 작업 결과 증적을 먼저 기록한다:',
-    '   ```bash',
-    `   zigrix evidence collect --task-id ${params.task.taskId} --agent-id ${params.agentId} --summary "<작업 결과 요약>"`,
-    '   ```',
-    '2. **결과 보고** — 증적 수집 완료 후 결과와 근거를 명확히 보고하라.',
-    '',
-    '⚠️ 증적 없이 완료하면 finalize에서 incomplete 판정된다.',
-  );
-  return sections.join('\n');
+function normalizePathValue(value: string | null | undefined): string | null {
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  return path.resolve(value.trim());
 }
 
-export function prepareWorker(paths: ZigrixPaths, params: {
-  taskId: string;
-  agentId: string;
-  description: string;
-  constraints?: string;
-  unitId?: string;
-  workPackage?: string;
-  dod?: string;
-  projectDir?: string;
-}): Record<string, unknown> | null {
+function parseSessionKey(sessionKey: string): { agentId: string; sessionId: string } | null {
+  const matched = sessionKey.match(/^agent:([^:]+):subagent:([^:\s]+)$/);
+  if (!matched) return null;
+  return { agentId: matched[1], sessionId: matched[2] };
+}
+
+export function prepareWorker(
+  paths: ZigrixPaths,
+  config: ZigrixConfig,
+  params: {
+    taskId: string;
+    agentId: string;
+    description: string;
+    constraints?: string;
+    unitId?: string;
+    workPackage?: string;
+    dod?: string;
+    projectDir?: string;
+  },
+): Record<string, unknown> | null {
   ensureBaseState(paths);
   const task = loadTask(paths, params.taskId);
   if (!task) return null;
-  const projectDir = params.projectDir ?? task.projectDir;
-  const prompt = renderPrompt({ task, ...params, projectDir });
+
+  const taskPaths = resolveTaskPaths(paths, params.taskId);
   const promptPath = path.join(paths.promptsDir, `${params.taskId}-${params.agentId}.md`);
-  fs.writeFileSync(promptPath, `${prompt}\n`, 'utf8');
+  const projectDir = normalizePathValue(params.projectDir ?? task.projectDir ?? null);
+  const spawnLabel = buildSpawnLabel(params.taskId, params.agentId);
+
+  const composed = composeWorkerPrompt({
+    paths,
+    config,
+    task,
+    agentId: params.agentId,
+    description: params.description,
+    constraints: params.constraints,
+    unitId: params.unitId,
+    workPackage: params.workPackage,
+    dod: params.dod,
+    projectDir,
+    promptPath,
+    specPath: taskPaths.specPath,
+    metaPath: taskPaths.metaPath,
+  });
+
+  fs.writeFileSync(promptPath, `${composed.prompt}\n`, 'utf8');
+
   task.workerSessions[params.agentId] = {
+    ...(task.workerSessions[params.agentId] as Record<string, unknown> ?? {}),
     status: 'prepared',
+    role: composed.role,
     unitId: params.unitId,
     workPackage: params.workPackage,
     promptPath,
+    expectedLabel: spawnLabel,
+    projectDir,
   };
+
   const required = task.requiredAgents.length > 0 ? task.requiredAgents : resolveRequiredAgents(task);
   if (!required.includes(params.agentId)) required.push(params.agentId);
   task.requiredAgents = required;
   saveTask(paths, task);
+
   appendEvent(paths.eventsFile, {
     event: 'worker_prepared',
     taskId: params.taskId,
@@ -136,46 +141,88 @@ export function prepareWorker(paths: ZigrixPaths, params: {
     status: 'IN_PROGRESS',
     unitId: params.unitId,
     workPackage: params.workPackage,
-    payload: { agentId: params.agentId, description: params.description, constraints: params.constraints ?? '', dod: params.dod ?? '', promptPath },
+    payload: {
+      agentId: params.agentId,
+      role: composed.role,
+      description: params.description,
+      constraints: params.constraints ?? '',
+      dod: params.dod ?? '',
+      promptPath,
+      spawnLabel,
+      projectDir,
+    },
   });
+
   return {
     ok: true,
     taskId: params.taskId,
     agentId: params.agentId,
+    role: composed.role,
     promptPath,
-    prompt,
+    prompt: composed.prompt,
     unitId: params.unitId,
     workPackage: params.workPackage,
-    projectDir: projectDir ?? null,
-    ...resolveTaskPaths(paths, params.taskId),
+    projectDir,
+    spawnLabel,
+    ...taskPaths,
   };
 }
 
-/**
- * Extract sessionId from a sessionKey of the form `agent:<agentId>:subagent:<sessionId>`.
- * Returns null if the sessionKey does not match the expected pattern.
- */
-function parseSessionIdFromKey(sessionKey: string): string | null {
-  const matched = sessionKey.match(/^agent:[^:]+:subagent:([^:\s]+)$/);
-  return matched?.[1] ?? null;
-}
-
-export function registerWorker(paths: ZigrixPaths, params: {
-  taskId: string;
-  agentId: string;
-  sessionKey: string;
-  runId?: string;
-  sessionId?: string;
-  unitId?: string;
-  workPackage?: string;
-  reason?: string;
-}): Record<string, unknown> | null {
+export function registerWorker(
+  paths: ZigrixPaths,
+  params: {
+    taskId: string;
+    agentId: string;
+    sessionKey: string;
+    runId?: string;
+    sessionId?: string;
+    unitId?: string;
+    workPackage?: string;
+    reason?: string;
+    label?: string;
+    projectDir?: string;
+  },
+): Record<string, unknown> | null {
   const task = loadTask(paths, params.taskId);
   if (!task) return null;
-  // Resolve sessionId: use provided value, or fall back to parsing it from sessionKey
-  const resolvedSessionId = params.sessionId || parseSessionIdFromKey(params.sessionKey) || null;
+
+  const parsedKey = parseSessionKey(params.sessionKey);
+  if (parsedKey && parsedKey.agentId !== params.agentId) {
+    throw new Error(
+      `worker register validation failed: sessionKey belongs to '${parsedKey.agentId}', expected '${params.agentId}'`,
+    );
+  }
+
+  const previous = (task.workerSessions[params.agentId] as Record<string, unknown>) ?? {};
+  const expectedLabel = firstNonEmpty(previous.expectedLabel) ?? buildSpawnLabel(params.taskId, params.agentId);
+  const providedLabel = firstNonEmpty(params.label);
+  if (!providedLabel) {
+    throw new Error('worker register validation failed: label is required (use spawnLabel from worker prepare).');
+  }
+  if (providedLabel !== expectedLabel) {
+    throw new Error(
+      `worker register validation failed: label mismatch (expected '${expectedLabel}', got '${providedLabel}')`,
+    );
+  }
+
+  const expectedProjectDir = normalizePathValue(
+    firstNonEmpty(previous.projectDir, task.projectDir),
+  );
+  const providedProjectDir = normalizePathValue(params.projectDir);
+  if (expectedProjectDir && !providedProjectDir) {
+    throw new Error('worker register validation failed: projectDir is required for this task.');
+  }
+  if (expectedProjectDir && providedProjectDir && expectedProjectDir !== providedProjectDir) {
+    throw new Error(
+      `worker register validation failed: projectDir mismatch (expected '${expectedProjectDir}', got '${providedProjectDir}')`,
+    );
+  }
+
+  const resolvedSessionId = params.sessionId || parsedKey?.sessionId || null;
+  const resolvedProjectDir = providedProjectDir ?? expectedProjectDir;
+
   task.workerSessions[params.agentId] = {
-    ...(task.workerSessions[params.agentId] as Record<string, unknown> ?? {}),
+    ...previous,
     status: 'dispatched',
     sessionKey: params.sessionKey,
     runId: params.runId ?? '',
@@ -183,29 +230,64 @@ export function registerWorker(paths: ZigrixPaths, params: {
     unitId: params.unitId,
     workPackage: params.workPackage,
     reason: params.reason ?? '',
+    label: providedLabel,
+    expectedLabel,
+    projectDir: resolvedProjectDir,
   };
+
   const required = task.requiredAgents.length > 0 ? task.requiredAgents : resolveRequiredAgents(task);
   if (!required.includes(params.agentId)) required.push(params.agentId);
   task.requiredAgents = required;
   saveTask(paths, task);
+
   appendEvent(paths.eventsFile, {
-    event: 'worker_dispatched', taskId: params.taskId, phase: 'execution', actor: 'zigrix', targetAgent: params.agentId, status: 'IN_PROGRESS',
-    sessionKey: params.sessionKey, sessionId: resolvedSessionId, unitId: params.unitId, workPackage: params.workPackage,
-    payload: { agentId: params.agentId, runId: params.runId ?? '', reason: params.reason ?? '' },
+    event: 'worker_dispatched',
+    taskId: params.taskId,
+    phase: 'execution',
+    actor: 'zigrix',
+    targetAgent: params.agentId,
+    status: 'IN_PROGRESS',
+    sessionKey: params.sessionKey,
+    sessionId: resolvedSessionId,
+    unitId: params.unitId,
+    workPackage: params.workPackage,
+    payload: {
+      agentId: params.agentId,
+      runId: params.runId ?? '',
+      reason: params.reason ?? '',
+      label: providedLabel,
+      projectDir: resolvedProjectDir,
+    },
   });
-  return { ok: true, taskId: params.taskId, agentId: params.agentId, sessionKey: params.sessionKey, runId: params.runId ?? '', sessionId: resolvedSessionId, unitId: params.unitId, workPackage: params.workPackage, status: 'dispatched' };
+
+  return {
+    ok: true,
+    taskId: params.taskId,
+    agentId: params.agentId,
+    sessionKey: params.sessionKey,
+    runId: params.runId ?? '',
+    sessionId: resolvedSessionId,
+    unitId: params.unitId,
+    workPackage: params.workPackage,
+    label: providedLabel,
+    projectDir: resolvedProjectDir,
+    status: 'dispatched',
+  };
 }
 
-export function completeWorker(paths: ZigrixPaths, params: {
-  taskId: string;
-  agentId: string;
-  sessionKey: string;
-  runId: string;
-  result?: 'done' | 'blocked' | 'skipped';
-  sessionId?: string;
-  unitId?: string;
-  workPackage?: string;
-}): Record<string, unknown> | null {
+export function completeWorker(
+  paths: ZigrixPaths,
+  params: {
+    taskId: string;
+    agentId: string;
+    sessionKey: string;
+    runId: string;
+    result?: 'done' | 'blocked' | 'skipped';
+    sessionId?: string;
+    unitId?: string;
+    workPackage?: string;
+  },
+): Record<string, unknown> | null {
   const task = loadTask(paths, params.taskId);
   if (!task) return null;
   const prev = (task.workerSessions[params.agentId] as Record<string, unknown>) ?? {};
@@ -220,16 +302,38 @@ export function completeWorker(paths: ZigrixPaths, params: {
   };
   saveTask(paths, task);
   appendEvent(paths.eventsFile, {
-    event: 'worker_done', taskId: params.taskId, phase: 'execution', actor: params.agentId, targetAgent: params.agentId,
-    status: (params.result ?? 'done') === 'blocked' ? 'BLOCKED' : 'IN_PROGRESS', sessionKey: params.sessionKey, sessionId: params.sessionId ?? null,
-    unitId: params.unitId ?? prev.unitId, workPackage: params.workPackage ?? prev.workPackage,
+    event: 'worker_done',
+    taskId: params.taskId,
+    phase: 'execution',
+    actor: params.agentId,
+    targetAgent: params.agentId,
+    status: (params.result ?? 'done') === 'blocked' ? 'BLOCKED' : 'IN_PROGRESS',
+    sessionKey: params.sessionKey,
+    sessionId: params.sessionId ?? null,
+    unitId: params.unitId ?? prev.unitId,
+    workPackage: params.workPackage ?? prev.workPackage,
     payload: { result: params.result ?? 'done', runId: params.runId },
   });
+
   const evidenceDir = path.join(paths.evidenceDir, params.taskId);
   const presentAgents = fs.existsSync(evidenceDir)
-    ? fs.readdirSync(evidenceDir).filter((file) => file.endsWith('.json') && file !== '_merged.json').map((file) => path.basename(file, '.json')).sort()
+    ? fs
+        .readdirSync(evidenceDir)
+        .filter((file) => file.endsWith('.json') && file !== '_merged.json')
+        .map((file) => path.basename(file, '.json'))
+        .sort()
     : [];
+
   const required = resolveRequiredAgents(task);
   const missingAgents = required.filter((agentId) => !presentAgents.includes(agentId));
-  return { ok: true, taskId: params.taskId, agentId: params.agentId, result: params.result ?? 'done', requiredAgents: required, presentEvidenceAgents: presentAgents, missingEvidenceAgents: missingAgents, allEvidenceCollected: missingAgents.length === 0 };
+  return {
+    ok: true,
+    taskId: params.taskId,
+    agentId: params.agentId,
+    result: params.result ?? 'done',
+    requiredAgents: required,
+    presentEvidenceAgents: presentAgents,
+    missingEvidenceAgents: missingAgents,
+    allEvidenceCollected: missingAgents.length === 0,
+  };
 }

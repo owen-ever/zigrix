@@ -13,9 +13,9 @@ import { completeWorker, prepareWorker, registerWorker } from '../src/orchestrat
 import { resolvePaths } from '../src/state/paths.js';
 import { createTask, listTaskEvents, loadTask, recordTaskProgress, updateTaskStatus } from '../src/state/tasks.js';
 
-function makeTempPaths() {
+function makeTempSetup() {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zigrix-task-flow-'));
-  const cfg = zigrixConfigSchema.parse({
+  const config = zigrixConfigSchema.parse({
     ...structuredClone(defaultConfig),
     paths: {
       baseDir: tmpBase,
@@ -28,12 +28,13 @@ function makeTempPaths() {
       rulesDir: path.join(tmpBase, 'rules'),
     },
   });
-  return resolvePaths(cfg);
+  const paths = resolvePaths(config);
+  return { paths, config };
 }
 
 describe('task parity flow', () => {
   it('supports task -> worker -> evidence -> report flow', () => {
-    const paths = makeTempPaths();
+    const { paths, config } = makeTempSetup();
 
     const task = createTask(paths, {
       title: 'Parity task',
@@ -45,11 +46,26 @@ describe('task parity flow', () => {
     const progress = recordTaskProgress(paths, { taskId: task.taskId, actor: 'zigrix', message: 'kickoff' });
     expect(progress?.event).toBe('progress_report');
 
-    const prepared = prepareWorker(paths, { taskId: task.taskId, agentId: 'qa-main', description: 'Run QA' });
+    const prepared = prepareWorker(paths, config, {
+      taskId: task.taskId,
+      agentId: 'qa-main',
+      description: 'Run QA',
+    });
     expect(prepared?.ok).toBe(true);
-    const registered = registerWorker(paths, { taskId: task.taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'run-001' });
+    const registered = registerWorker(paths, {
+      taskId: task.taskId,
+      agentId: 'qa-main',
+      sessionKey: 'agent:qa-main:subagent:qa-run-001',
+      runId: 'run-001',
+      label: `[qa-main] ${task.taskId}`,
+    });
     expect(registered?.status).toBe('dispatched');
-    const completed = completeWorker(paths, { taskId: task.taskId, agentId: 'qa-main', sessionKey: 'agent:test:qa', runId: 'run-001' });
+    const completed = completeWorker(paths, {
+      taskId: task.taskId,
+      agentId: 'qa-main',
+      sessionKey: 'agent:qa-main:subagent:qa-run-001',
+      runId: 'run-001',
+    });
     expect(completed?.allEvidenceCollected).toBe(false);
 
     const evidence = collectEvidence(paths, {
@@ -71,7 +87,7 @@ describe('task parity flow', () => {
   });
 
   it('runs pipeline with evidence summaries and auto-report', () => {
-    const paths = makeTempPaths();
+    const { paths } = makeTempSetup();
     const result = runPipeline(paths, {
       title: 'Pipeline task',
       description: 'Pipeline test',

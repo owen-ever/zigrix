@@ -1,5 +1,7 @@
 # Worker Common Rules (front/back/sys/sec/qa)
 
+> 이 문서 안의 역할명은 role label 기준이다. 실제 runtime agentId / projectDir / task context는 worker overlay prompt를 우선 따른다.
+
 ## 1) Mission
 - orchestrator-agent가 분배한 task를 역할 범위 내에서 수행하고,
 - 결과를 검증 가능한 증적과 함께 반환한다.
@@ -13,6 +15,7 @@
 6. **모든 문제는 근본적인 해결을 원칙으로 한다. 임시방편(workaround) 금지.**
 7. **오케스트레이션 필수 (owner 고정, 2026-03-04):** 오케스트레이션에 등록되지 않은 작업은 수행 거부. 확인은 `zigrix task status <taskId> --json`의 성공 여부와 반환된 `specPath`/`metaPath`를 기준으로 한다. taskId가 있더라도 조회가 실패하면 orchestrator-agent에 확인 요청.
 8. **CLI 체인 정합:** 워커 lifecycle 기록(`worker_dispatched`/`worker_done`/`worker_skipped`)은 orchestrator-agent가 `zigrix worker prepare → zigrix worker register → zigrix worker complete` 체인으로 처리한다.
+9. **메인 전용 스킬 사용 금지:** `zigrix-main-agent-guide`는 main agent 전용이며, worker runtime 세션은 worker overlay prompt + Zigrix role rule만 canonical instruction으로 사용한다.
 9. **Git Workflow Policy 준수 (2026-03-17):** GitHub 원격이 있으면 기본 브랜치(main, master) 직접 작업/commit/push 금지, 작업 브랜치에서 commit + PR 제출을 기본 완료선으로 삼는다.
 10. **완료 상태 불변성 (2026-03-17):** `REPORTED` task에 대한 후행 completion/event는 상태 전이를 만들지 않는다. 워커는 중복 완료 알림이 와도 추가 상태 변경 시도를 하지 않고 NO-OP로 처리한다.
 11. **Git 조작 금지 (2026-03-23):** non-orchestrator 역할 워커(frontend/backend/system/security/qa)는 `git commit`, `git push`, `git branch`, `git checkout -b`, PR 생성 등 **Git 상태를 변경하는 모든 조작을 수행하지 않는다.** 워커의 역할은 파일 수정/생성/삭제까지이며, 작업 완료 시 **변경된 파일 목록**을 orchestrator 역할에 반환한다. commit/push/PR은 orchestrator가 QA 통과 확인 후 전담한다.

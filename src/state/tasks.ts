@@ -288,6 +288,53 @@ export function updateTaskStatus(paths: ZigrixPaths, taskId: string, status: str
   return task;
 }
 
+export function bindOrchestratorSession(paths: ZigrixPaths, params: {
+  taskId: string;
+  agentId: string;
+  sessionKey: string;
+  sessionId?: string;
+}): Record<string, unknown> | null {
+  const task = loadTask(paths, params.taskId);
+  if (!task) return null;
+
+  const parsed = parseAgentSubagentSessionKey(params.sessionKey);
+  if (parsed && parsed.agentId !== params.agentId) {
+    throw new Error(
+      `orchestrator bind validation failed: sessionKey belongs to '${parsed.agentId}', expected '${params.agentId}'`,
+    );
+  }
+
+  const resolvedSessionId = params.sessionId ?? parsed?.sessionId ?? null;
+  task.orchestratorId = params.agentId;
+  task.orchestratorSessionKey = params.sessionKey;
+  if (resolvedSessionId) {
+    task.orchestratorSessionId = resolvedSessionId;
+  } else {
+    delete task.orchestratorSessionId;
+  }
+  saveTask(paths, task);
+  appendEvent(paths.eventsFile, {
+    event: 'orchestrator_bound',
+    taskId: params.taskId,
+    phase: 'dispatch',
+    actor: 'zigrix',
+    targetAgent: params.agentId,
+    status: task.status,
+    sessionKey: params.sessionKey,
+    sessionId: resolvedSessionId,
+    payload: { agentId: params.agentId },
+  });
+  rebuildIndex(paths);
+  return {
+    ok: true,
+    taskId: params.taskId,
+    agentId: params.agentId,
+    sessionKey: params.sessionKey,
+    sessionId: resolvedSessionId,
+    status: task.status,
+  };
+}
+
 export function recordTaskProgress(paths: ZigrixPaths, params: {
   taskId: string;
   actor: string;

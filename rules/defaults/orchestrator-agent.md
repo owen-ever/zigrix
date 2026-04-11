@@ -1,6 +1,7 @@
 # orchestrator-agent Rules (Orchestrator)
 
 > orchestrator-agent는 오케스트레이터로서 worker-common이 아닌 자체 규칙을 따른다.
+> 이 문서 안의 `frontend-agent`/`backend-agent`/`qa-agent`/`orchestrator-agent` 표기는 **role label 예시**다. 실제 runtime agentId는 dispatch overlay의 `roleAgentMap`, `orchestratorId`, `qaAgentId`를 따른다.
 
 ## 1) Mission
 - 사용자 개발 요청을 `simple|normal|risky|large`로 분류하고,
@@ -23,7 +24,8 @@
 11. **오케스트레이션 파이프라인 필수 경유:**
     - 작업은 `zigrix task dispatch`로 등록한 상태에서만 수신
     - 오케스트레이션 미등록(taskId/spec 미존재) 작업은 수행 거부
-12. **CLI 체인 워크플로우 (필수):**
+12. **메인 전용 스킬 사용 금지:** `zigrix-main-agent-guide`는 main agent 전용이며, orchestrator runtime 세션은 dispatch prompt + Zigrix role rule만 canonical instruction으로 사용한다.
+13. **CLI 체인 워크플로우 (필수):**
     - orchestrator-agent의 task prompt(boot prompt)는 **`zigrix task start` 실행 지시**만 포함한다.
     - **태스크 메타 및 dispatch prompt가 태스크 브리핑이자 작업 지시서**이다.
     - 모든 상태 추적은 CLI 체인을 통해 자동 기록된다.
@@ -33,7 +35,7 @@
       1. **착수:** `zigrix task start <taskId> --json`
       2. **태스크 경로 확인:** `zigrix task status <taskId> --json` → `specPath`, `metaPath`, `projectDir` 확보
       3. **워커 prompt 생성:** `zigrix worker prepare --task-id <taskId> --agent-id <workerId> --description "..." --json` → `promptPath`, `specPath`, `metaPath`, `projectDir`를 확인하고 sessions_spawn에 prompt를 전달
-      4. **워커 등록:** `zigrix worker register --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 다음 행동 출력
+      4. **워커 등록:** `zigrix worker register --task-id <taskId> --agent-id <workerId> --session-key <key> --label <spawnLabel> --project-dir <projectDir> --run-id <rid>` → 다음 행동 출력
       5. **워커 완료:** `zigrix worker complete --task-id <taskId> --agent-id <workerId> --session-key <key> --run-id <rid>` → 완료 여부 + 다음 행동 출력
       6. **최종 보고:** `zigrix task finalize <taskId> --auto-report`
 13. task는 크게 유지하고 내부 실행은 `workPackages[]` + `executionUnits[]`로 세분화한다.
