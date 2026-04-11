@@ -9,6 +9,7 @@ import { RelativeTime } from './RelativeTime';
 import styles from './TaskDetailTab.module.css';
 
 type Props = {
+  selectedTaskId: string | null;
   detail: ZigrixTaskDetailData | null;
   onCancelTask: (taskId: string) => Promise<void>;
   cancelling: boolean;
@@ -27,7 +28,7 @@ function doneCount(packages: Array<{ status?: string }> = []) {
   return packages.filter((pkg) => ['DONE', 'REPORTED', 'DONE_PENDING_REPORT', 'COMPLETED'].includes((pkg.status || '').toUpperCase())).length;
 }
 
-export function TaskDetailTab({ detail, onCancelTask, cancelling }: Props) {
+export function TaskDetailTab({ selectedTaskId, detail, onCancelTask, cancelling }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const executionUnits = useMemo(() => {
@@ -35,8 +36,12 @@ export function TaskDetailTab({ detail, onCancelTask, cancelling }: Props) {
     return Array.isArray(raw) ? (raw as ExecutionUnit[]) : [];
   }, [detail]);
 
-  if (!detail) {
+  if (!selectedTaskId) {
     return <div className={styles.empty}>태스크를 선택해 주세요.</div>;
+  }
+
+  if (!detail || detail.task.taskId !== selectedTaskId) {
+    return <div className={styles.empty}>태스크 정보를 불러오는 중...</div>;
   }
 
   const status = detail.task.status;

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { DashboardClient } from '@/components/DashboardClient';
 import { SESSION_COOKIE_NAME, verifySession } from '@/lib/auth';
 import { createZigrixStore } from '@/lib/zigrix-store';
+import { resolveZigrixVersion } from '@/lib/zigrix-version';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +19,15 @@ export default async function HomePage() {
   }
 
   const overview = store.loadOverview();
-  const selectedTaskId = overview.taskHistory[0]?.taskId || null;
-  const detail = selectedTaskId ? store.loadTaskDetail(selectedTaskId) : null;
-  const conversation = selectedTaskId ? await store.loadTaskConversation(selectedTaskId) : null;
+  const zigrixVersion = resolveZigrixVersion();
 
   return (
     <DashboardClient
       initialOverview={overview}
-      initialSelectedTaskId={selectedTaskId}
-      initialTaskDetail={detail}
-      initialConversation={conversation}
+      initialSelectedTaskId={null}
+      initialTaskDetail={null}
+      initialConversation={null}
+      zigrixVersion={zigrixVersion}
     />
   );
 }

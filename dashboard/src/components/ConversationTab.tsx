@@ -6,6 +6,7 @@ import type { ZigrixConversationData } from '@/types/dashboard';
 import styles from './ConversationTab.module.css';
 
 type Props = {
+  selectedTaskId: string | null;
   conversation: ZigrixConversationData | null;
 };
 
@@ -52,7 +53,7 @@ function shouldShowPart(part: ContentPart, role: string | null, debug: boolean) 
   return debug;
 }
 
-export function ConversationTab({ conversation }: Props) {
+export function ConversationTab({ selectedTaskId, conversation }: Props) {
   const [debug, setDebug] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -67,7 +68,11 @@ export function ConversationTab({ conversation }: Props) {
 
   const messages = useMemo(() => conversation?.stream || [], [conversation]);
 
-  if (!conversation) return <div className={styles.empty}>태스크를 선택해 주세요.</div>;
+  if (!selectedTaskId) return <div className={styles.empty}>태스크를 선택해 주세요.</div>;
+
+  if (!conversation || conversation.taskId !== selectedTaskId) {
+    return <div className={styles.notice}>대화 내역을 불러오는 중...</div>;
+  }
 
   if (!conversation.openclawAvailable) {
     return <div className={styles.notice}>OpenClaw 연동 필요</div>;
@@ -81,6 +86,7 @@ export function ConversationTab({ conversation }: Props) {
       </label>
 
       <div ref={listRef} className={styles.list}>
+        {messages.length === 0 ? <div className={styles.notice}>대화 내역이 없습니다.</div> : null}
         {messages.map((msg, idx) => {
           const parts = asParts(msg.content, msg.toolName);
           const agentColor = hashColor(msg.agentId || msg.agentName || 'agent');
