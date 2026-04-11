@@ -12,7 +12,6 @@ import {
 
 const DEFAULT_SUBAGENT_RUNS_PATH = path.join(os.homedir(), '.openclaw', 'subagents', 'runs.json');
 const FALLBACK_GATEWAY_URL = 'http://127.0.0.1:18789';
-const DEFAULT_SESSIONS_HISTORY_LIMIT = 200;
 
 type ZigrixConfigSnapshot = {
   paths?: {
@@ -324,9 +323,9 @@ function normalizeEvent(raw: LooseRecord): ZigrixEvent {
   return { ...(raw as ZigrixEvent), ts, event, sessionKey, runId };
 }
 
-function toPositiveInteger(value: unknown, fallback: number): number {
+function toOptionalPositiveInteger(value: unknown): number | undefined {
   const parsed = Number.parseInt(String(value ?? ''), 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
   return parsed;
 }
 
@@ -958,6 +957,29 @@ function readJsonlMessages(filePath: string): LooseRecord[] {
   return messages;
 }
 
+function readSessionMessagesFromFile(
+  agentsStateDir: string,
+  sessionKey: string,
+  sessionIdMap: Map<string, string>,
+): { messages: LooseRecord[]; filePath: string | null } | null {
+  const parsed = parseAgentSubagentSessionKey(sessionKey);
+  if (!parsed) return null;
+
+  const resolvedSessionId = sessionIdMap.get(sessionKey) ?? parsed.sessionId;
+  let matched = findSessionFile(agentsStateDir, parsed.agentId, resolvedSessionId);
+
+  if (!matched && resolvedSessionId !== parsed.sessionId) {
+    matched = findSessionFile(agentsStateDir, parsed.agentId, parsed.sessionId);
+  }
+
+  if (!matched) return null;
+
+  return {
+    messages: readJsonlMessages(matched.filePath),
+    filePath: matched.filePath,
+  };
+}
+
 function toTimestampMs(rawMessage: LooseRecord): number | null {
   const ts = rawMessage.timestamp;
   if (typeof ts === 'number' && Number.isFinite(ts)) return ts;
@@ -1169,9 +1191,8 @@ export function createZigrixStore(options?: {
       fetchImpl: options?.fetchImpl,
     });
 
-  const sessionsHistoryLimit = toPositiveInteger(
+  const sessionsHistoryLimit = toOptionalPositiveInteger(
     options?.sessionsHistoryLimit ?? process.env.SESSIONS_HISTORY_LIMIT,
-    DEFAULT_SESSIONS_HISTORY_LIMIT,
   );
 
   // Dynamically read agent IDs from config
@@ -1282,14 +1303,33 @@ export function createZigrixStore(options?: {
       sessionKeys.map(async (sessionKey) => {
         let gatewayError: string | null = null;
 
-        // Try gateway first
+        // Selected-task conversation should prefer full local session history when available.
+        // Gateway history can be partial/recent-only, which breaks cross-session ordering.
         try {
-          const result = await invokeTool('sessions_history', {
-            sessionKey,
-            limit: sessionsHistoryLimit,
-            includeTools: true,
-          });
+          const local = readSessionMessagesFromFile(paths.agentsStateDir, sessionKey, sessionMeta.sessionIdMap);
+          if (local && local.messages.length > 0) {
+            return {
+              sessionKey,
+              ok: true,
+              messageCount: local.messages.length,
+              error: null,
+              messages: local.messages,
+              gatewayError,
+            };
+          }
+        } catch (error) {
+          gatewayError = String((error as Error)?.message || error);
+        }
 
+        // Fallback: gateway history for non-file-backed or currently unavailable sessions.
+        try {
+          const request: Record<string, unknown> = {
+            sessionKey,
+            includeTools: true,
+          };
+          if (sessionsHistoryLimit) request.limit = sessionsHistoryLimit;
+
+          const result = await invokeTool('sessions_history', request);
           const resultObj = isObject(result) ? result : {};
           const detailsObj = isObject(resultObj.details)
             ? (resultObj.details as LooseRecord)
@@ -1301,53 +1341,6 @@ export function createZigrixStore(options?: {
             : [];
           const messages = rows.filter((row): row is LooseRecord => isObject(row));
 
-          if (messages.length > 0 || !parseAgentSubagentSessionKey(sessionKey)) {
-            return {
-              sessionKey,
-              ok: true,
-              messageCount: messages.length,
-              error: null,
-              messages,
-              gatewayError,
-            };
-          }
-        } catch (error) {
-          gatewayError = String((error as Error)?.message || error);
-        }
-
-        // Fallback: read session file directly
-        try {
-          const parsed = parseAgentSubagentSessionKey(sessionKey);
-          if (!parsed) {
-            return {
-              sessionKey,
-              ok: gatewayError ? false : true,
-              messageCount: 0,
-              error: gatewayError,
-              messages: [] as LooseRecord[],
-              gatewayError,
-            };
-          }
-
-          const resolvedSessionId = sessionMeta.sessionIdMap.get(sessionKey) ?? parsed.sessionId;
-          let matched = findSessionFile(paths.agentsStateDir, parsed.agentId, resolvedSessionId);
-
-          if (!matched && resolvedSessionId !== parsed.sessionId) {
-            matched = findSessionFile(paths.agentsStateDir, parsed.agentId, parsed.sessionId);
-          }
-
-          if (!matched) {
-            return {
-              sessionKey,
-              ok: gatewayError ? false : true,
-              messageCount: 0,
-              error: gatewayError,
-              messages: [] as LooseRecord[],
-              gatewayError,
-            };
-          }
-
-          const messages = readJsonlMessages(matched.filePath);
           return {
             sessionKey,
             ok: true,
@@ -1357,11 +1350,12 @@ export function createZigrixStore(options?: {
             gatewayError,
           };
         } catch (error) {
+          gatewayError = String((error as Error)?.message || error);
           return {
             sessionKey,
             ok: false,
             messageCount: 0,
-            error: gatewayError || String((error as Error)?.message || error),
+            error: gatewayError,
             messages: [] as LooseRecord[],
             gatewayError,
           };
