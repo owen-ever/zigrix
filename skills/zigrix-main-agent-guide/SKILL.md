@@ -1,7 +1,7 @@
 ---
 name: zigrix-main-agent-guide
 version: 0.2.0
-description: Main-agent guide for using Zigrix CLI (task issuance, orchestrator spawn, dashboard, and path resolution).
+description: Main-agent guide for using Zigrix CLI (task issuance, orchestrator spawn, `/oz` handoff guard, dashboard, and path resolution).
 metadata:
   openclaw:
     requires:
@@ -64,6 +64,17 @@ sessions_spawn(
 ```
 
 오케스트레이터는 이후 워커를 `zigrix worker prepare/register/complete` 체인으로 관리한다.
+
+### `/oz` and delegation guard
+
+`/oz` skill 또는 자연어 위임 라우팅이 현재 턴을 **delegate** 로 판정했다면, 메인 에이전트는 실행자가 아니라 **router** 다.
+
+이 경우:
+- 허용: `zigrix task dispatch`, dispatch 결과 확인, `sessions_spawn`, 상태/실패 보고
+- 금지: 직접 구현, 직접 파일 수정으로 우회, direct fallback
+- dispatch/spawn 실패 시: 실패를 보고하고 중단
+
+즉, Zigrix handoff가 시작된 이후에는 메인 에이전트가 로컬 직접 작업으로 대체하지 않는다.
 
 ## 4) 워커/검증/최종 보고 체인
 

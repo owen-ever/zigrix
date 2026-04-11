@@ -150,7 +150,7 @@ zigrix reset state --yes
 2. seeds rule files from bundled templates
 3. ensures `zigrix` is reachable from the runtime-visible PATH
 4. detects OpenClaw and imports agents from `openclaw.json`
-5. registers bundled `skills/zigrix-*` into `~/.openclaw/skills/`
+5. registers bundled OpenClaw skills into `~/.openclaw/skills/` (including `oz` and the `zigrix-*` packs)
 6. leaves the environment ready for agent-led orchestration
 
 ---
@@ -161,8 +161,16 @@ When OpenClaw is present, Zigrix is optimized for this model:
 
 - import agent definitions and normalize roles
 - establish orchestrator ownership for task execution
-- register Zigrix skill packs for agent readiness checks
+- register bundled OpenClaw skills for agent readiness checks
+- expose `/oz` as the public Zigrix chat entrypoint after onboarding
 - keep CLI reachability stable for OpenClaw runtime
+
+After `zigrix onboard`, the expected chat-side entrypoints are:
+- `/oz fix the auth flow`
+- `이거 맡겨`
+- `route this through Zigrix`
+
+`/oz` is force-delegate. Natural-language delegation is judged semantically by the installed skill and should enter the standard Zigrix chain (`zigrix task dispatch` → orchestrator spawn) instead of falling back to direct execution.
 
 Read the full integration contract in [docs/openclaw-integration.md](docs/openclaw-integration.md).
 

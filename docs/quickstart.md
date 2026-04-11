@@ -32,12 +32,17 @@ This:
 - Detects OpenClaw and imports agents from `openclaw.json`
 - Seeds bundled rule templates from `rules/defaults/` into `paths.rulesDir`
 - Ensures `zigrix` is reachable from PATH (creates symlink if needed)
-- Registers zigrix skill packs into `~/.openclaw/skills/`
+- Registers bundled OpenClaw skills into `~/.openclaw/skills/` (including `oz` and the `zigrix-*` packs)
 
 ## 3) Check environment
 ```bash
 zigrix doctor
 ```
+
+If OpenClaw is present, onboarding should leave these chat-side entrypoints available:
+- `/oz fix the onboarding bug`
+- `이거 맡겨`
+- `delegate this through Zigrix`
 
 ## 3.5) Reconfigure (optional)
 ```bash

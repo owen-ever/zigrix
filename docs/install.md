@@ -61,7 +61,7 @@ Note: `zigrix onboard` now handles skill registration automatically when OpenCla
 3. Imports agents (filters out `main`, registers with roles)
 4. Seeds bundled rule templates from `rules/defaults/` into `paths.rulesDir`
 5. **PATH stabilization** — if `zigrix` isn't in PATH, creates a symlink in `~/.local/bin/`
-6. **Skill registration** — symlinks `skills/zigrix-*` into `~/.openclaw/skills/`
+6. **Skill registration** — symlinks bundled OpenClaw skills (`skills/oz`, `skills/zigrix-*`) into `~/.openclaw/skills/`
 
 ## Verify flow
 ```bash
@@ -70,6 +70,15 @@ zigrix doctor
 zigrix config validate --json
 zigrix dashboard --port 3838   # Ctrl+C after startup check
 ```
+
+If OpenClaw is present, `zigrix onboard` should also register:
+- `~/.openclaw/skills/oz`
+- the bundled `zigrix-*` skills
+
+At that point the expected chat-side entrypoints are:
+- `/oz fix the auth flow`
+- `이거 맡겨`
+- `route this through Zigrix`
 
 ### Version mismatch
 

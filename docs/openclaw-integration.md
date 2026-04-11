@@ -4,7 +4,7 @@
 
 Zigrix integrates with OpenClaw as:
 - a standalone CLI (`zigrix`)
-- a skill pack (`skills/zigrix-*`)
+- bundled OpenClaw skills (`skills/oz`, `skills/zigrix-*`)
 
 It is **not** required to be an OpenClaw plugin for the first public version.
 
@@ -33,19 +33,34 @@ metadata:
 
 This means OpenClaw can mark the skill ready only when the Zigrix binary exists on a PATH visible to the OpenClaw gateway/runtime.
 
-Bundled skills include operational packs (`zigrix-task-*`, `zigrix-worker`, `zigrix-evidence`, `zigrix-report`, `zigrix-doctor`) and the orchestration guide pack (`zigrix-main-agent-guide`).
+Bundled skills include:
+- `oz` — public OpenClaw chat entrypoint (`/oz` + semantic natural-language delegation into Zigrix)
+- operational packs (`zigrix-task-*`, `zigrix-worker`, `zigrix-evidence`, `zigrix-report`, `zigrix-doctor`)
+- the orchestration guide pack (`zigrix-main-agent-guide`)
 
 ## Onboarding contract for OpenClaw environments
 
 When OpenClaw is present, `zigrix onboard` automatically covers:
 
 1. **PATH stabilization** — ensures `zigrix` is reachable from the gateway-visible PATH. If not found, creates a symlink in `~/.local/bin/` and warns if that directory isn't in PATH.
-2. **Skill registration** — symlinks all bundled skill packs (`skills/zigrix-*`) into `~/.openclaw/skills/`. Idempotent: skips existing symlinks that already point to the correct source.
+2. **Skill registration** — symlinks all bundled OpenClaw skills (`skills/oz`, `skills/zigrix-*`) into `~/.openclaw/skills/`. Idempotent: skips existing symlinks that already point to the correct source.
 3. **Agent import** — reads `openclaw.json`, filters out `main`, normalizes imported roles to Zigrix standard roles, and sets/validates `agents.orchestration.orchestratorId`.
 4. **Readiness verification** — `zigrix doctor` reports OpenClaw detection status, skill dir presence, PATH reachability, and rule file counts.
 
 Optional:
 - append Zigrix helper context into workspace notes such as `TOOLS.md`
+
+## Chat-side entrypoint after onboarding
+
+After `zigrix onboard`, OpenClaw should have an `oz` skill available under `~/.openclaw/skills/oz`.
+
+Expected user-facing behavior:
+- `/oz ...` → force Zigrix delegation
+- plain-language handoff requests (for example “이거 맡겨”, “delegate this”, “route this through Zigrix”) → semantic routing into Zigrix when the user is asking for delegation rather than direct execution
+
+Both surfaces should enter the same canonical handoff chain:
+1. `zigrix task dispatch --json`
+2. use returned `orchestratorPrompt` to spawn the orchestrator session
 
 ## Current integrated surface (agent-facing)
 
