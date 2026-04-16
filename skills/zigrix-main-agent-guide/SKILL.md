@@ -46,9 +46,11 @@ zigrix task dispatch \
   --title "Implement X" \
   --description "..." \
   --scale normal \
-  --project-dir /path/to/project \
   --json
 ```
+
+기본적으로는 `workspace.projectsBaseDir` 설정값을 따르므로, 메인 에이전트는 보통 `--project-dir`를 붙이지 않는다.
+`--project-dir`는 기존 프로젝트를 이어받거나 기본 경로를 명시적으로 override해야 할 때만 사용한다.
 
 디스패치 결과에서 확인하고 다음 에이전트에 전달할 핵심 필드:
 - `taskId`
@@ -103,6 +105,9 @@ zigrix worker prepare --task-id <taskId> --agent-id <agentId> --description "...
 
 # 워커 세션 등록
 zigrix worker register --task-id <taskId> --agent-id <agentId> --session-key <sessionKey> --label <spawnLabel> --project-dir <projectDir> --run-id <runId> --json
+
+# 참고: 여기서의 --project-dir 는 dispatch/prepare 응답으로 이미 resolve된 값을 그대로 전달하는 worker registration 인자다.
+# task dispatch 기본 패턴과는 다르게, register 단계에서는 유지한다.
 
 # 워커 완료
 zigrix worker complete --task-id <taskId> --agent-id <agentId> --session-key <sessionKey> --run-id <runId> --json

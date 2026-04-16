@@ -55,7 +55,7 @@ If `route = delegate`, use the canonical Zigrix handoff chain:
    - `title`
    - `description`
    - `scale`
-   - optional `projectDir`
+   - optional existing `projectDir` (only when the user explicitly specified it or the task must continue in an already-known project)
 2. Run:
 
 ```bash
@@ -63,9 +63,11 @@ zigrix task dispatch \
   --title "..." \
   --description "..." \
   --scale simple|normal|risky|large \
-  --project-dir /path/to/project \
   --json
 ```
+
+기본적으로는 `workspace.projectsBaseDir` 설정값을 따르므로, delegate flow에서는 보통 `--project-dir`를 붙이지 않는다.
+`--project-dir`는 기존 프로젝트를 이어받거나 기본 경로를 명시적으로 override해야 할 때만 사용한다.
 
 3. Read the JSON result and extract:
    - `taskId`
